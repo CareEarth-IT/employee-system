@@ -1,0 +1,25 @@
+{
+  "timeZone": "Asia/Tokyo",
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+    "https://www.googleapis.com/auth/admin.directory.user.readonly",
+    "https://www.googleapis.com/auth/directory.readonly"
+  ],
+  "webapp": {
+    "executeAs": "USER_DEPLOYING",
+    "access": "DOMAIN"
+  },
+  "_phpMigrationNote": {
+    "timezone": "config/app.php → timezone / includes/bootstrap.php",
+    "domainAccess": "config/app.php → allowed_email_domains（ログイン時チェック）",
+    "oauthScopes": "不要。Chat=Webhook、Sheets/Drive=MySQL+uploads、Directory=usersテーブル",
+    "executeAs": "PHPセッションのログインユーザーとして動作"
+  }
+}

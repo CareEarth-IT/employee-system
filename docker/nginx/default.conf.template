@@ -1,0 +1,69 @@
+server {
+    listen ${PORT};
+    server_name _;
+    root /var/www/html/public;
+    index index.php;
+
+    client_max_body_size 20M;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    location = /wordpress {
+        return 301 /wordpress/;
+    }
+
+    # WordPress subdirectory (nested php so ^~ does not bypass FastCGI)
+    location ^~ /wordpress/ {
+        try_files $uri $uri/ /wordpress/index.php?$args;
+
+        location ~ \.php(?:$|/) {
+            include fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            fastcgi_param HTTPS on;
+            fastcgi_param HTTP_X_FORWARDED_PROTO https;
+            fastcgi_pass 127.0.0.1:9000;
+            fastcgi_hide_header X-Powered-By;
+        }
+    }
+
+    location = /finance-hr {
+        return 301 /finance-hr/;
+    }
+
+    # 経理・人事お問い合わせ（独立 PHP アプリ）
+    location ^~ /finance-hr/ {
+        try_files $uri $uri/ /finance-hr/index.php?$args;
+
+        location ~ \.php(?:$|/) {
+            include fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            fastcgi_param HTTPS on;
+            fastcgi_param HTTP_X_FORWARDED_PROTO https;
+            fastcgi_pass 127.0.0.1:9000;
+            fastcgi_hide_header X-Powered-By;
+        }
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}

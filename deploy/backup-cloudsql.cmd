@@ -1,0 +1,3 @@
+@echo off
+echo Exporting Cloud SQL backup to GCS ...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0backup-cloudsql.ps1" %*
