@@ -131,8 +131,21 @@
 
         const rows = () => Array.from(editor.querySelectorAll('[data-link-row]'));
 
+        const reindexLinkFieldNames = (row, index) => {
+            row.querySelectorAll('[name]').forEach((field) => {
+                const name = field.getAttribute('name');
+                if (!name || !name.startsWith('links[')) {
+                    return;
+                }
+
+                field.setAttribute('name', name.replace(/^links\[\d+\]/, `links[${index}]`));
+            });
+        };
+
         const refreshRowMeta = () => {
             rows().forEach((row, index) => {
+                reindexLinkFieldNames(row, index);
+
                 const title = row.querySelector('[data-link-title]');
                 if (title) {
                     title.textContent = `リンク ${index + 1}`;
@@ -238,6 +251,10 @@
         });
 
         refreshRowMeta();
+
+        editor.closest('form')?.addEventListener('submit', () => {
+            refreshRowMeta();
+        });
     });
 </script>
 @if ($supportsCategories)
@@ -255,8 +272,21 @@
 
         const rows = () => Array.from(editor.querySelectorAll('[data-category-row]'));
 
+        const reindexCategoryFieldNames = (row, index) => {
+            row.querySelectorAll('[name]').forEach((field) => {
+                const name = field.getAttribute('name');
+                if (!name || !name.startsWith('categories[')) {
+                    return;
+                }
+
+                field.setAttribute('name', name.replace(/^categories\[\d+\]/, `categories[${index}]`));
+            });
+        };
+
         const refreshRowMeta = () => {
             rows().forEach((row, index) => {
+                reindexCategoryFieldNames(row, index);
+
                 const title = row.querySelector('[data-category-title]');
                 if (title) {
                     title.textContent = `カテゴリ ${index + 1}`;
@@ -361,6 +391,10 @@
         });
 
         refreshRowMeta();
+
+        editor.closest('form')?.addEventListener('submit', () => {
+            refreshRowMeta();
+        });
     });
 </script>
 @endif
