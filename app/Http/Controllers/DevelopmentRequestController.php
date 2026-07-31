@@ -18,7 +18,64 @@ class DevelopmentRequestController extends Controller
         $type = trim((string) $request->query('type', ''));
         $date = trim((string) $request->query('date', ''));
         $embed = $request->boolean('embed');
-        $canViewDetail = (bool) $request->user()?->canViewDevelopmentRequestDetail();
+        $user = $request->user();
+        $canViewDetail = (bool) $user?->canViewDevelopmentRequestDetail();
+
+        if ($embed) {
+            $requests = DevelopmentRequest::query()
+                ->withinListMonths()
+                ->orderByDesc('created_at')
+                ->orderByDesc('request_number')
+                ->get();
+
+            $listItems = $requests->map(static function (DevelopmentRequest $item): array {
+                return [
+                    'id' => $item->request_number,
+                    'requestDate' => $item->request_date?->format('y/m/d') ?? '',
+                    'department' => (string) ($item->requester_department ?: ''),
+                    'requesterName' => (string) ($item->requester_name ?: ''),
+                    'contentTypeLabel' => $item->contentTypeLabel(),
+                    'title' => (string) $item->title,
+                    'titleShort' => $item->titleShort(),
+                    'progress' => (string) ($item->progress ?: ''),
+                    'remarks' => (string) ($item->remarks ?? ''),
+                    'estimatedHours' => $item->estimated_hours !== null && $item->estimated_hours !== ''
+                        ? (string) $item->estimated_hours
+                        : '',
+                    'actualHours' => $item->actual_hours !== null && $item->actual_hours !== ''
+                        ? (string) $item->actual_hours
+                        : '',
+                    'devTarget' => $item->development_target_date?->format('y/m/d') ?? '',
+                    'updatedAt' => $item->updated_at?->format('y/m/d') ?? '',
+                    'devAssignee' => (string) ($item->development_assignee ?: '未'),
+                    'manager' => (string) ($item->manager ?: ''),
+                ];
+            })->values()->all();
+
+            return view('development-requests.index-embed', [
+                'listItems' => $listItems,
+                'detailAccess' => [
+                    'canView' => $canViewDetail,
+                    'canEdit' => (bool) $user?->canEditDevelopmentRequest(),
+                ],
+                'createUrl' => route('development-requests.create', ['embed' => 1]),
+                'listUrl' => route('development-requests.index', ['embed' => 1]),
+                'detailUrlTemplate' => route('development-requests.show', [
+                    'developmentRequest' => '__ID__',
+                    'embed' => 1,
+                ]),
+                'typeFilters' => [
+                    '派遣開発',
+                    '派遣以外',
+                    'ソフト/Google',
+                    '新規',
+                    'PC/Wifi/スマホ',
+                    'その他',
+                    'Airtable',
+                    '完了',
+                ],
+            ]);
+        }
 
         $query = DevelopmentRequest::query()
             ->withinListMonths()
@@ -46,7 +103,7 @@ class DevelopmentRequestController extends Controller
             'activeType' => $type,
             'activeDate' => $date,
             'canViewDetail' => $canViewDetail,
-            'embed' => $embed,
+            'embed' => false,
             'typeFilters' => [
                 '派遣開発',
                 '派遣以外',

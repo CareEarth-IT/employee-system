@@ -36,7 +36,6 @@ return [
         'internal_url' => env('SPECIFIED_SKILLS_PORTAL_INTERNAL_URL'),
         'proxy_path' => 'specified-skills-portal',
         'entry_path' => '',
-        'proxy_secret' => env('EMPLOYEE_PORTAL_PROXY_SECRET'),
         'use_identity_token' => env('SPECIFIED_SKILLS_PORTAL_USE_IDENTITY_TOKEN'),
     ],
 

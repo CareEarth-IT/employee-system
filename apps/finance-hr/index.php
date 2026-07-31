@@ -31,10 +31,11 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif; font-size: 14px; color: #333; background: #f5f6f8; }
-    .container { max-width: 760px; margin: 0 auto; padding: 20px 16px; transition: max-width 0.15s ease; }
-    .container.container--wide {
+    .container {
       max-width: min(1480px, calc(100vw - 24px));
       width: 100%;
+      margin: 0 auto;
+      padding: 20px 16px;
     }
 
     .page-header {
@@ -70,12 +71,13 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
     .tab-btn.active { background: #1a73e8; color: #fff; font-weight: 500; }
 
     .category-bar {
-      display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+      display: flex; gap: 8px; margin-bottom: 16px;
     }
     .category-btn {
-      flex: 1; min-width: 88px; padding: 10px 12px; border-radius: 10px;
+      flex: 1 1 0; min-width: 0; padding: 10px 12px; border-radius: 10px;
       border: 1px solid #dadce0; background: #fff; color: #555;
       font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit;
+      text-align: center;
       transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
     .category-btn:hover { background: #f8f9ff; border-color: #c5cae9; }
@@ -424,11 +426,9 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
     var form = document.getElementById('tab-new-form');
     var confirm = document.getElementById('tab-confirm');
     var confirmBtn = document.getElementById('tab-confirm-btn');
-    var container = document.querySelector('.container');
     if (!panel || !history || !form || !confirm) return;
 
     if (isIsCategory()) {
-      if (container) container.classList.add('container--wide');
       panel.style.display = 'block';
       history.style.display = 'none';
       form.style.display = 'none';
@@ -442,7 +442,6 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
       return;
     }
 
-    if (container) container.classList.remove('container--wide');
     panel.style.display = 'none';
     isDevDetailView = false;
     renderCategoryBar();

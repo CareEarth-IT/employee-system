@@ -66,6 +66,13 @@ CREATE TABLE approval_audit (
   CONSTRAINT fk_audit_inquiry FOREIGN KEY (inquiry_id) REFERENCES inquiries(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE app_settings (
+  setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
+  setting_value JSON NOT NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by VARCHAR(255) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- パスワードはいずれも: password
 INSERT INTO users (email, password_hash, full_name, company, department, role, staff_label, is_hr_staff)
 VALUES

@@ -1,6 +1,8 @@
 @php
     $kind = $link['kind'] ?? 'link';
     $isSpecialKind = in_array($kind, ['form_post', 'modal'], true);
+    $categoryOptions = $categoryOptions ?? [];
+    $showCategorySelect = ! empty($categoryOptions);
 @endphp
 
 <div class="rounded border border-slate-200 bg-white p-4" data-link-row draggable="false">
@@ -26,7 +28,26 @@
     <input type="hidden" name="links[{{ $index }}][visibility_rule]" value="{{ $link['visibility_rule'] ?? '' }}">
     <input type="hidden" name="links[{{ $index }}][sort_order]" value="{{ $link['sort_order'] ?? ((is_numeric($index) ? (int) $index + 1 : 1) * 10) }}">
 
-    <div class="grid gap-4 sm:grid-cols-[1fr_1.5fr_auto] sm:items-end">
+    <div class="grid gap-4 {{ $showCategorySelect ? 'sm:grid-cols-[1fr_1.5fr_10rem_auto]' : 'sm:grid-cols-[1fr_1.5fr_auto]' }} sm:items-end">
+        @if ($showCategorySelect)
+            <div>
+                <label class="mb-1 block text-sm">カテゴリ</label>
+                <select
+                    name="links[{{ $index }}][category_key]"
+                    class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                >
+                    <option value="">未分類</option>
+                    @foreach ($categoryOptions as $option)
+                        <option
+                            value="{{ $option['category_key'] }}"
+                            @selected(old("links.$index.category_key", $link['category_key'] ?? '') === $option['category_key'])
+                        >
+                            {{ $option['label'] }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        @endif
         <div>
             <label class="mb-1 block text-sm">表示名</label>
             <input

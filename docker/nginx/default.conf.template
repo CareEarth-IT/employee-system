@@ -33,6 +33,31 @@ server {
         return 301 /finance-hr/;
     }
 
+    # 部署別社内サイト（Laravel プロキシ経由。upstream が *.php でも index.php へ渡す）
+    location ^~ /realestate-portal {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ^~ /specified-skills-portal {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ^~ /dispatch-portal {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ^~ /food-portal {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ^~ /telecom-portal {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ^~ /beauty-portal {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
     # 経理・人事お問い合わせ（独立 PHP アプリ）
     location ^~ /finance-hr/ {
         try_files $uri $uri/ /finance-hr/index.php?$args;

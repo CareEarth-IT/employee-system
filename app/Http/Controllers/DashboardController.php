@@ -67,6 +67,13 @@ class DashboardController extends Controller
                 DepartmentPortal::label($activeTab),
                 $user->canViewAttendanceSection(),
             ),
+            'tabLinkGroups' => $this->linkResolver->visibleLinkGroupsFor(
+                $user,
+                $activeTab,
+                $departmentPortalUrl,
+                DepartmentPortal::label($activeTab),
+                $user->canViewAttendanceSection(),
+            ),
             'departmentPortalUrl' => $departmentPortalUrl,
             'departmentPortalLabel' => DepartmentPortal::label($activeTab),
         ]);

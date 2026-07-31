@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\DashboardLinkUpdateRequest;
 use App\Models\DashboardLink;
+use App\Models\DashboardLinkCategory;
 use App\Services\DashboardLinkResolver;
 use App\Support\DashboardTab;
 use App\Support\DepartmentPortal;
@@ -30,10 +31,26 @@ class DashboardLinkController extends Controller
             ? DepartmentPortal::entryUrl($tabKey)
             : null;
 
+        $supportsCategories = DashboardTab::supportsLinkCategories($tabKey);
+        $categories = $supportsCategories
+            ? $this->linkResolver->editableCategoriesFor($tabKey)
+            : collect();
+
+        $categoryOptions = $categories
+            ->map(static fn (DashboardLinkCategory $category): array => [
+                'category_key' => $category->category_key,
+                'label' => $category->label,
+            ])
+            ->values()
+            ->all();
+
         return view('dashboard.links-form', [
             'tab' => $tab['key'] ?? 'common',
             'tabLabel' => $tab['label'] ?? '社員共通',
             'department' => $department,
+            'supportsCategories' => $supportsCategories,
+            'categories' => $categories,
+            'categoryOptions' => $categoryOptions,
             'links' => $this->linkResolver->editableLinksFor(
                 $tab['key'] ?? 'common',
                 $portalUrl,
@@ -51,6 +68,27 @@ class DashboardLinkController extends Controller
         $this->authorizeDepartment($department);
 
         DB::transaction(function () use ($request, $tabKey) {
+            if (DashboardTab::supportsLinkCategories($tabKey)) {
+                DashboardLinkCategory::query()->forTab($tabKey)->delete();
+
+                foreach ($request->validated('categories') ?? [] as $index => $categoryData) {
+                    $label = trim((string) ($categoryData['label'] ?? ''));
+                    $categoryKey = trim((string) ($categoryData['category_key'] ?? ''));
+
+                    if ($label === '' || $categoryKey === '') {
+                        continue;
+                    }
+
+                    DashboardLinkCategory::query()->create([
+                        'tab_key' => $tabKey,
+                        'category_key' => $categoryKey,
+                        'label' => $label,
+                        'sort_order' => ($index + 1) * 10,
+                        'updated_by' => $request->user()->id,
+                    ]);
+                }
+            }
+
             DashboardLink::query()->forTab($tabKey)->delete();
 
             foreach ($request->validated('links') ?? [] as $index => $linkData) {
@@ -61,9 +99,13 @@ class DashboardLinkController extends Controller
                 }
 
                 $kind = $linkData['kind'] ?? DashboardLink::KIND_LINK;
+                $categoryKey = DashboardTab::supportsLinkCategories($tabKey)
+                    ? (trim((string) ($linkData['category_key'] ?? '')) ?: null)
+                    : null;
 
                 DashboardLink::query()->create([
                     'tab_key' => $tabKey,
+                    'category_key' => $categoryKey,
                     'label' => $label,
                     'url' => $kind === DashboardLink::KIND_LINK
                         ? trim((string) ($linkData['url'] ?? '')) ?: null

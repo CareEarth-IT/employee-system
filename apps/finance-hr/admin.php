@@ -110,12 +110,11 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       display: flex;
       gap: 8px;
       padding: 12px 14px 4px;
-      flex-wrap: wrap;
       background: var(--card);
     }
     .category-btn {
-      flex: 1;
-      min-width: 88px;
+      flex: 1 1 0;
+      min-width: 0;
       padding: 10px 12px;
       border-radius: 10px;
       border: 1px solid var(--border-strong);
@@ -125,6 +124,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       font-weight: 600;
       cursor: pointer;
       font-family: inherit;
+      text-align: center;
       transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
     }
     .category-btn:hover {
@@ -426,6 +426,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
     <div class="admin-badge" id="admin-badge">管理者</div>
     <div class="header-links">
       <a href="index.php">ユーザー画面</a>
+      <a href="permissions.php" id="permissions-link" style="display:none">権限設定</a>
       <a href="logout.php">社員サイトへ</a>
     </div>
   </div>
@@ -583,6 +584,9 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
         adminSession = session || { isRegistered: false, staffLabel: '' };
         adminName = adminSession.fullName || '';
         updateAdminBadge();
+        if (adminSession.canManagePermissions) {
+          document.getElementById('permissions-link').style.display = '';
+        }
         loadData();
       })
       .catch(function (err) {
@@ -599,7 +603,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
         allData = data && Array.isArray(data) ? data : [];
         if (!adminSession.isRegistered) {
           document.getElementById('admin-list').innerHTML =
-            '<div class="alert-error">⚠️ 管理画面の担当部署として判定できませんでした。所属（人事課・経理課・総務課・情報システム部）を確認してください。</div>';
+            '<div class="alert-error">⚠️ 管理画面の担当部署として判定できませんでした。所属（人事課・経理部 経理課/総務課・情報システム部）を確認してください。</div>';
           return;
         }
         renderList();

@@ -3,11 +3,26 @@ declare(strict_types=1);
 
 function app_config(): array
 {
-    static $cfg = null;
-    if ($cfg === null) {
-        $cfg = require __DIR__ . '/../config/app.php';
+    if (isset($GLOBALS['finance_hr_app_config_cache']) && is_array($GLOBALS['finance_hr_app_config_cache'])) {
+        return $GLOBALS['finance_hr_app_config_cache'];
     }
-    return $cfg;
+
+    $base = require __DIR__ . '/../config/app.php';
+    require_once __DIR__ . '/permissions_config.php';
+    $runtime = load_permissions_runtime();
+    $GLOBALS['finance_hr_app_config_cache'] = array_merge($base, [
+        'department_groups' => $runtime['department_groups'],
+        'inquiry_categories' => $runtime['inquiry_categories'],
+        'type_permission_matrix' => $runtime['type_permission_matrix'],
+    ]);
+
+    return $GLOBALS['finance_hr_app_config_cache'];
+}
+
+function app_config_reset_cache(): void
+{
+    unset($GLOBALS['finance_hr_app_config_cache']);
+    permissions_config_reset_runtime_cache();
 }
 
 function normalize_email(string $s): string
@@ -131,21 +146,35 @@ function resolve_department_group_ids(array $user): array
     $matched = [];
     foreach (department_groups() as $id => $group) {
         $keywords = $group['department_keywords'] ?? [];
-        if (! is_array($keywords)) {
+        if (! is_array($keywords) || $keywords === []) {
             continue;
         }
+
+        $matchMode = (string) ($group['match_mode'] ?? 'any');
+        $groupId = (string) ($group['id'] ?? $id);
+
+        if ($matchMode === 'all') {
+            $allMatch = true;
+            foreach ($keywords as $keyword) {
+                $keyword = (string) $keyword;
+                if ($keyword === '' || ! str_contains($dept, $keyword)) {
+                    $allMatch = false;
+                    break;
+                }
+            }
+            if ($allMatch) {
+                $matched[] = $groupId;
+            }
+            continue;
+        }
+
         foreach ($keywords as $keyword) {
             $keyword = (string) $keyword;
             if ($keyword !== '' && str_contains($dept, $keyword)) {
-                $matched[] = (string) ($group['id'] ?? $id);
+                $matched[] = $groupId;
                 break;
             }
         }
-    }
-
-    // 課が取れず「経理部」のみの場合は経理・総務の両方を付与
-    if ($matched === [] && str_contains($dept, '経理部')) {
-        $matched = ['keiri', 'soumu'];
     }
 
     return array_values(array_unique($matched));
@@ -168,11 +197,13 @@ function resolve_staff_id(array $user, string $group = 'department_groups'): str
         return in_array('is', $ids, true) ? 'is' : '';
     }
     if ($group === 'inquiry_staff') {
-        foreach (['keiri', 'soumu'] as $id) {
-            if (in_array($id, $ids, true)) {
-                return $id;
-            }
+        if (in_array('keiri_ka', $ids, true)) {
+            return 'keiri_ka';
         }
+        if (in_array('soumu_ka', $ids, true)) {
+            return 'soumu_ka';
+        }
+
         return '';
     }
 
@@ -221,15 +252,6 @@ function finance_hr_affiliation_allows_admin(array $user): bool
         return false;
     }
 
-    if (str_contains($dept, '人事課')) {
-        return true;
-    }
-    if (str_contains($dept, '経理部') || str_contains($dept, '経理課') || str_contains($dept, '総務課')) {
-        return true;
-    }
-    if (str_contains($dept, '情報システム')) {
-        return true;
-    }
     if (str_contains($dept, '役員')) {
         return true;
     }
@@ -292,6 +314,7 @@ function get_admin_session_for_user(array $user): array
         'staffLabel' => $staffLabel,
         'isRegistered' => $canAdmin,
         'canAdmin' => $canAdmin,
+        'canManagePermissions' => finance_hr_can_manage_permissions($user),
         'isHrStaff' => $hrStaffId !== '',
         'isIsStaff' => $isStaffId !== '',
     ];

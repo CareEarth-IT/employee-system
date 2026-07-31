@@ -145,52 +145,59 @@ return [
 
     /**
      * 担当部署グループ（個人メールではなく所属キーワードで判定）
-     * SSO の department 例: 「経理部 / 総務課」
+     * SSO の department 例: 「経理部 / 総務課」「経理部 / 経理課」
+     * match_mode=all のとき department_keywords はすべて含む必要がある
+     *
+     * 本番の上書きは DB app_settings（権限設定画面）から可能
      */
     'department_groups' => [
-        'keiri' => [
-            'id' => 'keiri',
-            'label' => '経理',
-            'department_keywords' => ['経理課'],
+        'keiri_ka' => [
+            'id' => 'keiri_ka',
+            'label' => '経理課',
+            'department_keywords' => ['経理部', '経理課'],
+            'match_mode' => 'all',
         ],
-        'soumu' => [
-            'id' => 'soumu',
-            'label' => '総務',
-            'department_keywords' => ['総務課'],
+        'soumu_ka' => [
+            'id' => 'soumu_ka',
+            'label' => '総務課',
+            'department_keywords' => ['経理部', '総務課'],
+            'match_mode' => 'all',
         ],
         'hr' => [
             'id' => 'hr',
-            'label' => '人事',
+            'label' => '人事課',
             'department_keywords' => ['人事課'],
+            'match_mode' => 'any',
         ],
         'is' => [
             'id' => 'is',
             'label' => '情シス',
             'department_keywords' => ['情報システム'],
+            'match_mode' => 'any',
         ],
     ],
 
     /**
      * お問い合わせ分類 × 部署グループ → edit | view | none
-     * 旧個人マトリクスを経理 / 総務 / 人事 / 情シスに読み替え
      */
     'type_permission_matrix' => [
-        '（社員の）給与について' => ['soumu' => 'edit'],
-        '（社員の）経費精算について' => ['keiri' => 'edit'],
-        '（社員の）勤怠管理について' => ['soumu' => 'edit'],
-        '（社員の）交通費について' => ['keiri' => 'edit'],
-        '（社員の）育児休業について' => ['soumu' => 'edit'],
-        '（社員の）傷病手当について' => ['soumu' => 'edit'],
-        '（社員の）源泉徴収票について' => ['soumu' => 'edit'],
-        '（社員の）就業証明書について' => ['soumu' => 'edit'],
-        '会社情報について' => ['keiri' => 'edit', 'soumu' => 'edit'],
-        '（社員の）住民税について' => ['soumu' => 'edit'],
-        '（社員の）健康保険・雇用保険について' => ['soumu' => 'edit'],
-        '（派遣スタッフの）源泉徴収票について' => ['keiri' => 'edit'],
-        '楽楽精算の操作・設定について' => ['keiri' => 'edit'],
-        '社員以外の経費の相談について' => ['keiri' => 'edit'],
-        '（事業部から）経理課への問い合わせ' => ['keiri' => 'edit'],
-        '（事業部から）総務課への問い合わせ' => ['soumu' => 'edit'],
+        '（社員の）給与について' => ['keiri_ka' => 'edit'],
+        '（社員の）経費精算について' => ['keiri_ka' => 'edit'],
+        '（社員の）勤怠管理について' => ['keiri_ka' => 'edit'],
+        '（社員の）交通費について' => ['keiri_ka' => 'edit'],
+        '（社員の）源泉徴収票について' => ['keiri_ka' => 'edit'],
+        '（社員の）住民税について' => ['keiri_ka' => 'edit'],
+        '（派遣スタッフの）源泉徴収票について' => ['keiri_ka' => 'edit'],
+        '楽楽精算の操作・設定について' => ['keiri_ka' => 'edit'],
+        '社員以外の経費の相談について' => ['keiri_ka' => 'edit'],
+        '（事業部から）経理課への問い合わせ' => ['keiri_ka' => 'edit'],
+
+        '（社員の）育児休業について' => ['soumu_ka' => 'edit'],
+        '（社員の）傷病手当について' => ['soumu_ka' => 'edit'],
+        '（社員の）就業証明書について' => ['soumu_ka' => 'edit'],
+        '会社情報について' => ['soumu_ka' => 'edit'],
+        '（社員の）健康保険・雇用保険について' => ['soumu_ka' => 'edit'],
+        '（事業部から）総務課への問い合わせ' => ['soumu_ka' => 'edit'],
 
         '（社員の）在籍証明書について' => ['hr' => 'edit'],
         '（社員の）ビザ更新について' => ['hr' => 'edit'],

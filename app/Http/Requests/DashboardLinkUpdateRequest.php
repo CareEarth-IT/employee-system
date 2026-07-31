@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\DashboardLink;
+use App\Support\DashboardTab;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -40,8 +41,20 @@ class DashboardLinkUpdateRequest extends FormRequest
             'links.*.action_route' => ['nullable', 'string', 'max:100'],
             'links.*.modal_target' => ['nullable', 'string', 'max:100'],
             'links.*.visibility_rule' => ['nullable', 'string', 'max:50'],
+            'links.*.category_key' => ['nullable', 'string', 'max:50', 'regex:/^[a-z0-9_-]*$/'],
             'links.*.sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'links.*.is_visible' => ['nullable', 'boolean'],
+            'categories' => ['nullable', 'array'],
+            'categories.*.label' => ['nullable', 'string', 'max:100'],
+            'categories.*.category_key' => ['nullable', 'string', 'max:50', 'regex:/^[a-z0-9_-]+$/'],
+            'categories.*.sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (! DashboardTab::supportsLinkCategories((string) $this->input('tab', 'common'))) {
+            $this->merge(['categories' => []]);
+        }
     }
 }

@@ -78,9 +78,21 @@ function require_admin(): array
     $user = require_login();
     if (! is_admin($user)) {
         http_response_code(403);
-        echo '管理者権限が必要です。人事課・経理部・情報システム部・役員、または許可されたアカウントで社員ポータルから開いてください。';
+        echo '管理者権限が必要です。人事課・経理部（経理課/総務課）・情報システム部・役員、または許可されたアカウントで社員ポータルから開いてください。';
         exit;
     }
+    return $user;
+}
+
+function require_permission_config_admin(): array
+{
+    $user = require_login();
+    if (! finance_hr_can_manage_permissions($user)) {
+        http_response_code(403);
+        echo '権限設定の編集権限がありません。FINANCE_HR_PERMISSION_CONFIG_ADMIN_EMAILS に登録されたアカウントで開いてください。';
+        exit;
+    }
+
     return $user;
 }
 

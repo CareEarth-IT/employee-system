@@ -156,7 +156,9 @@ $envVars = @{
     DB_DATABASE = $DbName
     DB_USERNAME = $DbUser
     DB_PASSWORD = $DbPassword
-    EMPLOYEE_PORTAL_PROXY_SECRET = $ProxySecret
+    # 秘密鍵は employee 新イメージが送るまで必須にしない。
+    # 認証は Cloud Run Invoker IAM + employee の identity token で行う。
+    EMPLOYEE_PORTAL_PROXY_SECRET = ""
 }
 
 $envFile = [System.IO.Path]::GetTempFileName()
@@ -181,7 +183,7 @@ try {
     Remove-Item $envFile -Force -ErrorAction SilentlyContinue
 }
 
-Grant-PublicInvoker -Service $Service -Region $Region
+# 同一プロジェクトの employee 実行 SA のみ呼び出し可（公開 allUsers は付けない）
 $invokerGranted = Grant-SameProjectInvoker -TargetService $Service -Region $Region -ProjectId $ProjectId
 
 $serviceUrl = Get-CloudRunServiceUrl -Service $Service -Region $Region

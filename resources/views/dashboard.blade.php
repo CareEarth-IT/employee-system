@@ -54,7 +54,10 @@
                 @endif
             @endif
 
-            @include('dashboard.partials.tab-links', ['tabLinks' => $tabLinks])
+            @include('dashboard.partials.tab-links', [
+                'tabLinks' => $tabLinks,
+                'tabLinkGroups' => $tabLinkGroups ?? [],
+            ])
         </div>
     </div>
 </div>

@@ -384,6 +384,78 @@ class DashboardTopPageTest extends TestCase
         ]);
     }
 
+    public function test_user_can_configure_common_tab_link_categories(): void
+    {
+        $user = $this->informationSystemsUser();
+
+        $this->actingAs($user)
+            ->put(route('dashboard.links.update'), [
+                'tab' => 'common',
+                'categories' => [
+                    [
+                        'category_key' => 'general',
+                        'label' => '共通',
+                        'sort_order' => 10,
+                    ],
+                    [
+                        'category_key' => 'inquiry',
+                        'label' => '問い合わせ',
+                        'sort_order' => 20,
+                    ],
+                ],
+                'links' => [
+                    [
+                        'label' => '社員一覧',
+                        'url' => '/employees',
+                        'kind' => 'link',
+                        'category_key' => 'general',
+                        'sort_order' => 10,
+                        'is_visible' => '1',
+                    ],
+                    [
+                        'label' => '経理の問い合わせ',
+                        'url' => '/finance-hr',
+                        'kind' => 'link',
+                        'category_key' => 'inquiry',
+                        'sort_order' => 20,
+                        'is_visible' => '1',
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('dashboard', ['tab' => 'common']));
+
+        $this->assertDatabaseHas('dashboard_link_categories', [
+            'tab_key' => 'common',
+            'category_key' => 'inquiry',
+            'label' => '問い合わせ',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('dashboard', ['tab' => 'common']))
+            ->assertOk()
+            ->assertSee('共通', false)
+            ->assertSee('問い合わせ', false)
+            ->assertSee('社員一覧', false)
+            ->assertSee('経理の問い合わせ', false);
+    }
+
+    public function test_department_tabs_show_default_link_categories(): void
+    {
+        $user = $this->userInDepartment('派遣事業部');
+
+        $this->actingAs($user)
+            ->get(route('dashboard', ['tab' => 'dispatch']))
+            ->assertOk()
+            ->assertSee('社内サイト', false)
+            ->assertSee('勤怠', false);
+
+        $this->actingAs($user)
+            ->get(route('dashboard', ['tab' => 'company-car']))
+            ->assertOk()
+            ->assertSee('手続き', false)
+            ->assertSee('社用車の初めて使用する方はこちら', false);
+    }
+
     public function test_editors_can_view_other_department_announcements(): void
     {
         $editor = $this->informationSystemsUser();

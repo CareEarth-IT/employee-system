@@ -67,6 +67,20 @@ if (!tableExists($pdo, 'approval_audit')) {
     echo "skip approval_audit\n";
 }
 
+if (!tableExists($pdo, 'app_settings')) {
+    $pdo->exec(
+        'CREATE TABLE app_settings (
+          setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
+          setting_value JSON NOT NULL,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          updated_by VARCHAR(255) NOT NULL DEFAULT \'\'
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+    echo "created app_settings\n";
+} else {
+    echo "skip app_settings\n";
+}
+
 $hash = '$2y$10$INLmxQ1al.UviFPuKjDK/uv/kFDvj1yRcXYQdSYV1KTqFcU0MV2x6';
 $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
 $stmt->execute(['admin@example.com']);

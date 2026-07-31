@@ -149,6 +149,11 @@ class DashboardTab
         return false;
     }
 
+    public static function supportsLinkCategories(string $tabKey): bool
+    {
+        return self::findByKey($tabKey) !== null;
+    }
+
     /**
      * @return list<array{key: string, label: string, department: string, keywords: list<string>, viewable: bool}>
      */
