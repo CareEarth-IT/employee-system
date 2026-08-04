@@ -31,14 +31,7 @@ class EquipmentPurchaseSubmissionPeriod
 
     public static function resolveApplicationDate(?Carbon $today = null): string
     {
-        $today = self::normalizeDate($today ?? now());
-        $targetMonth = self::submissionTargetMonth($today);
-
-        if ($today->year === $targetMonth->year && $today->month === $targetMonth->month) {
-            return $today->toDateString();
-        }
-
-        return $targetMonth->copy()->endOfMonth()->toDateString();
+        return self::normalizeDate($today ?? now())->toDateString();
     }
 
     public static function submissionDeadlineForMonth(Carbon $targetMonth): Carbon

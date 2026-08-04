@@ -3,7 +3,9 @@
 namespace App\Models\Concerns\EquipmentPurchase;
 
 use App\Models\User;
+use App\Services\EquipmentPurchaseSubmissionPeriod;
 use App\Support\RequestUrl;
+use Carbon\Carbon;
 
 trait HasPresentation
 {
@@ -67,7 +69,16 @@ trait HasPresentation
 
     public function applicationMonthLabel(): string
     {
-        return $this->application_date->format('Y/m').'月';
+        $reference = $this->created_at ?? $this->application_date;
+
+        return EquipmentPurchaseSubmissionPeriod::submissionTargetMonthLabel(
+            $reference instanceof Carbon ? $reference : Carbon::parse($reference),
+        );
+    }
+
+    public function applicationDateDisplay(): string
+    {
+        return $this->application_date->format('Y/m/d');
     }
 
     public static function isPurchasedApplicationType(?string $type): bool
