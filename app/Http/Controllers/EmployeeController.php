@@ -15,7 +15,7 @@ class EmployeeController extends Controller
     public function index(Request $request): View
     {
         $company = trim((string) $request->query('company', ''));
-        $status = trim((string) $request->query('status', ''));
+        $status = trim((string) $request->query('status', '在籍'));
         $employeeId = trim((string) $request->query('employee_id', ''));
         $employmentType = trim((string) $request->query('employment_type', ''));
         $keyword = trim((string) $request->query('keyword', ''));
@@ -26,8 +26,8 @@ class EmployeeController extends Controller
             $company = '';
         }
 
-        if ($status !== '' && ! in_array($status, User::EMPLOYMENT_STATUS_OPTIONS, true)) {
-            $status = '';
+        if (! in_array($status, User::EMPLOYMENT_STATUS_OPTIONS, true)) {
+            $status = '在籍';
         }
 
         if ($employmentType !== '' && ! in_array($employmentType, User::EMPLOYMENT_TYPE_OPTIONS, true)) {
@@ -61,9 +61,7 @@ class EmployeeController extends Controller
             });
         }
 
-        if ($status !== '') {
-            $this->applyStatusFilter($query, $status);
-        }
+        $this->applyStatusFilter($query, $status);
 
         if ($employeeId !== '') {
             $query->where('employee_id', 'like', '%'.$employeeId.'%');
@@ -121,6 +119,8 @@ class EmployeeController extends Controller
             'direction' => $sort === 'employee_id' ? $direction : '',
             'canExportHrDetails' => EmployeeHrDetailAccess::canExportCsv($request->user()),
             'canImportEmployees' => (bool) $request->user()?->isInformationSystems(),
+            'canEditEmployeeIdentity' => (bool) $request->user()?->canEditEmployeeIdentity(),
+            'statusTabs' => ['在籍', '退職'],
         ]);
     }
 

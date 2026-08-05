@@ -37,7 +37,7 @@ class EmployeeImportController extends Controller
                 '山田 花子',
                 '山田',
                 '花子',
-                'EMP0100',
+                '00100',
                 '通信部',
                 '事業IT推進課',
                 '一般',

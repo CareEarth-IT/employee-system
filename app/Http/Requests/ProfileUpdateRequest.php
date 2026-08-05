@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\User;
+use App\Support\EmployeeIdRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -70,13 +71,11 @@ class ProfileUpdateRequest extends FormRequest
         ];
 
         if ($canEditIdentity) {
-            $rules['employee_id'] = [
-                'sometimes',
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('users', 'employee_id')->ignore($targetId),
-            ];
+            $rules['employee_id'] = EmployeeIdRules::rules(
+                required: true,
+                uniqueIgnoreUserId: $targetId,
+                sometimes: true,
+            );
             $rules['email'] = [
                 'sometimes',
                 'required',
@@ -99,6 +98,7 @@ class ProfileUpdateRequest extends FormRequest
             'photo.max' => '写真のファイルサイズは2MB以下にしてください。',
             'abbreviated_name.max' => '略氏名は10文字以内で入力してください。',
             'employee_id.required' => '社員IDを入力してください。',
+            'employee_id.digits' => EmployeeIdRules::FORMAT_MESSAGE,
             'employee_id.unique' => 'この社員IDは既に使用されています。',
             'email.required' => 'メールアドレスを入力してください。',
             'email.email' => 'メールアドレスの形式が正しくありません。',

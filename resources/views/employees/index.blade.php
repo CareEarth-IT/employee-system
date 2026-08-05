@@ -8,7 +8,6 @@
 @php
     $hasFilters = $keyword !== ''
         || $company !== ''
-        || $status !== ''
         || $employeeId !== ''
         || $employmentType !== '';
 
@@ -19,6 +18,19 @@
         'employment_type' => $employmentType,
         'keyword' => $keyword,
     ], fn ($value) => $value !== '');
+
+    $searchQuery = array_filter([
+        'company' => $company,
+        'employee_id' => $employeeId,
+        'employment_type' => $employmentType,
+        'keyword' => $keyword,
+    ], fn ($value) => $value !== '');
+
+    $tabQuery = fn (string $tabStatus) => array_filter(array_merge($searchQuery, [
+        'status' => $tabStatus,
+        'sort' => $sort === 'employee_id' ? 'employee_id' : null,
+        'direction' => $sort === 'employee_id' ? $direction : null,
+    ]), fn ($value) => $value !== null && $value !== '');
 
     $employeeIdSortDirection = ($sort === 'employee_id' && $direction === 'asc') ? 'desc' : 'asc';
     $employeeIdSortUrl = route('employees.index', array_merge($filterQuery, [
@@ -52,20 +64,12 @@
 @endif
 
 <form method="GET" action="{{ route('employees.index') }}" class="bg-white border border-slate-300 rounded-lg p-4 mb-4">
+    <input type="hidden" name="status" value="{{ $status }}">
     @if ($sort === 'employee_id')
         <input type="hidden" name="sort" value="employee_id">
         <input type="hidden" name="direction" value="{{ $direction }}">
     @endif
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-            <label for="status" class="block text-sm mb-1">状況</label>
-            <select id="status" name="status" class="w-full rounded border border-slate-300 px-3 py-2 text-sm bg-white">
-                <option value="">すべて</option>
-                @foreach ($statuses as $statusName)
-                    <option value="{{ $statusName }}" @selected($status === $statusName)>{{ $statusName }}</option>
-                @endforeach
-            </select>
-        </div>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
             <label for="company" class="block text-sm mb-1">所属会社</label>
             <select id="company" name="company" class="w-full rounded border border-slate-300 px-3 py-2 text-sm bg-white">
@@ -82,7 +86,7 @@
                 type="text"
                 name="employee_id"
                 value="{{ $employeeId }}"
-                placeholder="例: 255"
+                placeholder="例: 10255"
                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
             >
         </div>
@@ -112,19 +116,35 @@
             検索
         </button>
         @if ($hasFilters)
-            <a href="{{ route('employees.index', $sort === 'employee_id' ? ['sort' => 'employee_id', 'direction' => $direction] : []) }}" class="rounded border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">
+            <a href="{{ route('employees.index', ['status' => $status]) }}" class="rounded border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">
                 クリア
             </a>
         @endif
     </div>
 </form>
 
+@if ($canEditEmployeeIdentity)
+    <p class="mb-3 text-xs text-slate-500">情報システム部のみ、社員ID列をダブルクリックで編集できます。</p>
+@endif
+
 <div class="bg-white border border-slate-300 rounded-lg overflow-hidden">
+    <nav class="flex border-b border-slate-200 bg-slate-50" aria-label="状況タブ">
+        @foreach ($statusTabs as $tabStatus)
+            <a
+                href="{{ route('employees.index', $tabQuery($tabStatus)) }}"
+                @class([
+                    'px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
+                    'border-blue-600 text-blue-700 bg-white' => $status === $tabStatus,
+                    'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100' => $status !== $tabStatus,
+                ])
+            >
+                {{ $tabStatus }}
+            </a>
+        @endforeach
+    </nav>
     <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 text-sm text-slate-600">
         {{ $employees->count() }}名
-        @if ($status !== '')
-            <span class="text-slate-500">／ 状況: {{ $status }}</span>
-        @endif
+        <span class="text-slate-500">／ 状況: {{ $status }}</span>
         @if ($company !== '')
             <span class="text-slate-500">／ 所属会社: {{ $company }}</span>
         @endif
@@ -220,7 +240,20 @@
                         </td>
                         <td class="px-3 py-3 align-top whitespace-nowrap">{{ $employee->displayEmploymentStatus() }}</td>
                         <td class="px-3 py-3 align-top">{{ $employee->displayCompany() }}</td>
-                        <td class="px-3 py-3 align-top whitespace-nowrap">{{ $employee->employee_id ?? '—' }}</td>
+                        <td class="px-3 py-3 align-top whitespace-nowrap">
+                            @if ($canEditEmployeeIdentity)
+                                <span
+                                    data-field="employee_id"
+                                    data-value="{{ $employee->employee_id ?? '' }}"
+                                    data-update-url="{{ route('users.profile.update', $employee) }}"
+                                    data-csrf="{{ csrf_token() }}"
+                                    title="ダブルクリックで編集"
+                                    class="profile-inline-value inline-block min-w-[3rem] rounded border border-transparent px-1 py-0.5 cursor-text hover:bg-slate-100 hover:border-slate-200 transition-colors"
+                                >{{ $employee->employee_id ?: '—' }}</span>
+                            @else
+                                {{ $employee->employee_id ?? '—' }}
+                            @endif
+                        </td>
                         <td class="px-3 py-3 align-top whitespace-nowrap">{{ $employee->displayEmploymentType() }}</td>
                     </tr>
                 @empty

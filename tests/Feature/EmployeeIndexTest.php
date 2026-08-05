@@ -25,10 +25,13 @@ class EmployeeIndexTest extends TestCase
             ->assertSee('雇用形態', false)
             ->assertSee('アドレス', false)
             ->assertSee('電話番号', false)
-            ->assertSee('name="status"', false)
             ->assertSee('name="company"', false)
             ->assertSee('name="employee_id"', false)
             ->assertSee('name="employment_type"', false)
+            ->assertSee('aria-label="状況タブ"', false)
+            ->assertSee('status=%E5%9C%A8%E7%B1%8D', false)
+            ->assertSee('status=%E9%80%80%E8%81%B7', false)
+            ->assertDontSee('id="status"', false)
             ->assertDontSee('name="location"', false)
             ->assertDontSee('name="position"', false)
             ->assertSee('CareEarth', false)
@@ -289,20 +292,92 @@ class EmployeeIndexTest extends TestCase
         ]);
 
         $this->actingAs($viewer)
-            ->get(route('employees.index'))
+            ->get(route('employees.index', ['status' => '在籍']))
             ->assertOk()
             ->assertSee('状況', false)
             ->assertSee('所属会社', false)
             ->assertSee('雇用形態', false)
             ->assertSee('CareEarth', false)
-            ->assertSee('GROWTEC', false)
             ->assertSee('10001', false)
-            ->assertSee('10002', false)
             ->assertSee('在籍', false)
-            ->assertSee('退職', false)
             ->assertSee('正社員', false)
+            ->assertDontSee('10002', false)
             ->assertDontSee('拠点', false)
             ->assertDontSee('役職', false);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['status' => '退職']))
+            ->assertOk()
+            ->assertSee('GROWTEC', false)
+            ->assertSee('10002', false)
+            ->assertSee('退職', false)
+            ->assertDontSee('10001', false);
+    }
+
+    public function test_index_defaults_to_active_status_tab(): void
+    {
+        $viewer = User::factory()->create();
+
+        $active = User::factory()->create(['last_name' => '在籍', 'first_name' => '太郎']);
+        AffiliationHistory::create([
+            'user_id' => $active->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '大阪',
+        ]);
+
+        $resigned = User::factory()->create(['last_name' => '退職', 'first_name' => '花子']);
+        AffiliationHistory::create([
+            'user_id' => $resigned->id,
+            'start_date' => '2020-01-01',
+            'end_date' => '2023-12-31',
+            'enrollment_status' => AffiliationHistory::STATUS_RESIGNED,
+            'location' => '大阪',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index'))
+            ->assertOk()
+            ->assertSee('在籍 太郎', false)
+            ->assertDontSee('退職 花子', false);
+    }
+
+    public function test_information_systems_sees_employee_id_inline_edit_on_index(): void
+    {
+        $viewer = $this->userInDepartment('情報システム部');
+        $employee = User::factory()->create(['employee_id' => '50001']);
+        AffiliationHistory::create([
+            'user_id' => $employee->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '大阪',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index'))
+            ->assertOk()
+            ->assertSee('data-field="employee_id"', false)
+            ->assertSee('50001', false)
+            ->assertSee('情報システム部のみ、社員ID列をダブルクリックで編集できます。', false);
+    }
+
+    public function test_non_information_systems_do_not_see_employee_id_inline_edit_on_index(): void
+    {
+        $viewer = User::factory()->create();
+        $employee = User::factory()->create(['employee_id' => '50002']);
+        AffiliationHistory::create([
+            'user_id' => $employee->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '大阪',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index'))
+            ->assertOk()
+            ->assertSee('50002', false)
+            ->assertDontSee('data-field="employee_id"', false)
+            ->assertDontSee('社員ID列をダブルクリックで編集', false);
     }
 
     public function test_index_sorts_by_employee_id_asc_and_desc(): void
@@ -360,5 +435,19 @@ class EmployeeIndexTest extends TestCase
             ->get(route('employees.index', ['sort' => 'employee_id', 'direction' => 'asc']))
             ->assertOk()
             ->assertSee('sort=employee_id&amp;direction=desc', false);
+    }
+
+    private function userInDepartment(string $department): User
+    {
+        $user = User::factory()->create();
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => $department,
+            'location' => '大阪',
+        ]);
+
+        return $user;
     }
 }

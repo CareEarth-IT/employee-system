@@ -170,6 +170,37 @@ class ProfileInlineEditTest extends TestCase
         $this->assertSame('10001', $target->employee_id);
     }
 
+    public function test_information_systems_cannot_set_duplicate_employee_id(): void
+    {
+        $viewer = $this->userInDepartment('情報システム部');
+        User::factory()->create(['employee_id' => '99999']);
+        $target = User::factory()->create(['employee_id' => '10001']);
+
+        $response = $this->actingAs($viewer)->putJson(route('users.profile.update', $target), [
+            'employee_id' => '99999',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['employee_id']);
+
+        $this->assertSame('10001', $target->fresh()->employee_id);
+    }
+
+    public function test_information_systems_cannot_set_non_five_digit_employee_id(): void
+    {
+        $viewer = $this->userInDepartment('情報システム部');
+        $target = User::factory()->create(['employee_id' => '10001']);
+
+        $response = $this->actingAs($viewer)->putJson(route('users.profile.update', $target), [
+            'employee_id' => '255',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['employee_id']);
+
+        $this->assertSame('10001', $target->fresh()->employee_id);
+    }
+
     public function test_self_cannot_update_own_identity_unless_information_systems(): void
     {
         $user = $this->userInDepartment('通信部');

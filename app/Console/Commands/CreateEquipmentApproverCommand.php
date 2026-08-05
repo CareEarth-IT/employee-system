@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\AffiliationHistory;
 use App\Models\EmployeeProfile;
 use App\Models\User;
+use App\Support\EmployeeIdRules;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 
@@ -30,6 +31,12 @@ class CreateEquipmentApproverCommand extends Command
         [$lastName, $firstName, $name, $affiliation] = $this->resolveIdentity($email, $type);
 
         $employeeId = (string) ($this->option('employee-id') ?: $this->defaultEmployeeId($type));
+
+        if (! EmployeeIdRules::isValid($employeeId)) {
+            $this->error(EmployeeIdRules::FORMAT_MESSAGE);
+
+            return self::FAILURE;
+        }
 
         $user = User::updateOrCreate(
             ['email' => $email],
@@ -149,21 +156,22 @@ class CreateEquipmentApproverCommand extends Command
 
     private function defaultEmployeeId(string $type): string
     {
-        $prefix = match ($type) {
-            'manager' => 'MGR',
-            'rep' => 'REP',
-            'global' => 'GLB',
-            default => 'GA',
+        $base = match ($type) {
+            'manager' => 97000,
+            'rep' => 97100,
+            'global' => 97200,
+            default => 97300,
         };
 
-        for ($n = 1; $n <= 999; $n++) {
-            $id = sprintf('%s%03d', $prefix, $n);
+        for ($offset = 0; $offset < 100; $offset++) {
+            $id = (string) ($base + $offset);
+
             if (! User::where('employee_id', $id)->exists()) {
                 return $id;
             }
         }
 
-        return $prefix.now()->format('His');
+        throw new \RuntimeException('利用可能な5桁の社員番号がありません。');
     }
 
     private function typeLabel(string $type): string

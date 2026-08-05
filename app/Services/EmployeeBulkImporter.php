@@ -6,6 +6,7 @@ use App\Models\AffiliationHistory;
 use App\Models\EmployeeHrDetail;
 use App\Models\EmployeeProfile;
 use App\Models\User;
+use App\Support\EmployeeIdRules;
 
 class EmployeeBulkImporter
 {
@@ -392,6 +393,12 @@ class EmployeeBulkImporter
     {
         if ($requestedId === '') {
             return;
+        }
+
+        if (! EmployeeIdRules::isValid($requestedId)) {
+            throw new \InvalidArgumentException(
+                "社員番号 {$requestedId} は5桁の数字で入力してください（行 {$csvLine}）。"
+            );
         }
 
         $claimedBy = $this->claimedEmployeeIds[$requestedId] ?? null;

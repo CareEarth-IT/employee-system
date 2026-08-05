@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\AffiliationHistory;
 use App\Models\User;
+use App\Support\EmployeeIdRules;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AffiliationStoreRequest extends FormRequest
@@ -36,7 +37,7 @@ class AffiliationStoreRequest extends FormRequest
         $enrolled = AffiliationHistory::STATUS_ENROLLED;
 
         return [
-            'employee_id' => ['nullable', 'string', 'max:5'],
+            'employee_id' => EmployeeIdRules::rules(required: false),
             'enrollment_status' => ['required', 'string', 'in:'.implode(',', AffiliationHistory::ENROLLMENT_STATUSES)],
             'start_date' => ['required', 'date'],
             'end_date' => ['nullable', "required_unless:enrollment_status,{$enrolled}", 'date', 'after_or_equal:start_date'],
@@ -64,6 +65,7 @@ class AffiliationStoreRequest extends FormRequest
             'end_date.after_or_equal' => '終了日は開始日以降の日付を指定してください。',
             'company.in' => '会社名の選択が正しくありません。',
             'location.in' => '拠点の選択が正しくありません。',
+            'employee_id.digits' => EmployeeIdRules::FORMAT_MESSAGE,
         ];
     }
 

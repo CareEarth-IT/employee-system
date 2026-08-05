@@ -51,7 +51,7 @@ class EmployeeCsvImportTest extends TestCase
             'name' => '既存 太郎',
             'last_name' => '既存',
             'first_name' => '太郎',
-            'employee_id' => '100',
+            'employee_id' => '00100',
         ]);
         EmployeeProfile::create([
             'user_id' => $existing->id,
@@ -73,8 +73,8 @@ class EmployeeCsvImportTest extends TestCase
             'employees.csv',
             implode("\n", [
                 'email,姓,名,部,課,役職,会社,拠点,社員番号',
-                'existing@careearth.info,変更,花子,営業部,営業課,一般,CareEarth,東京,100',
-                'newhire@careearth.info,新規,次郎,通信部,営業課,一般,CareEarth,大阪,200',
+                'existing@careearth.info,変更,花子,営業部,営業課,一般,CareEarth,東京,00100',
+                'newhire@careearth.info,新規,次郎,通信部,営業課,一般,CareEarth,大阪,00200',
             ])."\n",
         );
 
@@ -91,10 +91,31 @@ class EmployeeCsvImportTest extends TestCase
         $created = User::query()->where('email', 'newhire@careearth.info')->first();
         $this->assertNotNull($created);
         $this->assertSame('新規 次郎', $created->name);
-        $this->assertSame('200', $created->employee_id);
+        $this->assertSame('00200', $created->employee_id);
         $this->assertSame('通信部', $created->currentAffiliation()?->department);
         $this->assertTrue($created->must_change_password);
         $this->assertTrue(\Illuminate\Support\Facades\Hash::check('password', $created->password));
+    }
+
+    public function test_csv_import_rejects_non_five_digit_employee_id(): void
+    {
+        $importer = $this->userInDepartment('情報システム部');
+
+        $csv = UploadedFile::fake()->createWithContent(
+            'employees.csv',
+            implode("\n", [
+                'email,姓,名,部,課,役職,会社,拠点,社員番号',
+                'invalid-id@careearth.info,不正,番号,通信部,営業課,一般,CareEarth,大阪,255',
+            ])."\n",
+        );
+
+        $this->actingAs($importer)
+            ->from(route('employees.import.create'))
+            ->post(route('employees.import.store'), ['csv' => $csv])
+            ->assertRedirect(route('employees.import.create'))
+            ->assertSessionHasErrors('csv');
+
+        $this->assertNull(User::query()->where('email', 'invalid-id@careearth.info')->first());
     }
 
     public function test_new_hire_must_change_password_on_first_login(): void
