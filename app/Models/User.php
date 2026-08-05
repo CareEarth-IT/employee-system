@@ -89,7 +89,7 @@ class User extends Authenticatable
     /** @var list<string> */
     public const COMPANY_NAMES = [
         'CareEarth',
-        'GrowTEC',
+        'GROWTEC',
         'MidEarth',
         'Earth Management',
     ];

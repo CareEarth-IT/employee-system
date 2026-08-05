@@ -117,7 +117,7 @@ class EmployeeIndexTest extends TestCase
             'user_id' => $growtecUser->id,
             'start_date' => '2024-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
-            'company' => 'GrowTEC',
+            'company' => 'GROWTEC',
             'location' => '東京',
             'department' => '営業部',
         ]);
@@ -283,7 +283,7 @@ class EmployeeIndexTest extends TestCase
             'start_date' => '2020-01-01',
             'end_date' => '2023-12-31',
             'enrollment_status' => AffiliationHistory::STATUS_RESIGNED,
-            'company' => 'GrowTEC',
+            'company' => 'GROWTEC',
             'location' => '東京',
             'position' => '正社員',
         ]);
@@ -295,7 +295,7 @@ class EmployeeIndexTest extends TestCase
             ->assertSee('所属会社', false)
             ->assertSee('雇用形態', false)
             ->assertSee('CareEarth', false)
-            ->assertSee('GrowTEC', false)
+            ->assertSee('GROWTEC', false)
             ->assertSee('10001', false)
             ->assertSee('10002', false)
             ->assertSee('在籍', false)

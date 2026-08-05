@@ -12,7 +12,7 @@ class EmployeeRosterCsv
     /** @var array<string, string> 社員名簿 CSV「所属」コード → 所属会社名 */
     public const AFFILIATION_CODE_TO_COMPANY = [
         'CE' => 'CareEarth',
-        'GT' => 'GrowTEC',
+        'GT' => 'GROWTEC',
         'EM' => 'Earth Management',
         'MD' => 'MidEarth',
         'ME' => 'MidEarth',

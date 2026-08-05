@@ -17,7 +17,7 @@ class SyncAffiliationCompanyFromRosterTest extends TestCase
     public function test_map_affiliation_code_to_company(): void
     {
         $this->assertSame('CareEarth', EmployeeRosterCsv::mapAffiliationCodeToCompany('CE'));
-        $this->assertSame('GrowTEC', EmployeeRosterCsv::mapAffiliationCodeToCompany('GT'));
+        $this->assertSame('GROWTEC', EmployeeRosterCsv::mapAffiliationCodeToCompany('GT'));
         $this->assertSame('Earth Management', EmployeeRosterCsv::mapAffiliationCodeToCompany('EM'));
         $this->assertSame('MidEarth', EmployeeRosterCsv::mapAffiliationCodeToCompany('MD'));
         $this->assertSame('MidEarth', EmployeeRosterCsv::mapAffiliationCodeToCompany('ME'));
@@ -124,7 +124,7 @@ CSV
         ]);
 
         $affiliation->refresh();
-        $this->assertSame('GrowTEC', $affiliation->company);
+        $this->assertSame('GROWTEC', $affiliation->company);
         $this->assertTrue($affiliation->import_locked);
     }
 
@@ -154,7 +154,7 @@ CSV
             'file' => $path,
         ]);
 
-        $this->assertSame('GrowTEC', $affiliation->fresh()->company);
+        $this->assertSame('GROWTEC', $affiliation->fresh()->company);
         $this->assertSame('不動産事業部', $affiliation->fresh()->department);
     }
 
