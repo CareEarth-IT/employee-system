@@ -16,6 +16,7 @@ use App\Http\Controllers\DevelopmentRequestController;
 use App\Http\Controllers\FinanceHrSsoController;
 use App\Http\Controllers\OrgChartController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeeItDeviceListController;
 use App\Http\Controllers\EmployeeImportController;
 use App\Http\Controllers\EquipmentPurchaseController;
 use App\Http\Controllers\MonthlyAffiliationSnapshotController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileHrDetailController;
 use App\Http\Controllers\DepartmentPortalProxyController;
 use App\Http\Controllers\DriveAppSyncController;
+use App\Http\Controllers\Internal\EmployeeDirectoryController;
 use App\Http\Controllers\ProfilePhotoController;
 use App\Http\Controllers\SitePreparationController;
 use App\Http\Controllers\WordPressMediaController;
@@ -36,6 +38,11 @@ Route::get('/index', SitePreparationController::class)->name('site-preparation')
 Route::get('/branding/{path}', [BrandingAssetController::class, 'show'])
     ->where('path', '.*')
     ->name('branding.asset');
+
+Route::middleware('employee.portal.proxy')->get(
+    '/internal/portal/employee-directory',
+    EmployeeDirectoryController::class,
+)->name('internal.employee-directory');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
@@ -110,6 +117,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/attendance-notifications/{attendanceNotification}/complete', [AttendanceNotificationController::class, 'complete'])->name('attendance-notifications.complete');
 
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
+    Route::get('/it-devices', [EmployeeItDeviceListController::class, 'index'])->name('it-devices.index');
+    Route::get('/it-devices/{user}', [EmployeeItDeviceListController::class, 'show'])->name('it-devices.show');
+    Route::put('/it-devices/{user}', [EmployeeItDeviceListController::class, 'update'])->name('it-devices.update');
     Route::get('/employees/import', [EmployeeImportController::class, 'create'])->name('employees.import.create');
     Route::get('/employees/import/template', [EmployeeImportController::class, 'template'])->name('employees.import.template');
     Route::post('/employees/import', [EmployeeImportController::class, 'store'])->name('employees.import.store');

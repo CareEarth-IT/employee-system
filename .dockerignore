@@ -18,3 +18,17 @@ database/backups/**
 .idea
 .vscode
 docker-compose*.yml
+
+# ローカル開発のみ（本番デプロイ対象外）
+/app/Http/Controllers/Auth/SateraitoSsoController.php
+/app/Http/Controllers/PortalEntryController.php
+/app/Http/Middleware/EnsurePortalEntryFromSateraito.php
+/app/Services/PortalEntryGate.php
+/app/Services/SateraitoSsoService.php
+/config/portal_entry.php
+/config/sateraito_sso.php
+/resources/views/auth/logged-out.blade.php
+/resources/views/auth/portal-entry-required.blade.php
+/tests/Feature/PortalEntryGateTest.php
+/tests/Feature/SateraitoLogoutReauthTest.php
+/tests/Feature/SateraitoSsoTest.php

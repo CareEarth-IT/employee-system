@@ -16,7 +16,7 @@
         {{ $link->label }}
     </button>
 @elseif ($link->url)
-    <a href="{{ $link->url }}" class="text-blue-600 hover:underline">{{ $link->label }}</a>
+    <a href="{{ $link->url }}" class="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">{{ $link->label }}</a>
 @else
     <span class="text-slate-600">{{ $link->label }}</span>
 @endif

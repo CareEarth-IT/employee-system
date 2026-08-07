@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AffiliationHistory;
+use App\Models\EmployeeHrDetail;
 use App\Models\EmployeeProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,6 +13,10 @@ use Tests\TestCase;
 class EmployeeCsvImportTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const JAPANESE_HEADER = '社員コード,社員名,社員略名,E-MAIL,所属1部門名,所属1役職名';
+
+    private const HR_EXPORT_HEADER = '社員コード,社員名,社員略名,社員名カナ,E-MAIL,所属1部門コード,所属1部門名,所属1役職コード,所属1役職名,所属2部門コード,所属2部門名,所属2役職コード,所属2役職名,所属3部門コード,所属3部門名,所属3役職コード,所属3役職名,権限(コード),権限(名称),在職区分(名称)';
 
     public function test_information_systems_user_sees_import_link(): void
     {
@@ -72,9 +77,9 @@ class EmployeeCsvImportTest extends TestCase
         $csv = UploadedFile::fake()->createWithContent(
             'employees.csv',
             implode("\n", [
-                'email,姓,名,部,課,役職,会社,拠点,社員番号',
-                'existing@careearth.info,変更,花子,営業部,営業課,一般,CareEarth,東京,00100',
-                'newhire@careearth.info,新規,次郎,通信部,営業課,一般,CareEarth,大阪,00200',
+                self::JAPANESE_HEADER,
+                'A001,変更 花子,変更,existing@careearth.info,営業部,一般',
+                'A002,新規 次郎,新規,newhire@careearth.info,通信部 事業IT推進課,一般',
             ])."\n",
         );
 
@@ -86,26 +91,83 @@ class EmployeeCsvImportTest extends TestCase
         $existing->refresh();
         $this->assertSame('既存 太郎', $existing->name);
         $this->assertSame('人事部', $existing->currentAffiliation()?->department);
-        $this->assertSame('2019-04-01', $existing->profile?->joined_at?->toDateString());
 
         $created = User::query()->where('email', 'newhire@careearth.info')->first();
         $this->assertNotNull($created);
         $this->assertSame('新規 次郎', $created->name);
-        $this->assertSame('00200', $created->employee_id);
+        $this->assertSame('A002', $created->employee_id);
         $this->assertSame('通信部', $created->currentAffiliation()?->department);
+        $this->assertSame('事業IT推進課', $created->currentAffiliation()?->section);
+        $this->assertSame('一般', $created->currentAffiliation()?->position);
+        $this->assertSame('在籍', $created->displayEmploymentStatus());
+        $this->assertSame('新規', $created->profile?->abbreviated_name);
         $this->assertTrue($created->must_change_password);
         $this->assertTrue(\Illuminate\Support\Facades\Hash::check('password', $created->password));
+
+        $detail = EmployeeHrDetail::query()->where('user_id', $created->id)->first();
+        $this->assertNotNull($detail);
+        $this->assertSame('在籍', $detail->employment_status);
     }
 
-    public function test_csv_import_rejects_non_five_digit_employee_id(): void
+    public function test_csv_import_ignores_unneeded_columns_from_hr_export(): void
     {
         $importer = $this->userInDepartment('情報システム部');
 
         $csv = UploadedFile::fake()->createWithContent(
             'employees.csv',
             implode("\n", [
-                'email,姓,名,部,課,役職,会社,拠点,社員番号',
-                'invalid-id@careearth.info,不正,番号,通信部,営業課,一般,CareEarth,大阪,255',
+                '社員コード,社員名,社員略称名,E-MAIL,所属1部門コード,所属1部門名称,所属1役職コード,所属役職',
+                'B001,人事 花子,ジンジ,hr@careearth.info,HR01,人事部,POS01,部長',
+            ])."\n",
+        );
+
+        $this->actingAs($importer)
+            ->post(route('employees.import.store'), ['csv' => $csv])
+            ->assertRedirect(route('employees.import.create'))
+            ->assertSessionHas('success');
+
+        $created = User::query()->where('email', 'hr@careearth.info')->first();
+        $this->assertNotNull($created);
+        $this->assertSame('B001', $created->employee_id);
+        $this->assertSame('人事部', $created->currentAffiliation()?->department);
+        $this->assertSame('部長', $created->currentAffiliation()?->position);
+    }
+
+    public function test_csv_import_accepts_full_hr_export_format(): void
+    {
+        $importer = $this->userInDepartment('情報システム部');
+
+        $csv = UploadedFile::fake()->createWithContent(
+            'employees.csv',
+            implode("\n", [
+                self::HR_EXPORT_HEADER,
+                'C001,営業 太郎,エイギョウ,エイギョウタロウ,sales@careearth.info,S01,営業部,P01,一般,,,,,,,,,,,在籍',
+            ])."\n",
+        );
+
+        $this->actingAs($importer)
+            ->post(route('employees.import.store'), ['csv' => $csv])
+            ->assertRedirect(route('employees.import.create'))
+            ->assertSessionHas('success');
+
+        $created = User::query()->where('email', 'sales@careearth.info')->first();
+        $this->assertNotNull($created);
+        $this->assertSame('C001', $created->employee_id);
+        $this->assertSame('営業 太郎', $created->name);
+        $this->assertSame('エイギョウ', $created->profile?->abbreviated_name);
+        $this->assertSame('営業部', $created->currentAffiliation()?->department);
+        $this->assertSame('一般', $created->currentAffiliation()?->position);
+    }
+
+    public function test_csv_import_rejects_invalid_employee_code(): void
+    {
+        $importer = $this->userInDepartment('情報システム部');
+
+        $csv = UploadedFile::fake()->createWithContent(
+            'employees.csv',
+            implode("\n", [
+                self::JAPANESE_HEADER,
+                'bad code!,不正 番号,不正,invalid-id@careearth.info,通信部,一般',
             ])."\n",
         );
 

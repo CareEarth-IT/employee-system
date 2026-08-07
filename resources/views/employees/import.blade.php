@@ -18,10 +18,19 @@
 @endif
 
 <div class="mb-4 rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 leading-relaxed">
+    <p class="font-medium text-slate-800 mb-1">CSV形式</p>
+    <ul class="list-disc pl-5 space-y-1">
+        <li>人事システムから出力した<strong>20列のCSV</strong>をそのままアップロードできます（余分な列は無視されます）。</li>
+        <li>登録に使う列: 社員コード、社員名、社員略名、E-MAIL、所属1部門名、所属1役職名</li>
+        <li>初期パスワードは <code class="text-xs bg-slate-200 px-1 rounded">password</code> です。初回ログイン時に変更が必要です。</li>
+    </ul>
+</div>
+
+<div class="mb-4 rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 leading-relaxed">
     <p class="font-medium text-slate-800 mb-1">注意（既存データは変更しません）</p>
     <ul class="list-disc pl-5 space-y-1">
         <li>CSVに含まれる<strong>未登録のメールアドレスのみ</strong>新規追加します。</li>
-        <li>すでに社員一覧にあるメールアドレスは<strong>スキップ</strong>し、氏名・所属などは上書きしません。</li>
+        <li>すでに社員一覧にあるメールアドレスは<strong>スキップ</strong>し、上書きしません。</li>
     </ul>
 </div>
 
@@ -58,10 +67,9 @@
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr class="text-left text-slate-500">
                         <th class="px-3 py-2">メール</th>
-                        <th class="px-3 py-2">氏名</th>
-                        <th class="px-3 py-2">社員番号</th>
-                        <th class="px-3 py-2">部</th>
-                        <th class="px-3 py-2">課</th>
+                        <th class="px-3 py-2">名前</th>
+                        <th class="px-3 py-2">社員ID</th>
+                        <th class="px-3 py-2">部署</th>
                         <th class="px-3 py-2">役職</th>
                         <th class="px-3 py-2">結果</th>
                     </tr>

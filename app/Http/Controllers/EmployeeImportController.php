@@ -31,21 +31,8 @@ class EmployeeImportController extends Controller
         return response()->streamDownload(function (): void {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['email', '氏名', '姓', '名', '社員番号', '部', '課', '役職', '拠点', '会社', '電話番号', 'パスワード']);
-            fputcsv($out, [
-                'example@careearth.info',
-                '山田 花子',
-                '山田',
-                '花子',
-                '00100',
-                '通信部',
-                '事業IT推進課',
-                '一般',
-                '大阪',
-                'CareEarth',
-                '080-0000-0000',
-                '',
-            ]);
+            fputcsv($out, EmployeeBulkImporter::hrExportCsvHeaders());
+            fputcsv($out, EmployeeBulkImporter::hrExportCsvSampleRow());
             fclose($out);
         }, $filename, $headers);
     }

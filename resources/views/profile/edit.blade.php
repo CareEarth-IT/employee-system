@@ -93,7 +93,7 @@
 @endphp
 @if (EmployeeHrDetailAccess::canViewPage(auth()->user(), $user))
 <div class="mt-6 bg-white border border-slate-300 rounded-lg p-6">
-    <h2 class="font-bold mb-2">人事詳細情報</h2>
+    <h2 class="font-bold mb-2">詳細情報</h2>
     <p class="text-sm text-slate-600 mb-4">入社・退職手続き、在留資格、社保、ITデバイスなどの詳細項目を登録・編集します。閲覧・編集できる範囲は所属により異なります。</p>
     <a
         href="{{ UserRouteHelper::route($user, 'profile.hr-detail.edit', 'users.profile.hr-detail.edit') }}"

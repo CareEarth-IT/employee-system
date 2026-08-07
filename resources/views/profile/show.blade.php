@@ -130,13 +130,13 @@
 
 @if ($canViewHrDetail)
 <div class="mt-6 bg-white border border-slate-300 rounded-lg p-6">
-    <h2 class="font-bold mb-2">人事詳細情報</h2>
-    <p class="text-sm text-slate-600 mb-4">状況・雇用形態の編集は人事詳細情報で行います。閲覧・編集できる範囲は所属により異なります。</p>
+    <h2 class="font-bold mb-2">詳細情報</h2>
+    <p class="text-sm text-slate-600 mb-4">状況・雇用形態の編集は詳細情報で行います。閲覧・編集できる範囲は所属により異なります。</p>
     <a
         href="{{ UserRouteHelper::route($user, 'profile.hr-detail.edit', 'users.profile.hr-detail.edit') }}"
         class="inline-block rounded bg-slate-700 text-white px-6 py-2 text-sm font-medium hover:bg-slate-800"
     >
-        人事詳細情報を開く
+        詳細情報を開く
     </a>
 </div>
 @endif

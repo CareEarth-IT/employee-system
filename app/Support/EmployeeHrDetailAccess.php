@@ -133,6 +133,12 @@ class EmployeeHrDetailAccess
             || $viewer->isInformationSystems();
     }
 
+    /** IT・デバイス一覧（Top Page「情シスデバイス用」） */
+    public static function canViewItDeviceList(User $viewer): bool
+    {
+        return $viewer->isInformationSystems();
+    }
+
     public static function canExportCsvForTarget(User $viewer, User $target): bool
     {
         return self::canViewPage($viewer, $target);

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '人事詳細情報 - CE-Group 社員専用')
+@section('title', '詳細情報 - CE-Group 社員専用')
 
 @section('content')
 @php
@@ -10,7 +10,7 @@
 
 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
-        <h1 class="text-xl font-bold">{{ $access['canSave'] ? '人事詳細情報' : '人事詳細情報（閲覧）' }}</h1>
+        <h1 class="text-xl font-bold">{{ $access['canSave'] ? '詳細情報' : '詳細情報（閲覧）' }}</h1>
         <p class="text-sm text-slate-600 mt-1">{{ $user->displayName() }} さん</p>
     </div>
     <div class="flex flex-wrap gap-4 text-sm">

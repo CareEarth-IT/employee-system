@@ -48,7 +48,7 @@
     <h1 class="text-xl font-bold">社員一覧</h1>
     <div class="flex flex-wrap items-center gap-4 text-sm">
         @if ($canExportHrDetails)
-            <a href="{{ route('hr-details.export') }}" class="text-blue-600 hover:underline">人事詳細情報 CSV</a>
+            <a href="{{ route('hr-details.export') }}" class="text-blue-600 hover:underline">詳細情報 CSV</a>
         @endif
         @if ($canImportEmployees)
             <a href="{{ route('employees.import.create') }}" class="text-blue-600 hover:underline">社員追加 CSV</a>

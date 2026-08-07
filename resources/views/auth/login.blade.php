@@ -22,6 +22,12 @@
                 </div>
             @endif
 
+            @if (session('error'))
+                <div class="mb-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('login') }}" class="mx-auto max-w-md space-y-4">
                 @csrf
 

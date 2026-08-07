@@ -260,6 +260,16 @@ class DashboardLinkResolver
                     'sort_order' => 30,
                     'is_visible' => true,
                 ],
+                [
+                    'tab_key' => 'common',
+                    'category_key' => 'general',
+                    'label' => '情シスデバイス用',
+                    'url' => route('it-devices.index'),
+                    'kind' => DashboardLink::KIND_LINK,
+                    'visibility_rule' => 'it_device_list',
+                    'sort_order' => 40,
+                    'is_visible' => true,
+                ],
             ],
             'company-car' => [
                 [
@@ -338,6 +348,7 @@ class DashboardLinkResolver
         return match ($link->visibility_rule) {
             'equipment_purchase' => $user->canAccessEquipmentPurchaseSettlement(),
             'monthly_affiliation' => $user->canViewMonthlyAffiliationSnapshots(),
+            'it_device_list' => \App\Support\EmployeeHrDetailAccess::canViewItDeviceList($user),
             default => true,
         };
     }

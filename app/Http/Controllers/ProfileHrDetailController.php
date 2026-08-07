@@ -60,7 +60,7 @@ class ProfileHrDetailController extends Controller
 
         return redirect()
             ->to(UserRouteHelper::route($target, 'profile.hr-detail.edit', 'users.profile.hr-detail.edit'))
-            ->with('success', '人事詳細情報を保存しました。');
+            ->with('success', '詳細情報を保存しました。');
     }
 
     public function exportAll(): StreamedResponse
@@ -87,7 +87,7 @@ class ProfileHrDetailController extends Controller
         $target = $user ?? $viewer;
 
         if (! EmployeeHrDetailAccess::canExportCsvForTarget($viewer, $target)) {
-            abort(403, 'この社員の人事詳細情報を出力する権限がありません。');
+            abort(403, 'この社員の詳細情報を出力する権限がありません。');
         }
 
         $target->load(['profile', 'hrDetail']);
@@ -102,7 +102,7 @@ class ProfileHrDetailController extends Controller
     private function authorizeExport(User $viewer): void
     {
         if (! EmployeeHrDetailAccess::canExportCsv($viewer)) {
-            abort(403, '人事詳細情報のCSV出力権限がありません。');
+            abort(403, '詳細情報のCSV出力権限がありません。');
         }
     }
 

@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->alias([
+            'employee.portal.proxy' => \App\Http\Middleware\VerifyEmployeePortalProxySecret::class,
+        ]);
         $middleware->web(append: [
             ApplyRequestUrl::class,
             ForcePasswordChange::class,

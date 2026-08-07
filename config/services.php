@@ -44,4 +44,12 @@ return [
         'sync_secret' => env('EMPLOYEE_SITE_SYNC_SECRET'),
     ],
 
+    /*
+    | 部署別社内サイト向け内部 API（社員一覧参照など）
+    | Header: X-Employee-Portal-Proxy-Secret
+    */
+    'employee_portal' => [
+        'proxy_secret' => env('EMPLOYEE_PORTAL_PROXY_SECRET'),
+    ],
+
 ];
