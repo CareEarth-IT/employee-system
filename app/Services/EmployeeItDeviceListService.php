@@ -2,12 +2,20 @@
 
 namespace App\Services;
 
+use App\Models\EmployeeHrDetail;
 use App\Models\User;
+use App\Support\CompanyPhone;
 use App\Support\EmployeeHrDetailAccess;
 use Illuminate\Database\Eloquent\Builder;
 
 class EmployeeItDeviceListService
 {
+    /** @var list<string> */
+    public const STATUS_TABS = [
+        '在籍',
+        '退職',
+    ];
+
     /**
      * @return list<array{
      *     employee_id: string,
@@ -28,7 +36,7 @@ class EmployeeItDeviceListService
         $keyword = trim($keyword);
         $status = trim($status);
 
-        if ($status !== '' && ! in_array($status, User::EMPLOYMENT_STATUS_OPTIONS, true)) {
+        if ($status !== '' && ! in_array($status, self::STATUS_TABS, true)) {
             $status = '在籍';
         }
 
@@ -94,7 +102,6 @@ class EmployeeItDeviceListService
         $affiliation = $employee->currentAffiliation();
         $detail = $employee->hrDetail;
         $canViewIt = EmployeeHrDetailAccess::canViewIt($viewer, $employee);
-        $canViewCore = EmployeeHrDetailAccess::canViewCore($viewer, $employee);
 
         return [
             'employee_id' => $employee->employee_id ?? '—',
@@ -104,7 +111,7 @@ class EmployeeItDeviceListService
             'department' => trim((string) ($affiliation?->department ?? $detail?->department_primary ?? '')) ?: '—',
             'employment_status' => $employee->displayEmploymentStatus(),
             'employment_type' => $employee->displayEmploymentType(),
-            'phone' => $canViewCore ? trim((string) ($detail?->phone ?? '')) ?: '—' : '—',
+            'phone' => $canViewIt ? $this->displayPhone($detail) : '—',
             'has_pc' => $canViewIt ? $detail?->has_pc : null,
             'has_mobile' => $canViewIt ? $detail?->has_mobile : null,
             'detail_url' => route('it-devices.show', $employee),
@@ -122,6 +129,17 @@ class EmployeeItDeviceListService
         $jurisdiction = trim((string) ($jurisdiction ?? ''));
 
         return $jurisdiction !== '' ? $jurisdiction : '—';
+    }
+
+    private function displayPhone(?EmployeeHrDetail $detail): string
+    {
+        if ($detail === null) {
+            return '—';
+        }
+
+        return CompanyPhone::display($detail->company_phone)
+            ?? CompanyPhone::display($detail->phone)
+            ?? '—';
     }
 
     /**
@@ -158,10 +176,6 @@ class EmployeeItDeviceListService
                     ->orWhereHas('affiliationHistories', fn (Builder $affiliationQuery) => $affiliationQuery
                         ->where('enrollment_status', \App\Models\AffiliationHistory::STATUS_RESIGNED));
             });
-
-            return;
         }
-
-        $query->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '辞退'));
     }
 }

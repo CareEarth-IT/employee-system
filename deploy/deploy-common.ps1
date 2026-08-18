@@ -15,7 +15,7 @@ function Get-LocalAppKey {
 
     $envFile = Join-Path $ProjectRoot ".env"
     if (Test-Path $envFile) {
-        foreach ($line in Get-Content $envFile) {
+        foreach ($line in Get-Content $envFile -Encoding UTF8) {
             if ($line -match '^\s*APP_KEY=(.+)$') {
                 $key = $Matches[1].Trim().Trim('"').Trim("'")
                 if ($key -and $key -ne "base64:" -and $key.Length -gt 10) {
@@ -45,12 +45,67 @@ function Get-LocalDbPassword {
         return ""
     }
 
-    foreach ($line in Get-Content $envFile) {
+    foreach ($line in Get-Content $envFile -Encoding UTF8) {
         if ($line -match '^\s*DB_PASSWORD=(.*)$') {
             $value = $Matches[1].Trim().Trim('"').Trim("'")
             if ($value -ne "") {
                 return $value
             }
+        }
+    }
+
+    return ""
+}
+
+function Get-CloudRunLatestReadyRevision {
+    param(
+        [string]$Service,
+        [string]$Region
+    )
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $revision = & gcloud run services describe $Service --region=$Region --format="value(status.latestReadyRevisionName)" 2>$null
+    $exitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previous
+
+    if ($exitCode -ne 0 -or -not $revision) {
+        return ""
+    }
+
+    return [string]$revision.Trim()
+}
+
+function Get-CloudRunEnvItemsFromGcloudJson {
+    param([string]$Json)
+
+    if (-not $Json) {
+        return @()
+    }
+
+    $parsed = $Json | ConvertFrom-Json
+    $serviceContainers = $parsed.spec.template.spec.containers
+    if ($serviceContainers -and $serviceContainers.Count -gt 0 -and $serviceContainers[0].env) {
+        return @($serviceContainers[0].env)
+    }
+
+    $revisionContainers = $parsed.spec.containers
+    if ($revisionContainers -and $revisionContainers.Count -gt 0 -and $revisionContainers[0].env) {
+        return @($revisionContainers[0].env)
+    }
+
+    return @()
+}
+
+function Get-CloudRunEnvVarFromItems {
+    param(
+        [array]$Items,
+        [string]$Name
+    )
+
+    foreach ($item in $Items) {
+        if ($item.name -eq $Name -and $item.value) {
+            return [string]$item.value
         }
     }
 
@@ -66,22 +121,34 @@ function Get-CloudRunEnvVar {
 
     $previous = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
+
     $json = & gcloud run services describe $Service --region=$Region --format="json(spec.template.spec.containers[0].env)" 2>$null
     $exitCode = $LASTEXITCODE
-    $ErrorActionPreference = $previous
-
-    if ($exitCode -ne 0 -or -not $json) {
-        return ""
-    }
-
-    $parsed = $json | ConvertFrom-Json
-    $items = $parsed.spec.template.spec.containers[0].env
-    foreach ($item in $items) {
-        if ($item.name -eq $Name -and $item.value) {
-            return [string]$item.value
+    if ($exitCode -eq 0 -and $json) {
+        $items = Get-CloudRunEnvItemsFromGcloudJson -Json $json
+        $value = Get-CloudRunEnvVarFromItems -Items $items -Name $Name
+        if ($value -ne "") {
+            $ErrorActionPreference = $previous
+            return $value
         }
     }
 
+    # Service template can be left with only a subset of vars after a failed partial update.
+    # Fall back to the revision that is actually serving traffic.
+    $revision = Get-CloudRunLatestReadyRevision -Service $Service -Region $Region
+    if ($revision -ne "") {
+        $revisionJson = & gcloud run revisions describe $revision --region=$Region --format="json(spec.containers[0].env)" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $revisionJson) {
+            $revisionItems = Get-CloudRunEnvItemsFromGcloudJson -Json $revisionJson
+            $value = Get-CloudRunEnvVarFromItems -Items $revisionItems -Name $Name
+            if ($value -ne "") {
+                $ErrorActionPreference = $previous
+                return $value
+            }
+        }
+    }
+
+    $ErrorActionPreference = $previous
     return ""
 }
 
@@ -97,7 +164,7 @@ function Get-LocalEnvValue {
         return $Default
     }
 
-    foreach ($line in Get-Content $envFile) {
+    foreach ($line in Get-Content $envFile -Encoding UTF8) {
         if ($line -match "^\s*$([regex]::Escape($Key))=(.*)$") {
             $value = $Matches[1].Trim().Trim('"').Trim("'")
             if ($value -eq "null") {
@@ -109,6 +176,33 @@ function Get-LocalEnvValue {
     }
 
     return $Default
+}
+
+function Get-ProductionMailFromName {
+    # Build "CE-Group 社員専用" from code points so deploy works even when .env is not UTF-8.
+    $suffix = [string]::Concat(@(
+        [char]0x793E,
+        [char]0x54E1,
+        [char]0x5C02,
+        [char]0x7528
+    ))
+
+    return "CE-Group $suffix"
+}
+
+function Test-MailFromNameCorrupted {
+    param([string]$Name)
+
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        return $true
+    }
+
+    if ($Name -match '\?{2,}') {
+        return $true
+    }
+
+    $expected = Get-ProductionMailFromName
+    return ($Name -ne $expected)
 }
 
 function Get-LocalMailEnvVars {
@@ -135,8 +229,12 @@ function Get-LocalMailEnvVars {
     }
 
     if ($vars.Contains("MAIL_FROM_NAME") -and $vars["MAIL_FROM_NAME"] -match '\$\{APP_NAME\}') {
-        $appName = Get-LocalEnvValue -ProjectRoot $ProjectRoot -Key "APP_NAME" -Default "CE-Group 社員専用"
+        $appName = Get-LocalEnvValue -ProjectRoot $ProjectRoot -Key "APP_NAME" -Default (Get-ProductionMailFromName)
         $vars["MAIL_FROM_NAME"] = $appName
+    }
+
+    if (-not $vars.Contains("MAIL_FROM_NAME") -or (Test-MailFromNameCorrupted -Name [string]$vars["MAIL_FROM_NAME"])) {
+        $vars["MAIL_FROM_NAME"] = Get-ProductionMailFromName
     }
 
     return $vars
@@ -156,11 +254,11 @@ function Test-MailConfiguredForProduction {
         Write-Host "WARN: MAIL_MAILER=$mailer in .env — password reset emails will NOT be sent."
         Write-Host "Set SMTP in .env, then redeploy. Example:"
         Write-Host "  MAIL_MAILER=smtp"
-        Write-Host "  MAIL_HOST=violetgoat8.sakura.ne.jp"
+        Write-Host "  MAIL_HOST=smtp.gmail.com"
         Write-Host "  MAIL_PORT=587"
-        Write-Host "  MAIL_USERNAME=ce.employee.kanri@careearth.net"
-        Write-Host "  MAIL_PASSWORD=(Sakura mailbox password)"
-        Write-Host "  MAIL_FROM_ADDRESS=ce.employee.kanri@careearth.net"
+        Write-Host "  MAIL_USERNAME=yuta_masui@careearth.info"
+        Write-Host "  MAIL_PASSWORD=(Google app password)"
+        Write-Host "  MAIL_FROM_ADDRESS=yuta_masui@careearth.info"
         Write-Host ""
 
         return $false
@@ -272,6 +370,7 @@ function Get-CloudRunEnvVars {
             foreach ($entry in $localMail.GetEnumerator()) {
                 $vars[$entry.Key] = $entry.Value
             }
+            $vars["MAIL_FROM_NAME"] = Get-ProductionMailFromName
         }
 
         $portalEnvKeys = @(
@@ -410,6 +509,31 @@ function Get-CloudRunEnvVars {
     return $vars
 }
 
+function Escape-CloudRunEnvYamlValue {
+    param([string]$Value)
+
+    $builder = New-Object System.Text.StringBuilder
+    foreach ($ch in $Value.ToCharArray()) {
+        $code = [int][char]$ch
+        switch ($ch) {
+            '\' { [void]$builder.Append('\\') }
+            '"' { [void]$builder.Append('\"') }
+            "`n" { [void]$builder.Append('\n') }
+            "`r" { [void]$builder.Append('\r') }
+            "`t" { [void]$builder.Append('\t') }
+            default {
+                if ($code -ge 0x20 -and $code -le 0x7e) {
+                    [void]$builder.Append($ch)
+                } else {
+                    [void]$builder.Append(('\u{0:x4}' -f $code))
+                }
+            }
+        }
+    }
+
+    return $builder.ToString()
+}
+
 function Write-CloudRunEnvVarsFile {
     param(
         [System.Collections.IDictionary]$Vars,
@@ -418,7 +542,7 @@ function Write-CloudRunEnvVarsFile {
 
     $lines = New-Object System.Collections.Generic.List[string]
     foreach ($entry in $Vars.GetEnumerator()) {
-        $escaped = ($entry.Value -replace '\\', '\\\\' -replace '"', '\"')
+        $escaped = Escape-CloudRunEnvYamlValue -Value ([string]$entry.Value)
         $lines.Add("$($entry.Key): `"$escaped`"")
     }
 

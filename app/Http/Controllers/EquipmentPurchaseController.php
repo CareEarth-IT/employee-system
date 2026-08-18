@@ -9,6 +9,7 @@ use App\Http\Requests\EquipmentPurchaseStoreRequest;
 use App\Models\AffiliationHistory;
 use App\Models\EquipmentPurchaseApplication;
 use App\Models\User;
+use App\Services\EquipmentPurchaseApprovalNotifier;
 use App\Services\EquipmentPurchaseCsvExporter;
 use App\Services\EquipmentPurchaseSubmissionPeriod;
 use Carbon\Carbon;
@@ -68,15 +69,7 @@ class EquipmentPurchaseController extends Controller
             'status' => EquipmentPurchaseApplication::STATUS_PENDING,
         ]);
 
-        $applicationId = $application->id;
-        dispatch(function () use ($applicationId): void {
-            $application = EquipmentPurchaseApplication::query()->find($applicationId);
-            if ($application === null) {
-                return;
-            }
-
-            app(EquipmentPurchaseApprovalNotifier::class)->notifySubmitted($application);
-        })->afterResponse();
+        app(EquipmentPurchaseApprovalNotifier::class)->notifySubmitted($application);
 
         return redirect()->route('equipment-purchases.complete', $application);
     }
@@ -152,15 +145,7 @@ class EquipmentPurchaseController extends Controller
             ]);
 
             if ($isApproved) {
-                $applicationId = $equipmentPurchase->id;
-                dispatch(function () use ($applicationId): void {
-                    $application = EquipmentPurchaseApplication::query()->find($applicationId);
-                    if ($application === null) {
-                        return;
-                    }
-
-                    app(EquipmentPurchaseApprovalNotifier::class)->notifySecondStage($application);
-                })->afterResponse();
+                app(EquipmentPurchaseApprovalNotifier::class)->notifySecondStage($equipmentPurchase->fresh());
 
                 return redirect()
                     ->route('equipment-purchases.pending')
@@ -367,4 +352,5 @@ class EquipmentPurchaseController extends Controller
             abort(403);
         }
     }
+
 }

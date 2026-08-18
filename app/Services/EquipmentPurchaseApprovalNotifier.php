@@ -26,6 +26,18 @@ class EquipmentPurchaseApprovalNotifier
         $this->sendToApprovers($application);
     }
 
+    public function notifyApprovers(EquipmentPurchaseApplication $application): void
+    {
+        $application->loadMissing('user');
+        $this->sendToApprovers($application);
+    }
+
+    public function notifyApplicantReceipt(EquipmentPurchaseApplication $application): void
+    {
+        $application->loadMissing('user');
+        $this->sendToApplicant($application);
+    }
+
     private function sendToApplicant(EquipmentPurchaseApplication $application): void
     {
         $email = $application->user?->email;

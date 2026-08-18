@@ -81,7 +81,7 @@ class EmployeeController extends Controller
 
         if ($keyword !== '') {
             $like = '%'.$keyword.'%';
-            $query->where(function ($keywordQuery) use ($like) {
+            $query->where(function ($keywordQuery) use ($like, $keyword) {
                 $keywordQuery
                     ->where('name', 'like', $like)
                     ->orWhere('email', 'like', $like)
@@ -101,6 +101,25 @@ class EmployeeController extends Controller
                                     ->orWhere('section', 'like', $like)
                                     ->orWhere('position', 'like', $like);
                             });
+                    })
+                    ->orWhereHas('hrDetail', function ($hrDetailQuery) use ($like, $keyword) {
+                        $hrDetailQuery
+                            ->where('company_phone', 'like', $like)
+                            ->orWhere('phone', 'like', $like);
+
+                        $digits = preg_replace('/\D/u', '', $keyword) ?? '';
+                        if ($digits !== '') {
+                            $digitLike = '%'.$digits.'%';
+                            $hrDetailQuery
+                                ->orWhereRaw(
+                                    "REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(company_phone, ''), '-', ''), ' ', ''), '，', ''), '、', '') LIKE ?",
+                                    [$digitLike],
+                                )
+                                ->orWhereRaw(
+                                    "REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(phone, ''), '-', ''), ' ', ''), '，', ''), '、', '') LIKE ?",
+                                    [$digitLike],
+                                );
+                        }
                     });
             });
         }

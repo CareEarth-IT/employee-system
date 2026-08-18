@@ -24,6 +24,9 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
+# テストはローカルのみ（GitHub には含めない）
+/tests/
+
 /database/imports/.deploy-staging/
 /database/imports/*.csv
 !/database/imports/*.example

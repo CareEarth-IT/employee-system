@@ -2,12 +2,14 @@
 
 namespace App\Console\Commands;
 
-use App\Models\AffiliationHistory;
+use App\Mail\EquipmentPurchaseApprovalRequested;
+use App\Mail\EquipmentPurchaseSubmitted;
 use App\Models\EquipmentPurchaseApplication;
 use App\Models\User;
 use App\Services\EquipmentPurchaseApprovalNotifier;
 use App\Services\EquipmentPurchaseSubmissionPeriod;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Mail;
 
 class EquipmentPurchaseMailTestCommand extends Command
 {
@@ -16,7 +18,8 @@ class EquipmentPurchaseMailTestCommand extends Command
                             {--applicant=yuta_masui@careearth.info : 申請者メール}
                             {--price= : 価格（税込）。未指定時はタイプに合わせる}
                             {--department=通信部 : 利用先の部（現場用3万円以上の部長承認テスト用）}
-                            {--check-only : 承認先の確認のみ（申請作成・メール送信なし）}';
+                            {--check-only : 承認先の確認のみ（申請作成・メール送信なし）}
+                            {--self-only : 受付・承認依頼を --applicant のアドレスにのみ送信（本番承認者には送らない）}';
 
     protected $description = '備品購入申請の受付・承認依頼メールをテスト送信する（DBにテスト申請を1件作成）';
 
@@ -49,6 +52,7 @@ class EquipmentPurchaseMailTestCommand extends Command
 
         $department = trim((string) $this->option('department'));
         $checkOnly = (bool) $this->option('check-only');
+        $selfOnly = (bool) $this->option('self-only');
 
         if ($checkOnly) {
             $application = new EquipmentPurchaseApplication([
@@ -76,15 +80,28 @@ class EquipmentPurchaseMailTestCommand extends Command
 
             $this->printBranchManagerDiagnostics($application);
 
-            $recipientEmails = $this->resolveRecipientEmails($application);
-            $this->newLine();
-            $this->info('承認依頼の送信先:');
-            if ($recipientEmails === []) {
-                $this->warn('  （承認者が見つかりません）');
+            if ($selfOnly) {
+                $this->newLine();
+                $this->info('送信先（--self-only）:');
+                $this->line('  受付メール → '.$applicant->email);
+                $this->line('  承認依頼 → '.$applicant->email);
+                $this->newLine();
+                $this->comment('※ --check-only のためメールは送信しません。');
+                $this->comment('  送信する場合: --self-only を付けて --check-only を外してください。');
             } else {
-                foreach ($recipientEmails as $email) {
-                    $this->line('  → '.$email);
+                $recipientEmails = $this->resolveRecipientEmails($application);
+                $this->newLine();
+                $this->info('承認依頼の送信先（本番と同じ）:');
+                if ($recipientEmails === []) {
+                    $this->warn('  （承認者が見つかりません）');
+                } else {
+                    foreach ($recipientEmails as $email) {
+                        $this->line('  → '.$email);
+                    }
                 }
+                $this->newLine();
+                $this->comment('※ --check-only のためメールは送信しません。');
+                $this->comment('  自分だけに送る場合: --self-only を付けて --check-only を外してください。');
             }
 
             return self::SUCCESS;
@@ -112,20 +129,29 @@ class EquipmentPurchaseMailTestCommand extends Command
         $this->line('申請者: '.$applicant->displayName().' <'.$applicant->email.'>');
         $this->line('価格（税込）: '.number_format($price).' 円');
 
-        $recipientEmails = $this->resolveRecipientEmails($application);
         $this->newLine();
         $this->info('送信予定:');
-        $this->line('  受付メール → '.$applicant->email);
-        if ($recipientEmails === []) {
-            $this->warn('  承認依頼 → （承認者が見つかりません）');
+        if ($selfOnly) {
+            $this->line('  受付メール → '.$applicant->email);
+            $this->line('  承認依頼 → '.$applicant->email.' （--self-only）');
         } else {
-            foreach ($recipientEmails as $email) {
-                $this->line('  承認依頼 → '.$email);
+            $recipientEmails = $this->resolveRecipientEmails($application);
+            $this->line('  受付メール → '.$applicant->email);
+            if ($recipientEmails === []) {
+                $this->warn('  承認依頼 → （承認者が見つかりません）');
+            } else {
+                foreach ($recipientEmails as $email) {
+                    $this->line('  承認依頼 → '.$email);
+                }
             }
         }
 
         try {
-            $notifier->notifySubmitted($application);
+            if ($selfOnly) {
+                $this->sendSelfOnly($application, $applicant);
+            } else {
+                $notifier->notifySubmitted($application);
+            }
         } catch (\Throwable $e) {
             $this->error('送信失敗: '.$e->getMessage());
 
@@ -205,5 +231,15 @@ class EquipmentPurchaseMailTestCommand extends Command
         }
 
         return array_values($emails);
+    }
+
+    private function sendSelfOnly(EquipmentPurchaseApplication $application, User $applicant): void
+    {
+        $application->loadMissing('user');
+
+        Mail::to($applicant->email)->send(new EquipmentPurchaseSubmitted($application));
+        Mail::to($applicant->email)->send(
+            new EquipmentPurchaseApprovalRequested($application, $applicant),
+        );
     }
 }

@@ -31,7 +31,7 @@ class EmployeeItDeviceListController extends Controller
         $status = trim((string) $request->query('status', '在籍'));
         $keyword = trim((string) $request->query('keyword', ''));
 
-        if (! in_array($status, User::EMPLOYMENT_STATUS_OPTIONS, true)) {
+        if (! in_array($status, EmployeeItDeviceListService::STATUS_TABS, true)) {
             $status = '在籍';
         }
 
@@ -41,7 +41,7 @@ class EmployeeItDeviceListController extends Controller
             'rows' => $rows,
             'status' => $status,
             'keyword' => $keyword,
-            'statusTabs' => User::EMPLOYMENT_STATUS_OPTIONS,
+            'statusTabs' => EmployeeItDeviceListService::STATUS_TABS,
         ]);
     }
 

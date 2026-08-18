@@ -106,7 +106,7 @@
                 type="text"
                 name="keyword"
                 value="{{ $keyword }}"
-                placeholder="氏名・メール・部署など"
+                placeholder="氏名・メール・部署・電話番号など"
                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
             >
         </div>

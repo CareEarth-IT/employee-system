@@ -44,4 +44,62 @@ class CompanyPhone
 
         return mb_substr(implode(', ', $phones), 0, self::MAX_LENGTH);
     }
+
+    /** 画面表示用（例: 08073604364 → 080-7360-4364） */
+    public static function display(?string $value): ?string
+    {
+        $phones = self::parse($value);
+
+        if ($phones === []) {
+            return null;
+        }
+
+        return implode(', ', array_map(
+            static fn (string $phone) => self::format($phone) ?? $phone,
+            $phones,
+        ));
+    }
+
+    public static function format(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '' || in_array($trimmed, self::SKIP_VALUES, true)) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D/u', '', $trimmed) ?? '';
+
+        if ($digits === '') {
+            return $trimmed;
+        }
+
+        $length = strlen($digits);
+
+        if ($length === 11 && preg_match('/^0(50|70|80|90)/', $digits)) {
+            return sprintf('%s-%s-%s', substr($digits, 0, 3), substr($digits, 3, 4), substr($digits, 7, 4));
+        }
+
+        if ($length === 10 && preg_match('/^0[36]/', $digits)) {
+            return sprintf('%s-%s-%s', substr($digits, 0, 2), substr($digits, 2, 4), substr($digits, 6, 4));
+        }
+
+        if ($length === 10 && str_starts_with($digits, '0120')) {
+            return sprintf('%s-%s-%s', substr($digits, 0, 4), substr($digits, 4, 3), substr($digits, 7, 3));
+        }
+
+        if ($length === 10) {
+            return sprintf('%s-%s-%s', substr($digits, 0, 3), substr($digits, 3, 3), substr($digits, 6, 4));
+        }
+
+        if ($length === 11) {
+            return sprintf('%s-%s-%s', substr($digits, 0, 3), substr($digits, 3, 4), substr($digits, 7, 4));
+        }
+
+        return $trimmed;
+    }
 }

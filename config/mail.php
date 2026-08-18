@@ -112,7 +112,10 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+        // Cloud Run env on Windows deploy can corrupt Japanese; keep production display name in code (UTF-8 in image).
+        'name' => env('APP_ENV') === 'production'
+            ? 'CE-Group 社員専用'
+            : env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
 ];

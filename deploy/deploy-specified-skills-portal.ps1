@@ -15,7 +15,8 @@ param(
     [string]$DbPassword = "",
     [switch]$NoDockerCache,
     [switch]$SkipEmployeeUpdate,
-    [switch]$SkipSchema
+    [switch]$SkipSchema,
+    [switch]$SkipDbUserUpdate
 )
 
 $ErrorActionPreference = "Stop"
@@ -122,9 +123,13 @@ if (-not $userExists) {
         throw "Failed to create Cloud SQL user $DbUser"
     }
 } else {
-    Write-Host "Updating password for Cloud SQL user: $DbUser"
-    if ((Invoke-Gcloud sql users set-password $DbUser --instance=employee --project=$ProjectId --password=$DbPassword) -ne 0) {
-        throw "Failed to update Cloud SQL user $DbUser password"
+    if ($SkipDbUserUpdate) {
+        Write-Host "Cloud SQL user already exists: $DbUser (password unchanged)"
+    } else {
+        Write-Host "Updating password for Cloud SQL user: $DbUser"
+        if ((Invoke-Gcloud sql users set-password $DbUser --instance=employee --project=$ProjectId --password=$DbPassword) -ne 0) {
+            throw "Failed to update Cloud SQL user $DbUser password"
+        }
     }
 }
 
