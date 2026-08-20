@@ -49,11 +49,13 @@ class EmployeeDirectoryService
         }
 
         if ($department !== null && $department !== '') {
-            $query->whereHas('affiliationHistories', function (Builder $affiliationQuery) use ($department) {
-                $affiliationQuery
-                    ->currentlyActive()
-                    ->where('department', 'like', '%'.$department.'%');
-            });
+            if (! $this->shouldSkipDepartmentFilterForKeyword($keyword)) {
+                $query->whereHas('affiliationHistories', function (Builder $affiliationQuery) use ($department) {
+                    $affiliationQuery
+                        ->currentlyActive()
+                        ->where('department', 'like', '%'.$department.'%');
+                });
+            }
         }
 
         if ($keyword !== '') {
@@ -175,5 +177,22 @@ class EmployeeDirectoryService
         }
 
         $query->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '辞退'));
+    }
+
+    /**
+     * 不動産 SSO handoff 等、メール／社員IDで個人を特定する参照では
+     * ポータル側の default_department（不動産）フィルタをかけない。
+     */
+    private function shouldSkipDepartmentFilterForKeyword(string $keyword): bool
+    {
+        if ($keyword === '') {
+            return false;
+        }
+
+        if (str_contains($keyword, '@')) {
+            return true;
+        }
+
+        return (bool) preg_match('/^[A-Za-z0-9_-]+$/', $keyword);
     }
 }

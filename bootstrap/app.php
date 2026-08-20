@@ -21,6 +21,15 @@ return Application::configure(basePath: dirname(__DIR__))
             ApplyRequestUrl::class,
             ForcePasswordChange::class,
         ]);
+        $middleware->validateCsrfTokens(except: [
+            // 部署別ポータルは upstream が CSRF を検証する
+            'realestate-portal/*',
+            'specified-skills-portal/*',
+            'dispatch-portal/*',
+            'food-portal/*',
+            'telecom-portal/*',
+            'beauty-portal/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->respond(function ($response, $exception, $request) {

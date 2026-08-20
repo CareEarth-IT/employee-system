@@ -39,6 +39,17 @@ class SpecifiedSkillsPortalTest extends TestCase
         $this->assertFalse(DepartmentPortal::canAccess($user, 'specified-skills'));
     }
 
+    public function test_accounting_section_can_access_portal(): void
+    {
+        config([
+            'department_portals.specified-skills.internal_url' => 'https://specified-skills.example.test',
+        ]);
+
+        $user = $this->userInDepartment('経理部', '経理課');
+
+        $this->assertTrue(DepartmentPortal::canAccess($user, 'specified-skills'));
+    }
+
     public function test_dashboard_shows_portal_link_for_specified_skills_department(): void
     {
         config([
@@ -80,7 +91,7 @@ class SpecifiedSkillsPortalTest extends TestCase
         });
     }
 
-    private function userInDepartment(string $department): User
+    private function userInDepartment(string $department, string $section = '業務課'): User
     {
         $user = User::factory()->create();
 
@@ -89,7 +100,7 @@ class SpecifiedSkillsPortalTest extends TestCase
             'start_date' => '2024-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'department' => $department,
-            'section' => '業務課',
+            'section' => $section,
             'location' => '大阪',
         ]);
 

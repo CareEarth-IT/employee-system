@@ -12,6 +12,12 @@ class DepartmentPortal
 
     public const EMPLOYEE_PORTAL_PROXY_SECRET_HEADER = 'X-Employee-Portal-Proxy-Secret';
 
+    public const EMPLOYEE_PORTAL_USER_EMAIL_HEADER = 'X-Employee-Portal-User-Email';
+
+    public const EMPLOYEE_PORTAL_USER_NAME_HEADER = 'X-Employee-Portal-User-Name';
+
+    public const EMPLOYEE_PORTAL_USER_ID_HEADER = 'X-Employee-Portal-User-Id';
+
     /**
      * @return array<string, array<string, mixed>>
      */

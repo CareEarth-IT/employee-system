@@ -24,13 +24,13 @@ class DashboardTab
             'key' => 'specified-skills',
             'label' => '特定技能',
             'department' => '特定技能',
-            'keywords' => ['特定技能'],
+            'keywords' => ['特定技能', '経理課'],
         ],
         [
             'key' => 'real-estate',
             'label' => '不動産',
             'department' => '不動産',
-            'keywords' => ['不動産'],
+            'keywords' => ['不動産', '経理課'],
         ],
         [
             'key' => 'food',
@@ -134,14 +134,20 @@ class DashboardTab
             return true;
         }
 
-        $department = $user->currentAffiliation()?->department;
+        $affiliation = $user->currentAffiliation();
+        $department = $affiliation?->department;
+        $section = $affiliation?->section;
 
-        if (! $department) {
+        if (! $department && ! $section) {
             return false;
         }
 
         foreach ($tab['keywords'] as $keyword) {
-            if (str_contains($department, $keyword)) {
+            if ($department !== null && str_contains($department, $keyword)) {
+                return true;
+            }
+
+            if ($section !== null && str_contains($section, $keyword)) {
                 return true;
             }
         }

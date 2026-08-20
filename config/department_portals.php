@@ -18,7 +18,7 @@ return [
         'label' => '不動産社内サイト',
         'internal_url' => env('REAL_ESTATE_PORTAL_INTERNAL_URL', 'https://real-estate-portal-3hlnt2gvnq-an.a.run.app'),
         'proxy_path' => 'realestate-portal',
-        'entry_path' => '',
+        'entry_path' => 'home',
         'proxy_secret' => env('EMPLOYEE_PORTAL_PROXY_SECRET'),
         'use_identity_token' => env('REAL_ESTATE_PORTAL_USE_IDENTITY_TOKEN'),
     ],

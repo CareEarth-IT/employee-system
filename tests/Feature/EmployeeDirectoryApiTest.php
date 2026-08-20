@@ -106,4 +106,40 @@ class EmployeeDirectoryApiTest extends TestCase
             ->assertJsonCount(1, 'employees')
             ->assertJsonPath('employees.0.email', 'match@careearth.info');
     }
+
+    public function test_exact_email_lookup_skips_department_filter_for_sso_handoff(): void
+    {
+        config(['services.employee_portal.proxy_secret' => 'test-secret']);
+
+        $accountingUser = User::factory()->create([
+            'employee_id' => '2001',
+            'email' => 'accounting@careearth.info',
+            'last_name' => '経理',
+            'first_name' => '花子',
+        ]);
+
+        AffiliationHistory::create([
+            'user_id' => $accountingUser->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+            'department' => '経理部',
+            'section' => '経理課',
+        ]);
+
+        $response = $this->withHeader(
+            DepartmentPortal::EMPLOYEE_PORTAL_PROXY_SECRET_HEADER,
+            'test-secret',
+        )->get(route('internal.employee-directory', [
+            'keyword' => 'accounting@careearth.info',
+            'department' => '不動産',
+        ]));
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1, 'employees')
+            ->assertJsonPath('employees.0.email', 'accounting@careearth.info')
+            ->assertJsonPath('employees.0.department', '経理部')
+            ->assertJsonPath('employees.0.section', '経理課');
+    }
 }

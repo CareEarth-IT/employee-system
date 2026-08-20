@@ -18,7 +18,9 @@ param(
     [string]$AppKey = "",
     [switch]$NoDockerCache,
     [switch]$SkipEmployeeUpdate,
-    [switch]$UseEmployeeCloudSql
+    [switch]$UseEmployeeCloudSql,
+    [switch]$UseCloudBuild,
+    [switch]$SkipDbSetup
 )
 
 $ErrorActionPreference = "Stop"
@@ -91,6 +93,12 @@ if ($ProxySecret -eq "") {
     throw "ProxySecret is required for first deploy. Pass -ProxySecret, set EMPLOYEE_PORTAL_PROXY_SECRET in .env, or use -GenerateProxySecret."
 }
 
+$employeePortalApiUrl = "https://employee.careearth.net"
+$employeeSiteSyncSecret = Get-LocalEnvValue -ProjectRoot (Split-Path $PSScriptRoot -Parent) -Key "EMPLOYEE_SITE_SYNC_SECRET" -Default ""
+if ($employeeSiteSyncSecret -eq "") {
+    $employeeSiteSyncSecret = Get-CloudRunEnvVar -Service $cfg.Service -Region $Region -Name "EMPLOYEE_SITE_SYNC_SECRET"
+}
+
 if ($AppKey -eq "") {
     $AppKey = Get-LocalEnvValue -ProjectRoot $RealEstateRoot -Key "APP_KEY" -Default ""
 }
@@ -132,7 +140,7 @@ if ((Invoke-Gcloud config set project $ProjectId) -ne 0) {
     throw "gcloud config failed"
 }
 
-if ($UseEmployeeCloudSql) {
+if ($UseEmployeeCloudSql -and -not $SkipDbSetup) {
     Write-Host "==> Ensure database exists on employee Cloud SQL: $DbName"
     $dbExists = Invoke-Gcloud sql databases describe $DbName --instance=employee --project=$ProjectId
     if ($dbExists -ne 0) {
@@ -161,6 +169,8 @@ if ($UseEmployeeCloudSql) {
             throw "Failed to update Cloud SQL user $DbUser password"
         }
     }
+} elseif ($UseEmployeeCloudSql -and $SkipDbSetup) {
+    Write-Host "Skipping Cloud SQL database/user setup (SkipDbSetup; DB data unchanged)" -ForegroundColor Yellow
 }
 
 Write-Host "==> Configure Docker for Artifact Registry"
@@ -168,21 +178,32 @@ if ((Invoke-Gcloud auth configure-docker "${Region}-docker.pkg.dev" --quiet) -ne
     throw "docker auth configure failed"
 }
 
-Push-Location $RealEstateRoot
-try {
-    Write-Host "==> Docker build"
-    $dockerBuildArgs = @("build", "-t", $Image, ".")
-    if ($NoDockerCache) {
-        $dockerBuildArgs = @("build", "--no-cache", "-t", $Image, ".")
+if ($UseCloudBuild) {
+    Write-Host "==> Cloud Build (remote Docker; local daemon not required)"
+    $buildCode = Invoke-Gcloud builds submit $RealEstateRoot `
+        --project=$ProjectId `
+        --region=$Region `
+        --tag=$Image
+    if ($buildCode -ne 0) {
+        throw "Cloud Build failed"
     }
-    docker @dockerBuildArgs
-    if ($LASTEXITCODE -ne 0) { throw "docker build failed" }
+} else {
+    Push-Location $RealEstateRoot
+    try {
+        Write-Host "==> Docker build"
+        $dockerBuildArgs = @("build", "-t", $Image, ".")
+        if ($NoDockerCache) {
+            $dockerBuildArgs = @("build", "--no-cache", "-t", $Image, ".")
+        }
+        docker @dockerBuildArgs
+        if ($LASTEXITCODE -ne 0) { throw "docker build failed" }
 
-    Write-Host "==> Docker push"
-    docker push $Image
-    if ($LASTEXITCODE -ne 0) { throw "docker push failed" }
-} finally {
-    Pop-Location
+        Write-Host "==> Docker push"
+        docker push $Image
+        if ($LASTEXITCODE -ne 0) { throw "docker push failed" }
+    } finally {
+        Pop-Location
+    }
 }
 
 $internalAppUrl = Get-CloudRunServiceUrl -Service $Service -Region $Region
@@ -198,6 +219,9 @@ $envVars = @{
     APP_DEBUG = "false"
     APP_KEY = $AppKey
     APP_URL = $internalAppUrl
+    PORTAL_PUBLIC_URL = $ProxyAppUrl
+    SESSION_PATH = "/realestate-portal"
+    SESSION_COOKIE = "real_estate_portal_session"
     DB_CONNECTION = "mysql"
     DB_SOCKET = "/cloudsql/$SqlConnection"
     DB_DATABASE = $DbName
@@ -212,6 +236,14 @@ $envVars = @{
     PORTAL_REFERRER_ENFORCED = "false"
     PORTAL_REFERRER_HOSTS = "employee.careearth.net"
     EMPLOYEE_PORTAL_PROXY_SECRET = $ProxySecret
+    EMPLOYEE_PORTAL_API_URL = $employeePortalApiUrl
+    EMPLOYEE_PORTAL_LOGIN_URL = ""
+    LOCAL_LOGIN_FALLBACK_ENABLED = "false"
+    EMPLOYEE_PORTAL_SSO_ENABLED = "true"
+}
+
+if ($employeeSiteSyncSecret -ne "") {
+    $envVars["EMPLOYEE_SITE_SYNC_SECRET"] = $employeeSiteSyncSecret
 }
 
 $envFile = [System.IO.Path]::GetTempFileName()

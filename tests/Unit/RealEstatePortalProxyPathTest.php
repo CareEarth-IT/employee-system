@@ -12,33 +12,13 @@ class RealEstatePortalProxyPathTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_proxy_root_requests_upstream_home_not_proxy_path(): void
+    public function test_proxy_root_redirects_to_entry_path(): void
     {
-        config([
-            'department_portals.real-estate.internal_url' => 'https://real-estate.example.test',
-            'department_portals.real-estate.proxy_secret' => 'portal-shared-secret',
-            'department_portals.real-estate.use_identity_token' => false,
-        ]);
-
-        Http::fake([
-            '*' => function ($request) {
-                if ($request->url() === 'https://real-estate.example.test/') {
-                    return Http::response('<html>ok</html>', 200, ['Content-Type' => 'text/html']);
-                }
-
-                throw new \RuntimeException('Unexpected upstream URL: '.$request->url());
-            },
-        ]);
-
         $user = $this->userInDepartment('不動産部');
 
         $this->actingAs($user)
             ->get('/realestate-portal')
-            ->assertOk();
-
-        Http::assertSent(function ($request) {
-            return $request->url() === 'https://real-estate.example.test/';
-        });
+            ->assertRedirect('/realestate-portal/home');
     }
 
     public function test_proxy_strips_duplicate_proxy_path_before_upstream_request(): void
@@ -56,6 +36,7 @@ class RealEstatePortalProxyPathTest extends TestCase
         $user = $this->userInDepartment('不動産部');
 
         $this->actingAs($user)
+            ->withHeader('Cookie', 'real_estate_portal_session=test-session')
             ->get('/realestate-portal/realestate-portal')
             ->assertOk();
 
