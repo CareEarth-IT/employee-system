@@ -39,3 +39,12 @@ Thumbs.db
 database/imports/_*.txt
 database/imports/_verify*.json
 database/imports/_wp-*.json
+
+# さくら SMTP リレー（ローカル検証用・GitHub 非公開）
+/sakura/
+/app/Mail/Transport/SakuraRelayTransport.php
+/app/Console/Commands/SakuraMailVerifyCommand.php
+/app/Console/Commands/SakuraRelayMailVerifyCommand.php
+/deploy/*sakura*
+/deploy/check-sakura-relay-job-logs.*
+/deploy/__pycache__/
