@@ -88,7 +88,7 @@ class DepartmentPortalTest extends TestCase
     public function test_real_estate_entry_url_uses_employee_proxy(): void
     {
         $this->assertSame(
-            url('realestate-portal'),
+            url('realestate-portal/home'),
             DepartmentPortal::entryUrl('real-estate'),
         );
     }

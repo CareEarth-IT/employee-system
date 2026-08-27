@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Support\DepartmentPortalConfigValidator;
 use Google\Cloud\Storage\StorageClient;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -48,6 +50,13 @@ class AppServiceProvider extends ServiceProvider
 
         if ($this->app->environment('production') && str_starts_with((string) config('app.url'), 'https://')) {
             URL::forceScheme('https');
+        }
+
+        if ($this->app->environment('local')) {
+            $validator = $this->app->make(DepartmentPortalConfigValidator::class);
+            foreach ($validator->errors() as $error) {
+                Log::warning('department_portals config: '.$error);
+            }
         }
 
         if ($this->app->runningInConsole()) {

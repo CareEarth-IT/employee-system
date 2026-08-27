@@ -4,6 +4,15 @@ namespace App\Support;
 
 use App\Models\User;
 
+/**
+ * 部署別社内サイトの設定・権限ヘルパ。
+ *
+ * タブキーは DashboardTab::TABS の key と department_portals.php のキーを一致させる。
+ * 整合性: php artisan department-portals:check
+ *
+ * @see config/department_portals.php
+ * @see docs/glossary.md
+ */
 class DepartmentPortal
 {
     public const EMPLOYEE_PORTAL_HEADER = 'X-Employee-Portal';

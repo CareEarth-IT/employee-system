@@ -7,10 +7,17 @@ return [
     | 部署別社内サイト（employee 経由プロキシ）
     |--------------------------------------------------------------------------
     |
+    | キー（例: specified-skills）は DashboardTab::TABS の key と一致させること。
+    | 検証: php artisan department-portals:check
+    |
     | 社員共通（common）は社内サイトを持たず、リファラー制限もありません。
     | internal_url が空の部署はリンク・プロキシを有効化しません。
     | リンクは employee 上のプロキシ URL 経由。
-    | real-estate は Cloud Run IAM の代わりに EMPLOYEE_PORTAL_PROXY_SECRET（アプリ側認証）を使用可能。
+    |
+    | 認証（upstream への到達）:
+    |   - 特定技能等: Cloud Run Identity Token（本番デフォルト）
+    |   - 不動産: Identity Token または EMPLOYEE_PORTAL_PROXY_SECRET
+    | 詳細: docs/architecture.md
     |
     */
 

@@ -8,6 +8,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
+/**
+ * @group sateraito
+ */
 class SateraitoSsoTest extends TestCase
 {
     use RefreshDatabase;

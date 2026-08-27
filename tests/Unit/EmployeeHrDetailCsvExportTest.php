@@ -82,6 +82,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
             array_merge(
                 EmployeeHrDetailFieldLabels::META_PROCEDURES,
                 EmployeeHrDetailFieldGroups::PROCEDURES,
+                EmployeeHrDetailFieldGroups::IT,
             ),
             $columns,
         );

@@ -45,9 +45,8 @@ class EquipmentPurchaseResendNotificationsCommandTest extends TestCase
             'purchase_urgency' => EquipmentPurchaseApplication::URGENCY_NO_RUSH,
             'application_date' => '2026-07-28',
             'status' => EquipmentPurchaseApplication::STATUS_PENDING,
-            'created_at' => '2026-07-28 10:00:00',
-            'updated_at' => '2026-07-28 10:00:00',
         ]);
+        $this->setApplicationTimestamps($application, '2026-07-28 10:00:00');
 
         $this->artisan('equipment-purchase:resend-notifications', [
             '--since' => '2026-07-27',
@@ -67,7 +66,7 @@ class EquipmentPurchaseResendNotificationsCommandTest extends TestCase
             'email' => 'old-applicant@careearth.info',
         ]);
 
-        EquipmentPurchaseApplication::query()->create([
+        $application = EquipmentPurchaseApplication::query()->create([
             'user_id' => $applicant->id,
             'application_type' => EquipmentPurchaseApplication::TYPE_INTERNAL_OVER_30K,
             'purchase_site' => 'Amazon',
@@ -81,9 +80,8 @@ class EquipmentPurchaseResendNotificationsCommandTest extends TestCase
             'purchase_urgency' => EquipmentPurchaseApplication::URGENCY_NO_RUSH,
             'application_date' => '2026-07-20',
             'status' => EquipmentPurchaseApplication::STATUS_PENDING,
-            'created_at' => '2026-07-20 10:00:00',
-            'updated_at' => '2026-07-20 10:00:00',
         ]);
+        $this->setApplicationTimestamps($application, '2026-07-20 10:00:00');
 
         $this->artisan('equipment-purchase:resend-notifications', [
             '--since' => '2026-07-27',
@@ -100,7 +98,7 @@ class EquipmentPurchaseResendNotificationsCommandTest extends TestCase
             'email' => 'done-applicant@careearth.info',
         ]);
 
-        EquipmentPurchaseApplication::query()->create([
+        $application = EquipmentPurchaseApplication::query()->create([
             'user_id' => $applicant->id,
             'application_type' => EquipmentPurchaseApplication::TYPE_INTERNAL_OVER_30K,
             'purchase_site' => 'Amazon',
@@ -114,9 +112,8 @@ class EquipmentPurchaseResendNotificationsCommandTest extends TestCase
             'purchase_urgency' => EquipmentPurchaseApplication::URGENCY_NO_RUSH,
             'application_date' => '2026-07-28',
             'status' => EquipmentPurchaseApplication::STATUS_APPROVED,
-            'created_at' => '2026-07-28 11:00:00',
-            'updated_at' => '2026-07-28 12:00:00',
         ]);
+        $this->setApplicationTimestamps($application, '2026-07-28 11:00:00', '2026-07-28 12:00:00');
 
         $this->artisan('equipment-purchase:resend-notifications', [
             '--since' => '2026-07-27',
@@ -136,21 +133,20 @@ class EquipmentPurchaseResendNotificationsCommandTest extends TestCase
 
         $application = EquipmentPurchaseApplication::query()->create([
             'user_id' => $applicant->id,
-            'application_type' => EquipmentPurchaseApplication::TYPE_INTERNAL_UNDER_30K,
+            'application_type' => EquipmentPurchaseApplication::TYPE_INTERNAL_OVER_30K,
             'purchase_site' => 'Amazon',
             'purchase_site_url' => 'https://example.test/done',
             'product_name' => '処理済み',
             'quantity' => 1,
-            'price_including_tax' => 5000,
+            'price_including_tax' => 35000,
             'purchase_reason' => 'テスト',
             'item_destination' => EquipmentPurchaseApplication::DESTINATION_DEPARTMENT_ALL,
             'delivery_destination' => 'osaka_2f',
             'purchase_urgency' => EquipmentPurchaseApplication::URGENCY_NO_RUSH,
             'application_date' => '2026-08-10',
             'status' => EquipmentPurchaseApplication::STATUS_APPROVED,
-            'created_at' => '2026-08-10 10:00:00',
-            'updated_at' => '2026-08-10 11:00:00',
         ]);
+        $this->setApplicationTimestamps($application, '2026-08-10 10:00:00', '2026-08-10 11:00:00');
 
         $this->artisan('equipment-purchase:resend-notifications', [
             '--ids' => (string) $application->id,
@@ -159,5 +155,16 @@ class EquipmentPurchaseResendNotificationsCommandTest extends TestCase
 
         Mail::assertNotSent(EquipmentPurchaseSubmitted::class);
         Mail::assertSent(EquipmentPurchaseApprovalRequested::class);
+    }
+
+    private function setApplicationTimestamps(
+        EquipmentPurchaseApplication $application,
+        string $createdAt,
+        ?string $updatedAt = null,
+    ): void {
+        $application->forceFill([
+            'created_at' => $createdAt,
+            'updated_at' => $updatedAt ?? $createdAt,
+        ])->save();
     }
 }

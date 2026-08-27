@@ -17,7 +17,7 @@ class ImportEmployeesCommandTest extends TestCase
     {
         $user = $this->existingUserWithProfile('2019-04-01');
 
-        $this->runImport('existing@careearth.info,既存,太郎,営業部,営業課,,CareEarth,大阪,100');
+        $this->runImport('existing@careearth.info,既存,太郎,営業部,営業課,,CareEarth,大阪,00100');
 
         $user->refresh();
         $this->assertSame('既存 太郎', $user->name);
@@ -28,7 +28,7 @@ class ImportEmployeesCommandTest extends TestCase
     {
         $user = $this->existingUserWithProfile('2019-04-01');
 
-        $this->runImport('existing@careearth.info,既存,太郎,営業部,営業課,,CareEarth,大阪,100');
+        $this->runImport('existing@careearth.info,既存,太郎,営業部,営業課,,CareEarth,大阪,00100');
 
         $this->assertSame(
             '2019-04-01',
@@ -49,7 +49,7 @@ class ImportEmployeesCommandTest extends TestCase
             'location' => '大阪',
         ]);
 
-        $this->runImport('existing@careearth.info,既存,太郎,営業部,営業課,,CareEarth,大阪,100');
+        $this->runImport('existing@careearth.info,既存,太郎,営業部,営業課,,CareEarth,大阪,00100');
 
         $affiliation = $user->fresh()->currentAffiliation();
         $this->assertSame('人事部', $affiliation?->department);
@@ -71,7 +71,7 @@ class ImportEmployeesCommandTest extends TestCase
         ]);
 
         $this->runImport(
-            'existing@careearth.info,既存,太郎,営業部,営業課,,CareEarth,大阪,100',
+            'existing@careearth.info,既存,太郎,営業部,営業課,,CareEarth,大阪,00100',
             ['--sync-affiliations' => true],
         );
 
@@ -93,7 +93,7 @@ class ImportEmployeesCommandTest extends TestCase
         ]);
 
         $this->runImport(
-            'existing@careearth.info,既存,太郎,営業部,営業課,,CareEarth,大阪,100',
+            'existing@careearth.info,既存,太郎,営業部,営業課,,CareEarth,大阪,00100',
             ['--sync-affiliations' => true],
         );
 
@@ -109,9 +109,9 @@ class ImportEmployeesCommandTest extends TestCase
             'user_id' => $editor->id,
             'start_date' => '2020-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
-            'department' => '役員',
-            'section' => '役員',
-            'position' => '代表',
+            'department' => '人事部',
+            'section' => '人事課',
+            'position' => '正社員',
             'location' => '大阪',
         ]);
 
