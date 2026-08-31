@@ -86,11 +86,6 @@
             @include('partials.field-error', ['field' => 'joined_at'])
         </div>
     </div>
-    <div>
-        <label for="remarks" class="block text-sm mb-1">備考</label>
-        <textarea id="remarks" name="remarks" rows="3" class="w-full rounded border border-slate-300 px-3 py-2">{{ $values['remarks'] ?? '' }}</textarea>
-        @include('partials.field-error', ['field' => 'remarks'])
-    </div>
 
     <div class="grid gap-4 sm:grid-cols-2">
         <div>
@@ -157,6 +152,11 @@
             </select>
             @include('partials.field-error', ['field' => 'location'])
         </div>
+    </div>
+    <div>
+        <label for="remarks" class="block text-sm mb-1">備考</label>
+        <textarea id="remarks" name="remarks" rows="3" class="w-full rounded border border-slate-300 px-3 py-2">{{ $values['remarks'] ?? '' }}</textarea>
+        @include('partials.field-error', ['field' => 'remarks'])
     </div>
 </div>
 
