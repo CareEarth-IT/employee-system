@@ -35,9 +35,15 @@ class AffiliationStoreRequest extends FormRequest
     public function rules(): array
     {
         $enrolled = AffiliationHistory::STATUS_ENROLLED;
+        $target = $this->route('user');
+        if (! $target instanceof User) {
+            $affiliation = $this->route('affiliation');
+            $target = $affiliation instanceof AffiliationHistory ? $affiliation->user : auth()->user();
+        }
+        $targetId = $target instanceof User ? $target->id : null;
 
         return [
-            'employee_id' => EmployeeIdRules::rules(required: false),
+            'employee_id' => EmployeeIdRules::rules(required: false, uniqueIgnoreUserId: $targetId),
             'enrollment_status' => ['required', 'string', 'in:'.implode(',', AffiliationHistory::ENROLLMENT_STATUSES)],
             'start_date' => ['required', 'date'],
             'end_date' => ['nullable', "required_unless:enrollment_status,{$enrolled}", 'date', 'after_or_equal:start_date'],
@@ -66,6 +72,7 @@ class AffiliationStoreRequest extends FormRequest
             'company.in' => '会社名の選択が正しくありません。',
             'location.in' => '拠点の選択が正しくありません。',
             'employee_id.digits' => EmployeeIdRules::FORMAT_MESSAGE,
+            'employee_id.unique' => 'この社員IDは既に使用されています。',
         ];
     }
 

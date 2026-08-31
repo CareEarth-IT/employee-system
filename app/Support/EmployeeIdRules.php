@@ -25,9 +25,11 @@ final class EmployeeIdRules
         $rules[] = 'string';
         $rules[] = 'digits:'.self::LENGTH;
 
+        $unique = Rule::unique('users', 'employee_id');
         if ($uniqueIgnoreUserId !== null) {
-            $rules[] = Rule::unique('users', 'employee_id')->ignore($uniqueIgnoreUserId);
+            $unique = $unique->ignore($uniqueIgnoreUserId);
         }
+        $rules[] = $unique;
 
         return $rules;
     }

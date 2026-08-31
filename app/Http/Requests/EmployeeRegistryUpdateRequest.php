@@ -24,7 +24,11 @@ class EmployeeRegistryUpdateRequest extends FormRequest
         $target = $this->route('user');
 
         return [
-            ...$this->registryFieldRules(uniqueIgnoreUserId: $target->id),
+            ...$this->registryFieldRules(
+                uniqueIgnoreUserId: $target->id,
+                currentDepartment: $target->currentAffiliation()?->department,
+                currentSection: $target->currentAffiliation()?->section,
+            ),
             'password' => $this->registryPasswordRules(required: false),
         ];
     }

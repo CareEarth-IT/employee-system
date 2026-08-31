@@ -6,7 +6,9 @@ use App\Models\AffiliationHistory;
 use App\Models\EmployeeHrDetail;
 use App\Models\EmployeeProfile;
 use App\Models\User;
+use App\Support\EmployeeIdRules;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class EmployeeRegistryService
 {
@@ -21,14 +23,26 @@ class EmployeeRegistryService
      *     password: string,
      *     employee_id: string,
      *     department: string,
+     *     section?: string|null,
      *     location: string,
-     *     employment_type: string
+     *     employment_type: string,
+     *     name_kana?: string|null,
+     *     english_name?: string|null,
+     *     abbreviated_name?: string|null,
+     *     joined_at?: string|null,
+     *     nationality?: string|null,
+     *     gender?: string|null,
+     *     remarks?: string|null,
      * }  $data
      */
     public function create(array $data): User
     {
         return DB::transaction(function () use ($data): User {
+            $this->assertEmployeeIdIsAvailable($data['employee_id']);
+
             [$lastName, $firstName, $displayName] = $this->splitName($data['name']);
+            $affiliationOrg = \App\Support\RegistryDepartmentOptions::resolveAffiliation($data['department']);
+            $section = $data['section'] ?? null;
 
             $user = User::create([
                 'employee_id' => $data['employee_id'],
@@ -44,24 +58,28 @@ class EmployeeRegistryService
 
             EmployeeProfile::create([
                 'user_id' => $user->id,
-                'name_kana' => str_replace(' ', '', $displayName),
-                'joined_at' => now()->toDateString(),
-                'import_locked' => true,
+                ...$this->profileAttributes($data, $displayName),
             ]);
 
             EmployeeHrDetail::create([
                 'user_id' => $user->id,
                 'employment_type' => $data['employment_type'],
                 'employment_status' => '在籍',
+                'department_primary' => $affiliationOrg['department'],
+                'section_primary' => $section,
+                ...$this->hrDetailAttributes($data),
             ]);
+
+            $joinedAt = $this->joinedAt($data);
 
             $affiliation = AffiliationHistory::create([
                 'user_id' => $user->id,
-                'start_date' => now()->toDateString(),
+                'start_date' => $joinedAt,
                 'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
                 'company' => User::COMPANY_NAMES[0] ?? 'CareEarth',
                 'location' => $data['location'],
-                'department' => $data['department'],
+                'department' => $affiliationOrg['department'],
+                'section' => $section,
                 'position' => $data['employment_type'],
                 'import_locked' => true,
             ]);
@@ -81,14 +99,26 @@ class EmployeeRegistryService
      *     password?: string|null,
      *     employee_id: string,
      *     department: string,
+     *     section?: string|null,
      *     location: string,
-     *     employment_type: string
+     *     employment_type: string,
+     *     name_kana?: string|null,
+     *     english_name?: string|null,
+     *     abbreviated_name?: string|null,
+     *     joined_at?: string|null,
+     *     nationality?: string|null,
+     *     gender?: string|null,
+     *     remarks?: string|null,
      * }  $data
      */
     public function update(User $user, array $data): User
     {
         return DB::transaction(function () use ($user, $data): User {
+            $this->assertEmployeeIdIsAvailable($data['employee_id'], $user->id);
+
             [$lastName, $firstName, $displayName] = $this->splitName($data['name']);
+            $affiliationOrg = \App\Support\RegistryDepartmentOptions::resolveAffiliation($data['department']);
+            $section = $data['section'] ?? null;
 
             $user->fill([
                 'employee_id' => $data['employee_id'],
@@ -109,7 +139,7 @@ class EmployeeRegistryService
             EmployeeProfile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'name_kana' => str_replace(' ', '', $displayName),
+                    ...$this->profileAttributes($data, $displayName, $user->profile),
                     'import_locked' => true,
                 ],
             );
@@ -119,16 +149,23 @@ class EmployeeRegistryService
                 [
                     'employment_type' => $data['employment_type'],
                     'employment_status' => $user->hrDetail?->employment_status ?: '在籍',
+                    'department_primary' => $affiliationOrg['department'],
+                    'section_primary' => $section,
+                    ...$this->hrDetailAttributes($data, $user->hrDetail),
                 ],
             );
+
+            $joinedAt = $this->joinedAt($data, $user->profile?->joined_at?->format('Y-m-d'));
 
             $affiliationData = [
                 'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
                 'company' => $user->currentAffiliation()?->company ?: (User::COMPANY_NAMES[0] ?? 'CareEarth'),
                 'location' => $data['location'],
-                'department' => $data['department'],
+                'department' => $affiliationOrg['department'],
+                'section' => $section,
                 'position' => $data['employment_type'],
                 'import_locked' => true,
+                'start_date' => $joinedAt,
             ];
 
             $currentAffiliation = $user->currentAffiliation();
@@ -139,7 +176,6 @@ class EmployeeRegistryService
             } else {
                 $affiliation = AffiliationHistory::create([
                     'user_id' => $user->id,
-                    'start_date' => $user->profile?->joined_at?->format('Y-m-d') ?? now()->toDateString(),
                     ...$affiliationData,
                 ]);
                 $user->closeOtherEnrolledAffiliations($affiliation);
@@ -173,5 +209,81 @@ class EmployeeRegistryService
     public function displayName(User $user): string
     {
         return trim($user->name ?: $user->displayName());
+    }
+
+    private function assertEmployeeIdIsAvailable(string $employeeId, ?int $ignoreUserId = null): void
+    {
+        if (! EmployeeIdRules::isValid($employeeId)) {
+            return;
+        }
+
+        $query = User::query()->where('employee_id', $employeeId);
+
+        if ($ignoreUserId !== null) {
+            $query->whereKeyNot($ignoreUserId);
+        }
+
+        if ($query->exists()) {
+            throw ValidationException::withMessages([
+                'employee_id' => 'この社員IDは既に使用されています。',
+            ]);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function profileAttributes(array $data, string $displayName, ?EmployeeProfile $existing = null): array
+    {
+        $attributes = [
+            'name_kana' => str_replace(' ', '', $displayName),
+            'joined_at' => $existing?->joined_at?->format('Y-m-d') ?? now()->toDateString(),
+            'import_locked' => true,
+        ];
+
+        if (! empty($data['name_kana'])) {
+            $attributes['name_kana'] = $data['name_kana'];
+        }
+
+        foreach (['english_name', 'abbreviated_name', 'nationality'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $attributes[$field] = $data[$field];
+            }
+        }
+
+        if (! empty($data['joined_at'])) {
+            $attributes['joined_at'] = $data['joined_at'];
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function hrDetailAttributes(array $data, ?EmployeeHrDetail $existing = null): array
+    {
+        $attributes = [];
+
+        if (! empty($data['name_kana'])) {
+            $attributes['name_kana_fullwidth'] = $data['name_kana'];
+        }
+
+        foreach (['gender', 'remarks'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $attributes[$field] = $data[$field];
+            }
+        }
+
+        return $attributes;
+    }
+
+    private function joinedAt(array $data, ?string $fallback = null): string
+    {
+        if (! empty($data['joined_at'])) {
+            return $data['joined_at'];
+        }
+
+        return $fallback ?? now()->toDateString();
     }
 }

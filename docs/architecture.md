@@ -144,5 +144,5 @@ upstream の HTML/CSS 内 URL と `Location` / `Set-Cookie` の path を、emplo
 
 - [environments.md](environments.md) — 環境差分
 - [glossary.md](glossary.md) — 用語
-- [detailed-design.md](detailed-design.md) — 章別詳細
+- [detailed-design.md](detailed-design.md) — **詳細設計書**
 - [runbook.md](runbook.md) — 運用

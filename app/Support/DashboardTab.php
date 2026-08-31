@@ -24,13 +24,13 @@ class DashboardTab
             'key' => 'specified-skills',
             'label' => '特定技能',
             'department' => '特定技能',
-            'keywords' => ['特定技能', '経理課'],
+            'keywords' => ['特定技能', '経理課', '経理部'],
         ],
         [
             'key' => 'real-estate',
             'label' => '不動産',
             'department' => '不動産',
-            'keywords' => ['不動産', '経理課'],
+            'keywords' => ['不動産', '経理課', '経理部'],
         ],
         [
             'key' => 'food',
@@ -137,6 +137,11 @@ class DashboardTab
         $affiliation = $user->currentAffiliation();
         $department = $affiliation?->department;
         $section = $affiliation?->section;
+
+        if (RegistryDepartmentOptions::isRegistryDepartment($department)
+            && in_array($tab['key'], RegistryDepartmentOptions::dashboardTabsFor($department), true)) {
+            return true;
+        }
 
         if (! $department && ! $section) {
             return false;

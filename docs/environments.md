@@ -29,7 +29,7 @@
 | 不動産 | `REAL_ESTATE_PORTAL_INTERNAL_URL` | Cloud Run `real-estate-portal` |
 | Identity Token | 通常オフ（`APP_ENV=local`） | オン（各 `*_USE_IDENTITY_TOKEN`） |
 | 不動産 Proxy Secret | 任意 | `EMPLOYEE_PORTAL_PROXY_SECRET` + `--no-invoker-iam-check` 構成可 |
-| 不動産 SSO handoff | コードあり | 本番ポリシーに依存（Identity Token 利用時も初回 GET で handoff あり） |
+| 不動産 SSO handoff | コードあり | 本番ポリシーに依存（Identity Token 利用時も初回 GET で handoff あり）|
 
 ## 同梱アプリ
 

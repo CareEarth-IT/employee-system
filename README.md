@@ -40,7 +40,7 @@ php artisan serve
 | [docs/architecture.md](docs/architecture.md) | 全体構成・プロキシ・認証 |
 | [docs/environments.md](docs/environments.md) | ローカル vs 本番 |
 | [docs/glossary.md](docs/glossary.md) | 用語・path の対応 |
-| [docs/detailed-design.md](docs/detailed-design.md) | 詳細設計（章立て） |
+| [docs/detailed-design.md](docs/detailed-design.md) | **詳細設計書**（本書が正） |
 | [docs/runbook.md](docs/runbook.md) | 障害切り分け・運用 |
 | [deploy/README.md](deploy/README.md) | デプロイスクリプト一覧 |
 | [tests/README.md](tests/README.md) | テストの読み方 |

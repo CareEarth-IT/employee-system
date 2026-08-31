@@ -698,6 +698,30 @@ class User extends Authenticatable
             || ($this->isHrDepartment() && $this->isHrSection());
     }
 
+    /** 人事部による社員新規登録時に既定パスワードを使う（情シスは画面で入力） */
+    public const DEFAULT_REGISTRY_PASSWORD = 'password';
+
+    public function setsDefaultRegistryPasswordOnCreate(): bool
+    {
+        return $this->canManageEmployeeRegistry() && ! $this->isInformationSystems();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function registryDepartmentOptions(?string $current = null): array
+    {
+        return \App\Support\RegistryDepartmentOptions::forSelect($current);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function registrySectionOptions(?string $current = null): array
+    {
+        return \App\Support\RegistrySectionOptions::forSelect($current);
+    }
+
     /** プロフィール閲覧時に編集画面へ誘導する（情シス・人事部人事課） */
     public function shouldForceProfileEditMode(User $target): bool
     {

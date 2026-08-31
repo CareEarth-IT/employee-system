@@ -6,6 +6,7 @@ use App\Models\AffiliationHistory;
 use App\Models\EmployeeHrDetail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class EmployeeRegistryTest extends TestCase
@@ -69,7 +70,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10999',
-                'department' => '通信部',
+                'department' => '通信事業部',
                 'location' => '大阪',
                 'employment_type' => '正社員',
             ]);
@@ -86,11 +87,69 @@ class EmployeeRegistryTest extends TestCase
         $this->assertTrue($created->must_change_password);
 
         $affiliation = $created->currentAffiliation();
-        $this->assertSame('通信部', $affiliation?->department);
+        $this->assertSame('通信事業部', $affiliation?->department);
         $this->assertSame('大阪', $affiliation?->location);
 
         $this->assertSame('正社員', $created->hrDetail?->employment_type);
         $this->assertSame('在籍', $created->hrDetail?->employment_status);
+    }
+
+    public function test_registry_user_can_create_employee_with_section(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), [
+                'name' => '佐藤 花子',
+                'email' => 'hanako_sato@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10988',
+                'department' => '人事部',
+                'section' => '人事課',
+                'location' => '東京',
+                'employment_type' => '正社員',
+            ])
+            ->assertRedirect(route('employees.create'));
+
+        $created = User::query()->where('email', 'hanako_sato@careearth.info')->firstOrFail();
+
+        $this->assertSame('人事部', $created->currentAffiliation()?->department);
+        $this->assertSame('人事課', $created->currentAffiliation()?->section);
+        $this->assertSame('人事課', $created->hrDetail?->section_primary);
+        $this->assertTrue($created->isHrSection());
+    }
+
+    public function test_store_rejects_invalid_section(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), [
+                'name' => '山田 太郎',
+                'email' => 'invalid_section@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10987',
+                'department' => '通信事業部',
+                'section' => 'ベトナム支店',
+                'location' => '大阪',
+                'employment_type' => '正社員',
+            ])
+            ->assertSessionHasErrors(['section']);
+
+        $this->assertNull(User::query()->where('email', 'invalid_section@careearth.info')->first());
+    }
+
+    public function test_create_form_shows_section_select_without_departments(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->get(route('employees.create'))
+            ->assertOk()
+            ->assertSee('name="section"', false)
+            ->assertSee('>人事課</option>', false);
     }
 
     public function test_registry_user_can_update_employee(): void
@@ -165,7 +224,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10998',
-                'department' => '通信部',
+                'department' => '通信事業部',
                 'location' => '大阪',
                 'employment_type' => '正社員',
             ])
@@ -185,7 +244,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10A99',
-                'department' => '通信部',
+                'department' => '通信事業部',
                 'location' => '大阪',
                 'employment_type' => '正社員',
             ])
@@ -205,13 +264,53 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10997',
-                'department' => '   ',
+                'department' => '',
                 'location' => '大阪',
                 'employment_type' => '正社員',
             ])
             ->assertSessionHasErrors(['department']);
 
         $this->assertNull(User::query()->where('email', 'blank_dept@careearth.info')->first());
+    }
+
+    public function test_store_rejects_invalid_department(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), [
+                'name' => '山田 太郎',
+                'email' => 'invalid_dept@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10994',
+                'department' => '通信部',
+                'location' => '大阪',
+                'employment_type' => '正社員',
+            ])
+            ->assertSessionHasErrors(['department']);
+
+        $this->assertNull(User::query()->where('email', 'invalid_dept@careearth.info')->first());
+    }
+
+    public function test_store_rejects_department_not_in_list(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), [
+                'name' => '山田 太郎',
+                'email' => 'section_only@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10993',
+                'department' => '営業1課',
+                'location' => '大阪',
+                'employment_type' => '正社員',
+            ])
+            ->assertSessionHasErrors(['department']);
+
+        $this->assertNull(User::query()->where('email', 'section_only@careearth.info')->first());
     }
 
     public function test_store_rejects_duplicate_employee_id(): void
@@ -226,11 +325,59 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10996',
-                'department' => '通信部',
+                'department' => '通信事業部',
+                'location' => '大阪',
+                'employment_type' => '正社員',
+            ])
+            ->assertSessionHasErrors(['employee_id'])
+            ->assertSessionHasErrors([
+                'employee_id' => 'この社員IDは既に使用されています。',
+            ]);
+
+        $this->assertNull(User::query()->where('email', 'duplicate_id@careearth.info')->first());
+    }
+
+    public function test_update_rejects_duplicate_employee_id(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+        User::factory()->create(['employee_id' => '10991']);
+        $employee = User::factory()->create([
+            'email' => 'update_target@careearth.info',
+            'employee_id' => '10990',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $employee->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '通信事業部',
+            'location' => '大阪',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('employees.update', $employee), [
+                'name' => '山田 太郎',
+                'email' => 'update_target@careearth.info',
+                'employee_id' => '10991',
+                'department' => '通信事業部',
                 'location' => '大阪',
                 'employment_type' => '正社員',
             ])
             ->assertSessionHasErrors(['employee_id']);
+
+        $this->assertSame('10990', $employee->fresh()->employee_id);
+    }
+
+    public function test_create_form_shows_department_select(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->get(route('employees.create'))
+            ->assertOk()
+            ->assertSee('name="department"', false)
+            ->assertSee('通信事業部', false)
+            ->assertSee('経営企画室', false)
+            ->assertSee('ベトナム支店', false);
     }
 
     public function test_create_form_restricts_employee_id_input_to_digits(): void
@@ -241,6 +388,126 @@ class EmployeeRegistryTest extends TestCase
             ->get(route('employees.create'))
             ->assertOk()
             ->assertSee('oninput="this.value = this.value.replace(/\\D/g, \'\').slice(0, 5)"', false);
+    }
+
+    public function test_edit_form_keeps_legacy_department_option(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+        $employee = User::factory()->create([
+            'email' => 'legacy_dept@careearth.info',
+            'employee_id' => '10077',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $employee->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '食品部',
+            'location' => '大阪',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('employees.edit', $employee))
+            ->assertOk()
+            ->assertSee('value="食品部"', false);
+    }
+
+    public function test_hr_create_form_hides_password_fields(): void
+    {
+        $hrUser = $this->userInAffiliation('人事部', '人事課');
+
+        $this->actingAs($hrUser)
+            ->get(route('employees.create'))
+            ->assertOk()
+            ->assertDontSee('name="password"', false)
+            ->assertDontSee('name="password_confirmation"', false);
+    }
+
+    public function test_information_systems_create_form_shows_password_fields(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->get(route('employees.create'))
+            ->assertOk()
+            ->assertSee('name="password"', false)
+            ->assertSee('name="password_confirmation"', false);
+    }
+
+    public function test_hr_user_can_create_employee_with_default_password(): void
+    {
+        $hrUser = $this->userInAffiliation('人事部', '人事課');
+
+        $this->actingAs($hrUser)
+            ->post(route('employees.store'), [
+                'name' => '佐藤 次郎',
+                'email' => 'jiro_sato@careearth.info',
+                'password' => 'custom-secret',
+                'password_confirmation' => 'custom-secret',
+                'employee_id' => '10995',
+                'department' => '人事部',
+                'location' => '東京',
+                'employment_type' => '正社員',
+            ])
+            ->assertRedirect(route('employees.create'));
+
+        $created = User::query()->where('email', 'jiro_sato@careearth.info')->first();
+
+        $this->assertNotNull($created);
+        $this->assertTrue(Hash::check(User::DEFAULT_REGISTRY_PASSWORD, (string) $created->password));
+        $this->assertTrue($created->must_change_password);
+    }
+
+    public function test_create_form_shows_extended_fields(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->get(route('employees.create'))
+            ->assertOk()
+            ->assertSee('name="name_kana"', false)
+            ->assertSee('name="english_name"', false)
+            ->assertSee('name="abbreviated_name"', false)
+            ->assertSee('name="gender"', false)
+            ->assertSee('name="nationality"', false)
+            ->assertSee('name="joined_at"', false)
+            ->assertSee('name="remarks"', false);
+    }
+
+    public function test_registry_user_can_create_employee_with_extended_fields(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), [
+                'name' => '田中 一郎',
+                'email' => 'ichiro_tanaka@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10992',
+                'department' => '通信事業部',
+                'location' => '大阪',
+                'employment_type' => '正社員',
+                'name_kana' => 'タナカ イチロウ',
+                'english_name' => 'Ichiro Tanaka',
+                'abbreviated_name' => '田一',
+                'gender' => '男',
+                'nationality' => '日本',
+                'joined_at' => '2026-04-01',
+                'remarks' => '新卒入社予定',
+            ])
+            ->assertRedirect(route('employees.create'));
+
+        $created = User::query()->where('email', 'ichiro_tanaka@careearth.info')->firstOrFail();
+
+        $this->assertSame('タナカ イチロウ', $created->profile?->name_kana);
+        $this->assertSame('Ichiro Tanaka', $created->profile?->english_name);
+        $this->assertSame('田一', $created->profile?->abbreviated_name);
+        $this->assertSame('日本', $created->profile?->nationality);
+        $this->assertSame('2026-04-01', $created->profile?->joined_at?->toDateString());
+        $this->assertSame('男', $created->hrDetail?->gender);
+        $this->assertSame('タナカ イチロウ', $created->hrDetail?->name_kana_fullwidth);
+        $this->assertSame('新卒入社予定', $created->hrDetail?->remarks);
+        $this->assertSame('2026-04-01', $created->currentAffiliation()?->start_date?->toDateString());
     }
 
     /**
