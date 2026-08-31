@@ -17,10 +17,16 @@ class ProfileController extends Controller
 {
     use AssertsProfileAccess;
 
-    public function show(?User $user = null): View
+    public function show(?User $user = null): View|RedirectResponse
     {
         $target = $user ?? auth()->user();
-        $canEdit = auth()->user()->canEditProfile($target);
+        $viewer = auth()->user();
+
+        if ($viewer?->shouldForceProfileEditMode($target)) {
+            return redirect()->to(UserRouteHelper::route($target, 'profile.edit', 'users.profile.edit'));
+        }
+
+        $canEdit = $viewer->canEditProfile($target);
 
         $target->load(['profile', 'hrDetail', 'affiliationHistories']);
 
@@ -135,7 +141,11 @@ class ProfileController extends Controller
         }
 
         return redirect()
-            ->to(UserRouteHelper::route($target, 'profile.show', 'users.profile.show'))
+            ->to(UserRouteHelper::route(
+                $target,
+                $viewer->shouldForceProfileEditMode($target) ? 'profile.edit' : 'profile.show',
+                $viewer->shouldForceProfileEditMode($target) ? 'users.profile.edit' : 'users.profile.show',
+            ))
             ->with('success', 'プロフィールを保存しました。');
     }
 

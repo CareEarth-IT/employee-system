@@ -17,7 +17,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_hr_department_viewer_gets_core_and_it_columns_for_other_employee(): void
+    public function test_hr_department_viewer_gets_core_procedures_and_it_columns_for_other_employee(): void
     {
         $viewer = $this->userInAffiliation('人事部', '総務課');
         $target = User::factory()->create();
@@ -26,13 +26,13 @@ class EmployeeHrDetailCsvExportTest extends TestCase
 
         $this->assertEqualsCanonicalizing(
             array_merge(
-                EmployeeHrDetailFieldLabels::META_CORE,
+                EmployeeHrDetailFieldLabels::META,
                 EmployeeHrDetailFieldGroups::CORE,
+                EmployeeHrDetailFieldGroups::PROCEDURES,
                 EmployeeHrDetailFieldGroups::IT,
             ),
             $columns,
         );
-        $this->assertNotContains('email', $columns);
     }
 
     public function test_hr_department_viewer_includes_own_procedure_columns_in_bulk_export(): void
@@ -115,8 +115,8 @@ class EmployeeHrDetailCsvExportTest extends TestCase
 
         $this->assertStringContainsString('女', $csv);
         $this->assertStringContainsString('はい', $csv);
-        $this->assertStringNotContainsString('hanako@example.com', $csv);
-        $this->assertStringNotContainsString('大阪府大阪市', $csv);
+        $this->assertStringContainsString('hanako@example.com', $csv);
+        $this->assertStringContainsString('大阪府大阪市', $csv);
     }
 
     public function test_exporter_outputs_viewable_values_for_hr_section(): void

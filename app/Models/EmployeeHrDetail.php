@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\CompanyPhone;
+use App\Support\EmploymentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -133,7 +134,7 @@ class EmployeeHrDetail extends Model
             ['user_id' => $user->id],
             [
                 'name_kana_fullwidth' => $profile?->name_kana,
-                'employment_status' => $affiliation?->enrollment_status,
+                'employment_status' => EmploymentStatus::normalize($affiliation?->enrollment_status),
                 'department_primary' => $affiliation?->department,
                 'section_primary' => $affiliation?->section,
                 'position_primary' => $affiliation?->position,

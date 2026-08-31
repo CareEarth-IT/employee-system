@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AffiliationHistory;
 use App\Models\User;
 use App\Support\EmployeeHrDetailAccess;
+use App\Support\EmploymentStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -61,7 +61,7 @@ class EmployeeController extends Controller
             });
         }
 
-        $this->applyStatusFilter($query, $status);
+        EmploymentStatus::applyUserStatusFilter($query, $status);
 
         if ($employeeId !== '') {
             $query->where('employee_id', 'like', '%'.$employeeId.'%');
@@ -138,7 +138,7 @@ class EmployeeController extends Controller
             'direction' => $sort === 'employee_id' ? $direction : '',
             'canExportHrDetails' => EmployeeHrDetailAccess::canExportCsv($request->user()),
             'canImportEmployees' => (bool) $request->user()?->isInformationSystems(),
-            'canEditEmployeeIdentity' => (bool) $request->user()?->canEditEmployeeIdentity(),
+            'canManageEmployeeRegistry' => (bool) $request->user()?->canManageEmployeeRegistry(),
             'statusTabs' => ['在籍', '退職'],
         ]);
     }
@@ -156,46 +156,5 @@ class EmployeeController extends Controller
             ->orderBy('employee_id', $direction)
             ->orderBy('last_name')
             ->orderBy('first_name');
-    }
-
-    /**
-     * @param  Builder<User>  $query
-     */
-    private function applyStatusFilter(Builder $query, string $status): void
-    {
-        if ($status === '在籍') {
-            $query->where(function (Builder $statusQuery) {
-                $statusQuery
-                    ->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '在籍'))
-                    ->orWhere(function (Builder $fallbackQuery) {
-                        $fallbackQuery
-                            ->where(function (Builder $missingStatusQuery) {
-                                $missingStatusQuery
-                                    ->whereDoesntHave('hrDetail')
-                                    ->orWhereHas('hrDetail', function (Builder $hrDetailQuery) {
-                                        $hrDetailQuery
-                                            ->whereNull('employment_status')
-                                            ->orWhere('employment_status', '');
-                                    });
-                            })
-                            ->whereHas('affiliationHistories', fn (Builder $affiliationQuery) => $affiliationQuery->currentlyActive());
-                    });
-            });
-
-            return;
-        }
-
-        if ($status === '退職') {
-            $query->where(function (Builder $statusQuery) {
-                $statusQuery
-                    ->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '退職'))
-                    ->orWhereHas('affiliationHistories', fn (Builder $affiliationQuery) => $affiliationQuery
-                        ->where('enrollment_status', AffiliationHistory::STATUS_RESIGNED));
-            });
-
-            return;
-        }
-
-        $query->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '辞退'));
     }
 }

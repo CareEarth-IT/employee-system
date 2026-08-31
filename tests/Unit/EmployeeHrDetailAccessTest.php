@@ -33,12 +33,13 @@ class EmployeeHrDetailAccessTest extends TestCase
         $this->assertTrue(EmployeeHrDetailAccess::canEditCore($viewer, $target));
     }
 
-    public function test_hr_department_without_hr_section_cannot_edit_procedures_for_others(): void
+    public function test_hr_department_can_edit_procedures_for_others(): void
     {
         $viewer = $this->userInAffiliation('人事部', '総務課');
         $target = User::factory()->create();
 
-        $this->assertFalse(EmployeeHrDetailAccess::canEditProcedures($viewer, $target));
+        $this->assertTrue(EmployeeHrDetailAccess::canEditProcedures($viewer, $target));
+        $this->assertTrue(EmployeeHrDetailAccess::canViewProcedures($viewer, $target));
         $this->assertTrue(EmployeeHrDetailAccess::canEditCore($viewer, $target));
     }
 

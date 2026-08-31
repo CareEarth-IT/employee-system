@@ -691,6 +691,19 @@ class User extends Authenticatable
         return $this->isInformationSystems();
     }
 
+    /** 社員新規登録・編集画面: 情報システム部、または人事部・人事課 */
+    public function canManageEmployeeRegistry(): bool
+    {
+        return $this->isInformationSystems()
+            || ($this->isHrDepartment() && $this->isHrSection());
+    }
+
+    /** プロフィール閲覧時に編集画面へ誘導する（情シス・人事部人事課） */
+    public function shouldForceProfileEditMode(User $target): bool
+    {
+        return $this->canEditProfile($target) && $this->canManageEmployeeRegistry();
+    }
+
     public function canViewAttendanceSection(): bool
     {
         $department = $this->currentAffiliation()?->department;

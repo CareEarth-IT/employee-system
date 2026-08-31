@@ -342,7 +342,7 @@ class EmployeeIndexTest extends TestCase
             ->assertDontSee('退職 花子', false);
     }
 
-    public function test_information_systems_sees_employee_id_inline_edit_on_index(): void
+    public function test_information_systems_sees_registry_actions_on_index(): void
     {
         $viewer = $this->userInDepartment('情報システム部');
         $employee = User::factory()->create(['employee_id' => '50001']);
@@ -356,12 +356,15 @@ class EmployeeIndexTest extends TestCase
         $this->actingAs($viewer)
             ->get(route('employees.index'))
             ->assertOk()
-            ->assertSee('data-field="employee_id"', false)
-            ->assertSee('50001', false)
-            ->assertSee('情報システム部のみ、社員ID列をダブルクリックで編集できます。', false);
+            ->assertSee('新規登録', false)
+            ->assertSee('社員追加 CSV', false)
+            ->assertSee(route('employees.import.create'), false)
+            ->assertSee('情報システム部・人事部人事課のみ', false)
+            ->assertDontSee('>編集<', false)
+            ->assertDontSee('data-field="employee_id"', false);
     }
 
-    public function test_non_information_systems_do_not_see_employee_id_inline_edit_on_index(): void
+    public function test_non_information_systems_do_not_see_registry_actions_on_index(): void
     {
         $viewer = User::factory()->create();
         $employee = User::factory()->create(['employee_id' => '50002']);
@@ -376,8 +379,8 @@ class EmployeeIndexTest extends TestCase
             ->get(route('employees.index'))
             ->assertOk()
             ->assertSee('50002', false)
-            ->assertDontSee('data-field="employee_id"', false)
-            ->assertDontSee('社員ID列をダブルクリックで編集', false);
+            ->assertDontSee('新規登録', false)
+            ->assertDontSee('>編集<', false);
     }
 
     public function test_index_sorts_by_employee_id_asc_and_desc(): void

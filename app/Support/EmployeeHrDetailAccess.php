@@ -67,13 +67,13 @@ class EmployeeHrDetailAccess
             || $viewer->isHrDepartment();
     }
 
-    /** 入社・退職手続き: 人事課・役員のみ編集 */
+    /** 入社・退職手続き: 人事部・役員が編集 */
     public static function canEditProcedures(User $viewer, User $target): bool
     {
-        return $viewer->isExecutive() || $viewer->isHrSection();
+        return $viewer->isHrDepartment() || $viewer->isExecutive();
     }
 
-    /** 入社・退職手続き: 人事課・役員と本人が閲覧 */
+    /** 入社・退職手続き: 人事部・役員と本人が閲覧 */
     public static function canViewProcedures(User $viewer, User $target): bool
     {
         return self::canEditProcedures($viewer, $target) || $viewer->id === $target->id;

@@ -53,6 +53,9 @@
         @if ($canImportEmployees)
             <a href="{{ route('employees.import.create') }}" class="text-blue-600 hover:underline">社員追加 CSV</a>
         @endif
+        @if ($canManageEmployeeRegistry)
+            <a href="{{ route('employees.create') }}" class="text-blue-600 hover:underline">新規登録</a>
+        @endif
         <a href="{{ route('dashboard') }}" class="text-blue-600 hover:underline">Top Page へ</a>
     </div>
 </div>
@@ -123,8 +126,8 @@
     </div>
 </form>
 
-@if ($canEditEmployeeIdentity)
-    <p class="mb-3 text-xs text-slate-500">情報システム部のみ、社員ID列をダブルクリックで編集できます。</p>
+@if ($canManageEmployeeRegistry)
+    <p class="mb-3 text-xs text-slate-500">情報システム部・人事部人事課のみ、新規登録ができます。</p>
 @endif
 
 <div class="bg-white border border-slate-300 rounded-lg overflow-hidden">
@@ -240,20 +243,7 @@
                         </td>
                         <td class="px-3 py-3 align-top whitespace-nowrap">{{ $employee->displayEmploymentStatus() }}</td>
                         <td class="px-3 py-3 align-top">{{ $employee->displayCompany() }}</td>
-                        <td class="px-3 py-3 align-top whitespace-nowrap">
-                            @if ($canEditEmployeeIdentity)
-                                <span
-                                    data-field="employee_id"
-                                    data-value="{{ $employee->employee_id ?? '' }}"
-                                    data-update-url="{{ route('users.profile.update', $employee) }}"
-                                    data-csrf="{{ csrf_token() }}"
-                                    title="ダブルクリックで編集"
-                                    class="profile-inline-value inline-block min-w-[3rem] rounded border border-transparent px-1 py-0.5 cursor-text hover:bg-slate-100 hover:border-slate-200 transition-colors"
-                                >{{ $employee->employee_id ?: '—' }}</span>
-                            @else
-                                {{ $employee->employee_id ?? '—' }}
-                            @endif
-                        </td>
+                        <td class="px-3 py-3 align-top whitespace-nowrap">{{ $employee->employee_id ?? '—' }}</td>
                         <td class="px-3 py-3 align-top whitespace-nowrap">{{ $employee->displayEmploymentType() }}</td>
                     </tr>
                 @empty

@@ -71,6 +71,40 @@ class ProfileInlineEditTest extends TestCase
         $this->assertSame('変更後', $target->fresh()->profile?->name_kana);
     }
 
+    public function test_registry_user_redirects_to_profile_edit_from_show(): void
+    {
+        $viewer = User::factory()->create();
+        AffiliationHistory::create([
+            'user_id' => $viewer->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '情報システム部',
+            'section' => '事業IT推進課',
+        ]);
+        $target = User::factory()->create();
+
+        $this->actingAs($viewer->fresh())
+            ->get(route('users.profile.show', $target))
+            ->assertRedirect(route('users.profile.edit', $target));
+    }
+
+    public function test_hr_section_redirects_to_profile_edit_from_show(): void
+    {
+        $viewer = User::factory()->create();
+        AffiliationHistory::create([
+            'user_id' => $viewer->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '人事部',
+            'section' => '人事課',
+        ]);
+        $target = User::factory()->create();
+
+        $this->actingAs($viewer->fresh())
+            ->get(route('users.profile.show', $target))
+            ->assertRedirect(route('users.profile.edit', $target));
+    }
+
     public function test_executive_sees_inline_edit_on_other_profile(): void
     {
         $executive = User::factory()->create();

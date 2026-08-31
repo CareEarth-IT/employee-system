@@ -6,6 +6,7 @@ use App\Models\EmployeeHrDetail;
 use App\Models\User;
 use App\Support\CompanyPhone;
 use App\Support\EmployeeHrDetailAccess;
+use App\Support\EmploymentStatus;
 use Illuminate\Database\Eloquent\Builder;
 
 class EmployeeItDeviceListService
@@ -46,7 +47,7 @@ class EmployeeItDeviceListService
             ->orderBy('first_name');
 
         if ($status !== '') {
-            $this->applyStatusFilter($query, $status);
+            EmploymentStatus::applyUserStatusFilter($query, $status);
         }
 
         if ($keyword !== '') {
@@ -142,40 +143,4 @@ class EmployeeItDeviceListService
             ?? '—';
     }
 
-    /**
-     * @param  Builder<User>  $query
-     */
-    private function applyStatusFilter(Builder $query, string $status): void
-    {
-        if ($status === '在籍') {
-            $query->where(function (Builder $statusQuery) {
-                $statusQuery
-                    ->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '在籍'))
-                    ->orWhere(function (Builder $fallbackQuery) {
-                        $fallbackQuery
-                            ->where(function (Builder $missingStatusQuery) {
-                                $missingStatusQuery
-                                    ->whereDoesntHave('hrDetail')
-                                    ->orWhereHas('hrDetail', function (Builder $hrDetailQuery) {
-                                        $hrDetailQuery
-                                            ->whereNull('employment_status')
-                                            ->orWhere('employment_status', '');
-                                    });
-                            })
-                            ->whereHas('affiliationHistories', fn (Builder $affiliationQuery) => $affiliationQuery->currentlyActive());
-                    });
-            });
-
-            return;
-        }
-
-        if ($status === '退職') {
-            $query->where(function (Builder $statusQuery) {
-                $statusQuery
-                    ->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '退職'))
-                    ->orWhereHas('affiliationHistories', fn (Builder $affiliationQuery) => $affiliationQuery
-                        ->where('enrollment_status', \App\Models\AffiliationHistory::STATUS_RESIGNED));
-            });
-        }
-    }
 }

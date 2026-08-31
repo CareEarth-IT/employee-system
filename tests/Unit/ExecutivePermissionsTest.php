@@ -50,6 +50,24 @@ class ExecutivePermissionsTest extends TestCase
         $this->assertFalse($other->canEditEmployeeIdentity($other));
     }
 
+    public function test_registry_access_for_information_systems_and_hr_section(): void
+    {
+        $is = $this->userInAffiliation('情報システム部', 'システム課', '一般');
+        $hr = $this->userInAffiliation('人事部', '人事課', '一般');
+        $hrGeneral = $this->userInAffiliation('人事部', '総務課', '一般');
+        $other = User::factory()->create();
+
+        $this->assertTrue($is->canManageEmployeeRegistry());
+        $this->assertTrue($hr->canManageEmployeeRegistry());
+        $this->assertFalse($hrGeneral->canManageEmployeeRegistry());
+        $this->assertFalse($other->canManageEmployeeRegistry());
+
+        $this->assertTrue($is->shouldForceProfileEditMode($other));
+        $this->assertTrue($hr->shouldForceProfileEditMode($other));
+        $this->assertFalse($hrGeneral->shouldForceProfileEditMode($other));
+        $this->assertFalse($other->shouldForceProfileEditMode($other));
+    }
+
     public function test_past_executive_affiliation_does_not_grant_permissions(): void
     {
         $user = User::factory()->create();

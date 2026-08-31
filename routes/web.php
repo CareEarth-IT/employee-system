@@ -16,8 +16,9 @@ use App\Http\Controllers\DevelopmentRequestController;
 use App\Http\Controllers\FinanceHrSsoController;
 use App\Http\Controllers\OrgChartController;
 use App\Http\Controllers\EmployeeController;
-use App\Http\Controllers\EmployeeItDeviceListController;
 use App\Http\Controllers\EmployeeImportController;
+use App\Http\Controllers\EmployeeItDeviceListController;
+use App\Http\Controllers\EmployeeRegistryController;
 use App\Http\Controllers\EquipmentPurchaseController;
 use App\Http\Controllers\MonthlyAffiliationSnapshotController;
 use App\Http\Controllers\ProfileController;
@@ -117,12 +118,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/attendance-notifications/{attendanceNotification}/complete', [AttendanceNotificationController::class, 'complete'])->name('attendance-notifications.complete');
 
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
-    Route::get('/it-devices', [EmployeeItDeviceListController::class, 'index'])->name('it-devices.index');
-    Route::get('/it-devices/{user}', [EmployeeItDeviceListController::class, 'show'])->name('it-devices.show');
-    Route::put('/it-devices/{user}', [EmployeeItDeviceListController::class, 'update'])->name('it-devices.update');
     Route::get('/employees/import', [EmployeeImportController::class, 'create'])->name('employees.import.create');
     Route::get('/employees/import/template', [EmployeeImportController::class, 'template'])->name('employees.import.template');
     Route::post('/employees/import', [EmployeeImportController::class, 'store'])->name('employees.import.store');
+    Route::get('/employees/create', [EmployeeRegistryController::class, 'create'])->name('employees.create');
+    Route::post('/employees', [EmployeeRegistryController::class, 'store'])->name('employees.store');
+    Route::get('/employees/{user}/edit', [EmployeeRegistryController::class, 'edit'])->name('employees.edit');
+    Route::put('/employees/{user}', [EmployeeRegistryController::class, 'update'])->name('employees.update');
+    Route::get('/it-devices', [EmployeeItDeviceListController::class, 'index'])->name('it-devices.index');
+    Route::get('/it-devices/{user}', [EmployeeItDeviceListController::class, 'show'])->name('it-devices.show');
+    Route::put('/it-devices/{user}', [EmployeeItDeviceListController::class, 'update'])->name('it-devices.update');
 
     Route::get('/hr-details/export', [ProfileHrDetailController::class, 'exportAll'])->name('hr-details.export');
 
