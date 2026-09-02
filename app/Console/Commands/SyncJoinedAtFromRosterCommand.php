@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\EmployeeProfile;
 use App\Models\User;
+use App\Support\AffiliationStartDateAlignment;
 use App\Support\EmployeeRosterCsv;
 use Illuminate\Console\Command;
 
@@ -98,6 +99,9 @@ class SyncJoinedAtFromRosterCommand extends Command
                 ['user_id' => $user->id],
                 ['joined_at' => $next],
             );
+
+            $user->load('affiliationHistories');
+            AffiliationStartDateAlignment::syncForUser($user);
 
             $results[] = [
                 $row['email'],

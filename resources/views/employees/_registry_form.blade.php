@@ -8,10 +8,10 @@
     $values = $values ?? [];
     $showPasswordRequired = $showPasswordRequired ?? false;
     $showPasswordFields = $showPasswordFields ?? true;
-    $departmentOptions = User::registryDepartmentOptions($values['department'] ?? null);
-    $selectedDepartment = $values['department'] ?? '';
-    $sectionOptions = User::registrySectionOptions($values['section'] ?? null);
-    $selectedSection = $values['section'] ?? '';
+    $splitSectionTeam = $splitSectionTeam ?? false;
+    $sectionRequiredForGr = $sectionRequiredForGr ?? false;
+    $employmentStatusOptions = User::employmentStatusOptions($values['employment_status'] ?? null);
+    $selectedEmploymentStatus = $values['employment_status'] ?? '在籍';
 @endphp
 
 <div class="space-y-4">
@@ -62,10 +62,10 @@
             @include('partials.field-error', ['field' => 'english_name'])
         </div>
         <div>
-            <label for="abbreviated_name" class="block text-sm mb-1">短縮表示</label>
-            <p class="mb-1 text-xs text-slate-500">正式名称に則った姓orファーストネーム(漢字or英字)<br>※社内での呼称重複を避ける</p>
-            <input id="abbreviated_name" name="abbreviated_name" maxlength="10" value="{{ $values['abbreviated_name'] ?? '' }}" class="w-full rounded border border-slate-300 px-3 py-2">
-            @include('partials.field-error', ['field' => 'abbreviated_name'])
+            <label for="birth_date" class="block text-sm mb-1">生年月日</label>
+            <p class="mb-1 text-xs text-slate-500 invisible select-none" aria-hidden="true">名簿上の名前、ローマ字or英字<br>（全国籍共通）</p>
+            <input id="birth_date" name="birth_date" type="date" value="{{ $values['birth_date'] ?? '' }}" class="w-full rounded border border-slate-300 px-3 py-2">
+            @include('partials.field-error', ['field' => 'birth_date'])
         </div>
         <div>
             <label for="gender" class="block text-sm mb-1">性別</label>
@@ -79,7 +79,7 @@
         </div>
         <div>
             <label for="nationality" class="block text-sm mb-1">国籍</label>
-            <input id="nationality" name="nationality" value="{{ $values['nationality'] ?? '' }}" class="w-full rounded border border-slate-300 px-3 py-2">
+            @include('partials.nationality-select', ['selected' => $values['nationality'] ?? ''])
             @include('partials.field-error', ['field' => 'nationality'])
         </div>
         <div>
@@ -111,47 +111,38 @@
             @include('partials.field-error', ['field' => 'employment_type'])
         </div>
         <div>
-            <label for="location" class="block text-sm mb-1">管轄 <span class="text-red-600">*</span></label>
-            <select id="location" name="location" required class="w-full rounded border border-slate-300 px-3 py-2 bg-white">
-                <option value="">選択してください</option>
-                @foreach (User::OFFICE_LOCATIONS as $office)
-                    <option value="{{ $office }}" @selected(($values['location'] ?? '') === $office)>{{ $office }}</option>
+            <label for="employment_status" class="block text-sm mb-1">状況 <span class="text-red-600">*</span></label>
+            <select id="employment_status" name="employment_status" required class="w-full rounded border border-slate-300 px-3 py-2 bg-white">
+                @foreach ($employmentStatusOptions as $statusOption)
+                    <option value="{{ $statusOption }}" @selected($selectedEmploymentStatus === $statusOption)>{{ $statusOption }}</option>
                 @endforeach
             </select>
-            @include('partials.field-error', ['field' => 'location'])
+            @include('partials.field-error', ['field' => 'employment_status'])
         </div>
-        <div>
-            <label for="department" class="block text-sm mb-1">部署 <span class="text-red-600">*</span></label>
-            <select id="department" name="department" required class="w-full rounded border border-slate-300 px-3 py-2 bg-white">
-                <option value="">選択してください</option>
-                @foreach ($departmentOptions as $departmentOption)
-                    <option value="{{ $departmentOption }}" @selected($selectedDepartment === $departmentOption)>{{ $departmentOption }}</option>
-                @endforeach
-            </select>
-            @include('partials.field-error', ['field' => 'department'])
+        @include('partials.registry-org-fields', [
+            'values' => $values,
+            'embedded' => true,
+            'locationLabel' => '管轄',
+            'departmentLabel' => '部署',
+            'companyRequired' => true,
+            'locationRequired' => true,
+            'departmentRequired' => true,
+            'splitSectionTeam' => $splitSectionTeam,
+            'sectionRequiredForGr' => $sectionRequiredForGr,
+        ])
+        <div class="sm:col-span-2 space-y-4">
+            <div>
+                <label for="joined_at" class="block text-sm mb-1">入社予定日(目安)</label>
+                <p class="mb-1 text-xs text-slate-500">未確定の場合は備考欄にその旨記載</p>
+                <input id="joined_at" name="joined_at" type="date" value="{{ $values['joined_at'] ?? '' }}" class="w-full rounded border border-slate-300 px-3 py-2 sm:max-w-[calc(50%-0.5rem)]">
+                @include('partials.field-error', ['field' => 'joined_at'])
+            </div>
+            <div>
+                <label for="remarks" class="block text-sm mb-1">備考</label>
+                <textarea id="remarks" name="remarks" rows="3" class="w-full rounded border border-slate-300 px-3 py-2">{{ $values['remarks'] ?? '' }}</textarea>
+                @include('partials.field-error', ['field' => 'remarks'])
+            </div>
         </div>
-        <div>
-            <label for="section" class="block text-sm mb-1">課/チーム</label>
-            <select id="section" name="section" class="w-full rounded border border-slate-300 px-3 py-2 bg-white">
-                <option value="">選択してください</option>
-                @foreach ($sectionOptions as $sectionOption)
-                    <option value="{{ $sectionOption }}" @selected($selectedSection === $sectionOption)>{{ $sectionOption }}</option>
-                @endforeach
-            </select>
-            @include('partials.field-error', ['field' => 'section'])
-        </div>
-        <div>
-            <label for="joined_at" class="block text-sm mb-1">入社予定日(目安)</label>
-            <p class="mb-1 text-xs text-slate-500">未確定の場合は備考欄にその旨記載</p>
-            <input id="joined_at" name="joined_at" type="date" value="{{ $values['joined_at'] ?? '' }}" class="w-full rounded border border-slate-300 px-3 py-2">
-            @include('partials.field-error', ['field' => 'joined_at'])
-        </div>
-    </div>
-
-    <div>
-        <label for="remarks" class="block text-sm mb-1">備考</label>
-        <textarea id="remarks" name="remarks" rows="3" class="w-full rounded border border-slate-300 px-3 py-2">{{ $values['remarks'] ?? '' }}</textarea>
-        @include('partials.field-error', ['field' => 'remarks'])
     </div>
 </div>
 

@@ -4,6 +4,7 @@
     $d = $hrDetail;
     $roIt = ! ($access['it']['edit'] ?? false);
     $roItDevice = ! (($access['it']['edit'] ?? false) || ($access['it']['edit_self_device'] ?? false));
+    $roItPhone = $roIt || ($access['core']['view'] ?? false);
 @endphp
 
 <section class="space-y-4">
@@ -23,7 +24,7 @@
             'rows' => 2,
             'hint' => '複数ある場合はカンマ区切り',
             'value' => $d->company_phone,
-            'readonly' => $roIt,
+            'readonly' => $roItPhone,
         ])
         @include('partials.form-field', ['name' => 'has_pc', 'label' => 'PC', 'type' => 'checkbox', 'value' => $d->has_pc, 'readonly' => $roIt])
         @include('partials.form-field', [

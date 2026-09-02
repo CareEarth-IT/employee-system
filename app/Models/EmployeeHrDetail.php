@@ -52,6 +52,7 @@ class EmployeeHrDetail extends Model
         'phone',
         'primary_id',
         'personal_email',
+        'gmail_address',
         'my_number_verified',
         'remarks',
         'address_as_of_jan1',
@@ -129,14 +130,19 @@ class EmployeeHrDetail extends Model
     {
         $affiliation = $user->currentAffiliation();
         $profile = $user->profile;
+        $orgPrimary = \App\Support\RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
+            $affiliation?->department,
+            $affiliation?->location,
+            $affiliation?->section,
+        );
 
         $detail = self::firstOrCreate(
             ['user_id' => $user->id],
             [
                 'name_kana_fullwidth' => $profile?->name_kana,
                 'employment_status' => EmploymentStatus::normalize($affiliation?->enrollment_status),
-                'department_primary' => $affiliation?->department,
-                'section_primary' => $affiliation?->section,
+                'department_primary' => $orgPrimary['department_primary'],
+                'section_primary' => $orgPrimary['section_primary'],
                 'position_primary' => $affiliation?->position,
                 'jurisdiction' => $affiliation?->location,
             ],
@@ -147,6 +153,86 @@ class EmployeeHrDetail extends Model
         }
 
         return $detail->fresh();
+    }
+
+    public static function syncPrimaryOrgFromAffiliation(User $user, ?AffiliationHistory $affiliation = null): void
+    {
+        $affiliation ??= $user->currentAffiliation();
+
+        if ($affiliation === null || ! $affiliation->isEnrolled()) {
+            return;
+        }
+
+        $current = $user->fresh(['affiliationHistories'])?->currentAffiliation();
+
+        if ($current?->id !== $affiliation->id) {
+            return;
+        }
+
+        self::query()->updateOrCreate(
+            ['user_id' => $user->id],
+            \App\Support\RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
+                $affiliation->department,
+                $affiliation->location,
+                $affiliation->section,
+            ),
+        );
+    }
+
+    /**
+     * @return array{
+     *     changed: bool,
+     *     current: array{department_primary: ?string, section_primary: ?string},
+     *     target: array{department_primary: ?string, section_primary: ?string},
+     * }|null
+     */
+    public static function primaryOrgSyncPlan(User $user): ?array
+    {
+        $affiliation = $user->currentAffiliation();
+
+        if ($affiliation === null || ! $affiliation->isEnrolled()) {
+            return null;
+        }
+
+        $target = \App\Support\RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
+            $affiliation->department,
+            $affiliation->location,
+            $affiliation->section,
+        );
+
+        $detail = $user->hrDetail;
+        $current = [
+            'department_primary' => $detail?->department_primary,
+            'section_primary' => $detail?->section_primary,
+        ];
+
+        return [
+            'changed' => self::primaryOrgValuesDiffer($current, $target),
+            'current' => $current,
+            'target' => $target,
+        ];
+    }
+
+    /**
+     * @param  array{department_primary: ?string, section_primary: ?string}  $current
+     * @param  array{department_primary: ?string, section_primary: ?string}  $target
+     */
+    private static function primaryOrgValuesDiffer(array $current, array $target): bool
+    {
+        foreach (['department_primary', 'section_primary'] as $field) {
+            if (self::normalizePrimaryOrgValue($current[$field]) !== self::normalizePrimaryOrgValue($target[$field])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function normalizePrimaryOrgValue(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value !== '' ? $value : null;
     }
 
     public static function generatePrimaryId(User $user): string

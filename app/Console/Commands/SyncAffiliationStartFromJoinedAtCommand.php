@@ -2,14 +2,14 @@
 
 namespace App\Console\Commands;
 
-use App\Models\AffiliationHistory;
 use App\Models\User;
+use App\Support\AffiliationStartDateAlignment;
 use Illuminate\Console\Command;
 
 class SyncAffiliationStartFromJoinedAtCommand extends Command
 {
-    /** 一括インポート時に誤って設定された開始日 */
-    public const BULK_IMPORT_START_DATE = '2026-06-24';
+    /** @deprecated Use AffiliationStartDateAlignment::BULK_IMPORT_START_DATE */
+    public const BULK_IMPORT_START_DATE = AffiliationStartDateAlignment::BULK_IMPORT_START_DATE;
 
     protected $signature = 'employee:sync-affiliation-start
         {--dry-run : 更新せず内容だけ表示}';
@@ -35,10 +35,14 @@ class SyncAffiliationStartFromJoinedAtCommand extends Command
                 continue;
             }
 
-            $affiliationCount = $user->affiliationHistories->count();
+        $affiliationCount = $user->affiliationHistories->count();
 
             foreach ($user->affiliationHistories as $affiliation) {
-                if (! $this->shouldAlignStartDate($affiliation, $joinedAt, $affiliationCount)) {
+                if (! AffiliationStartDateAlignment::shouldAlign(
+                    $affiliation,
+                    $joinedAt,
+                    $affiliationCount,
+                )) {
                     $unchanged++;
 
                     continue;
@@ -81,8 +85,8 @@ class SyncAffiliationStartFromJoinedAtCommand extends Command
 
         $updated = count(array_filter($results, fn (array $row) => in_array($row[5], ['更新', '更新予定'], true)));
 
-        $stillBulkDate = AffiliationHistory::query()
-            ->whereDate('start_date', self::BULK_IMPORT_START_DATE)
+        $stillBulkDate = \App\Models\AffiliationHistory::query()
+            ->whereDate('start_date', AffiliationStartDateAlignment::BULK_IMPORT_START_DATE)
             ->count();
 
         $this->newLine();
@@ -98,26 +102,8 @@ class SyncAffiliationStartFromJoinedAtCommand extends Command
         return self::SUCCESS;
     }
 
-    private function shouldAlignStartDate(
-        AffiliationHistory $affiliation,
-        string $joinedAt,
-        int $affiliationCount,
-    ): bool {
-        $start = $affiliation->start_date->toDateString();
-
-        if ($start === $joinedAt) {
-            return false;
-        }
-
-        if ($start === self::BULK_IMPORT_START_DATE && $joinedAt !== self::BULK_IMPORT_START_DATE) {
-            return true;
-        }
-
-        return $affiliationCount === 1;
-    }
-
     private function bulkImportStartDateLabel(): string
     {
-        return self::BULK_IMPORT_START_DATE;
+        return AffiliationStartDateAlignment::BULK_IMPORT_START_DATE;
     }
 }

@@ -33,7 +33,7 @@ class EmployeeRegistryStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            ...$this->registryFieldRules(),
+            ...$this->registryFieldRules(requireSectionForGrDepartment: true),
             'password' => $this->registryPasswordRules(
                 required: ! ($this->user()?->setsDefaultRegistryPasswordOnCreate() ?? false),
             ),

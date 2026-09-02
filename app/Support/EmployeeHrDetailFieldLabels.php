@@ -9,8 +9,9 @@ class EmployeeHrDetailFieldLabels
         'primary_id' => 'Primary ID',
         'employee_id' => '社員ID',
         'name' => '名前',
-        'email' => '社内メール',
-        'english_name' => 'Name（英語）',
+        'email' => '社用メール',
+        'english_name' => 'Name',
+        'nationality' => '国籍',
         'abbreviated_name' => '略称',
         'joined_at' => '入社日',
         'name_kana_fullwidth' => 'カナ（全角）',
@@ -20,21 +21,21 @@ class EmployeeHrDetailFieldLabels
         'employment_status' => '状況',
         'resigned_at' => '退職日',
         'last_working_day' => '最終出勤日',
-        'residence_status' => '在留資格',
-        'residence_expires_at' => '在留期限',
-        'residence_renewal_memo' => '在留資格更新メモ',
-        'residence_card_renewal_status' => '在留カード更新状況',
         'department_primary' => '部署①',
-        'section_primary' => '課/チーム①',
+        'section_primary' => '課①',
+        'team_primary' => 'チーム①',
         'position_primary' => '役職①',
         'department_secondary' => '部署②',
-        'section_secondary' => '課/チーム②',
+        'section_secondary' => '課②',
+        'team_secondary' => 'チーム②',
         'position_secondary' => '役職②',
         'jurisdiction' => '管轄',
         'gender' => '性別',
         'birth_date' => '生年月日',
         'phone' => '電話番号',
+        'company_phone' => '社用電話番号',
         'personal_email' => '個人アドレス',
+        'gmail_address' => 'Gmailアドレス',
         'my_number_verified' => 'マイナンバー確認済み',
         'remarks' => '備考',
         'address_as_of_jan1' => '1月1日時点の住所',
@@ -69,7 +70,7 @@ class EmployeeHrDetailFieldLabels
         'microsoft_account_removed' => 'Microsoft（退職者削除用）',
         'gws_account_removed' => 'GWS（退職者削除用）',
         'slack_account_removed' => 'slack（退職者削除用）',
-        'company_phone' => '社用の電話番号',
+        'company_phone' => '社用電話番号',
     ];
 
     /** @var list<string> */
@@ -78,19 +79,18 @@ class EmployeeHrDetailFieldLabels
         'employee_id',
         'name',
         'english_name',
-        'abbreviated_name',
+        'email',
+        'nationality',
         'joined_at',
+        'abbreviated_name',
     ];
 
     /** @var list<string> */
-    public const META_PROCEDURES = [
-        'email',
-    ];
+    public const META_PROCEDURES = [];
 
     /** @var list<string> */
     public const META = [
         ...self::META_CORE,
-        ...self::META_PROCEDURES,
     ];
 
     public static function label(string $field): string

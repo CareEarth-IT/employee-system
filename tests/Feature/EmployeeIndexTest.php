@@ -132,6 +132,67 @@ class EmployeeIndexTest extends TestCase
             ->assertDontSee('グロ 花子', false);
     }
 
+    public function test_index_filters_resigned_employees_by_display_company(): void
+    {
+        $viewer = User::factory()->create();
+
+        $earthManagementResignee = User::factory()->create(['last_name' => 'EM', 'first_name' => '退職']);
+        AffiliationHistory::create([
+            'user_id' => $earthManagementResignee->id,
+            'start_date' => '2018-01-01',
+            'end_date' => '2019-12-31',
+            'enrollment_status' => AffiliationHistory::STATUS_MOVED,
+            'company' => 'CareEarth',
+            'location' => '大阪',
+            'department' => '営業部',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $earthManagementResignee->id,
+            'start_date' => '2020-01-01',
+            'end_date' => '2023-12-31',
+            'enrollment_status' => AffiliationHistory::STATUS_RESIGNED,
+            'company' => 'Earth Management',
+            'location' => '東京',
+            'department' => '管理部',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $earthManagementResignee->id,
+            'employment_status' => '退職',
+        ]);
+
+        $growtecResignee = User::factory()->create(['last_name' => 'GT', 'first_name' => '退職']);
+        AffiliationHistory::create([
+            'user_id' => $growtecResignee->id,
+            'start_date' => '2020-01-01',
+            'end_date' => '2023-12-31',
+            'enrollment_status' => AffiliationHistory::STATUS_RESIGNED,
+            'company' => 'GROWTEC',
+            'location' => '東京',
+            'department' => '営業部',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $growtecResignee->id,
+            'employment_status' => '退職',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', [
+                'status' => '退職',
+                'company' => 'Earth Management',
+            ]))
+            ->assertOk()
+            ->assertSee('EM 退職', false)
+            ->assertDontSee('GT 退職', false);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', [
+                'status' => '退職',
+                'company' => 'CareEarth',
+            ]))
+            ->assertOk()
+            ->assertDontSee('EM 退職', false);
+    }
+
     public function test_index_filters_by_employee_id(): void
     {
         $viewer = User::factory()->create();
@@ -228,14 +289,14 @@ class EmployeeIndexTest extends TestCase
             ->assertDontSee('在籍 太郎', false);
     }
 
-    public function test_index_filters_by_status_declined(): void
+    public function test_index_filters_by_status_on_leave(): void
     {
         $viewer = User::factory()->create();
 
-        $declined = User::factory()->create(['last_name' => '辞退', 'first_name' => '太郎']);
+        $onLeave = User::factory()->create(['last_name' => '休職', 'first_name' => '太郎']);
         EmployeeHrDetail::create([
-            'user_id' => $declined->id,
-            'employment_status' => '辞退',
+            'user_id' => $onLeave->id,
+            'employment_status' => '休職',
         ]);
 
         $active = User::factory()->create(['last_name' => '在籍', 'first_name' => '花子']);
@@ -247,9 +308,9 @@ class EmployeeIndexTest extends TestCase
         ]);
 
         $this->actingAs($viewer)
-            ->get(route('employees.index', ['status' => '辞退']))
+            ->get(route('employees.index', ['status' => '休職']))
             ->assertOk()
-            ->assertSee('辞退 太郎', false)
+            ->assertSee('休職 太郎', false)
             ->assertDontSee('在籍 花子', false);
     }
 
@@ -438,6 +499,59 @@ class EmployeeIndexTest extends TestCase
             ->get(route('employees.index', ['sort' => 'employee_id', 'direction' => 'asc']))
             ->assertOk()
             ->assertSee('sort=employee_id&amp;direction=desc', false);
+    }
+
+    public function test_index_keyword_matches_name_without_space(): void
+    {
+        $viewer = User::factory()->create();
+
+        $employee = User::factory()->create([
+            'last_name' => '山田',
+            'first_name' => '太郎',
+            'email' => 'yamada@careearth.info',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $employee->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['keyword' => '山田太郎']))
+            ->assertOk()
+            ->assertSee('yamada@careearth.info', false);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['keyword' => '山田 太郎']))
+            ->assertOk()
+            ->assertSee('yamada@careearth.info', false);
+    }
+
+    public function test_index_keyword_searches_hr_detail_fields(): void
+    {
+        $viewer = User::factory()->create();
+
+        $employee = User::factory()->create([
+            'last_name' => '検索',
+            'first_name' => '対象',
+            'email' => 'search-target@careearth.info',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $employee->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $employee->id,
+            'gmail_address' => 'unique-index-gmail@example.com',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['keyword' => 'unique-index-gmail']))
+            ->assertOk()
+            ->assertSee('search-target@careearth.info', false);
     }
 
     private function userInDepartment(string $department): User

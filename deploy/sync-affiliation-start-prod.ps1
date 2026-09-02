@@ -62,7 +62,13 @@ if (-not $SkipBuild) {
 $appKey = Get-LocalAppKey -ProjectRoot $Root
 $dbPassword = Get-LocalDbPassword -ProjectRoot $Root
 if (-not $dbPassword) {
-    throw "DB_PASSWORD is not set in .env"
+    $dbPassword = Get-CloudRunEnvVar -Service $Service -Region $Region -Name "DB_PASSWORD"
+    if ($dbPassword) {
+        Write-Host "DB_PASSWORD: reusing value from existing Cloud Run service"
+    }
+}
+if (-not $dbPassword) {
+    throw "DB_PASSWORD is not set in .env and could not be read from Cloud Run"
 }
 
 Grant-CloudSqlClient -ProjectId $ProjectId

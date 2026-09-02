@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\EmployeeHrDetail;
 use App\Models\User;
+use App\Support\EmploymentStatus;
 use App\Support\EmployeeRosterCsv;
 use Illuminate\Console\Command;
 
@@ -156,10 +157,11 @@ class SyncHrDetailFromRosterCommand extends Command
         $updates = [];
 
         if ($row['employment_status'] !== '') {
+            $csvStatus = EmploymentStatus::normalize($row['employment_status']);
             $currentStatus = trim((string) ($detail?->employment_status ?? ''));
 
-            if ($currentStatus !== $row['employment_status']) {
-                $updates['employment_status'] = $row['employment_status'];
+            if ($csvStatus !== '' && $currentStatus !== $csvStatus) {
+                $updates['employment_status'] = $csvStatus;
             }
         }
 

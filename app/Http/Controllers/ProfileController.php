@@ -8,6 +8,8 @@ use App\Models\EmployeeProfile;
 use App\Models\User;
 use App\Services\ProfilePhotoStorage;
 use App\Support\UserRouteHelper;
+use App\Support\AffiliationStartDateAlignment;
+use App\Support\NationalityOptions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -112,10 +114,17 @@ class ProfileController extends Controller
             }
 
             unset($data['photo']);
+            $previousJoinedAt = $profile->joined_at?->toDateString();
             $profile->update([
                 ...$data,
                 'import_locked' => true,
             ]);
+
+            if (array_key_exists('joined_at', $data)
+                && $profile->fresh()->joined_at?->toDateString() !== $previousJoinedAt) {
+                $target->load('affiliationHistories');
+                AffiliationStartDateAlignment::syncForUser($target);
+            }
 
             $this->syncUserNameFromProfile($target, $profile->fresh());
             $target->update(['import_locked' => true]);
@@ -173,7 +182,9 @@ class ProfileController extends Controller
                 'value' => $profile->joined_at?->format('Y-m-d') ?? '',
                 'display' => $profile->joined_at?->format('Y/m/d') ?? '—',
             ],
-            'nationality' => $this->inlineTextField($profile->nationality),
+            'nationality' => $this->inlineTextField(
+                NationalityOptions::toDisplayName($profile->nationality) ?? $profile->nationality,
+            ),
             'languages' => $this->inlineTextField($profile->languages),
             'self_introduction' => $this->inlineTextField($profile->self_introduction),
         ];

@@ -9,15 +9,19 @@
     'required' => false,
     'readonly' => false,
     'inputId' => null,
+    'readonlyDisplay' => null,
 ])
 
 @php
     $fieldId = $inputId ?? $name;
+    $resolvedValue = old($name, $value);
     $displayValue = match (true) {
-        $type === 'checkbox' => (bool) old($name, $value) ? '✓' : '—',
+        $readonlyDisplay !== null && $readonlyDisplay !== '' => $readonlyDisplay,
+        $type === 'checkbox' => (bool) $resolvedValue ? '✓' : '—',
         $type === 'date' && $value instanceof \Illuminate\Support\Carbon => $value->format('Y/m/d'),
         $type === 'date' && is_string($value) && $value !== '' => $value,
-        default => old($name, $value) ?: '—',
+        $type === 'select' && $options !== [] && ! array_is_list($options) => $options[$resolvedValue] ?? ($resolvedValue ?: '—'),
+        default => $resolvedValue ?: '—',
     };
 @endphp
 
@@ -51,8 +55,13 @@
     @elseif ($type === 'select')
         <select id="{{ $fieldId }}" name="{{ $name }}" @if ($required) required @endif class="w-full rounded border border-slate-300 px-3 py-2">
             <option value="">選択してください</option>
-            @foreach ($options as $option)
-                <option value="{{ $option }}" @selected(old($name, $value) === $option)>{{ $option }}</option>
+            @foreach ($options as $optionValue => $optionLabel)
+                @php
+                    if (is_int($optionValue)) {
+                        $optionValue = $optionLabel;
+                    }
+                @endphp
+                <option value="{{ $optionValue }}" @selected((string) $resolvedValue === (string) $optionValue)>{{ $optionLabel }}</option>
             @endforeach
         </select>
     @elseif ($type === 'date')

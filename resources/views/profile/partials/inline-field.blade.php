@@ -6,6 +6,7 @@
     'display' => null,
     'editable' => false,
     'minHeight' => null,
+    'options' => [],
 ])
 
 @php
@@ -22,6 +23,9 @@
             data-field="{{ $field }}"
             data-type="{{ $type }}"
             data-value="{{ $value }}"
+            @if ($type === 'select')
+                data-options='@json($options)'
+            @endif
             title="ダブルクリックで編集"
             class="profile-inline-value rounded border border-slate-200 px-3 py-2 cursor-text hover:bg-slate-50 transition-colors {{ $minHeight }}"
         @else

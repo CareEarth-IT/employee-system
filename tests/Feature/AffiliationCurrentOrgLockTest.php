@@ -88,6 +88,10 @@ class AffiliationCurrentOrgLockTest extends TestCase
         $this->assertSame(AffiliationHistory::STATUS_ENROLLED, $affiliation->enrollment_status);
         $this->assertSame('通信部', $affiliation->department);
         $this->assertSame('営業課', $affiliation->section);
+
+        $detail = $target->fresh()->hrDetail;
+        $this->assertSame('通信部', $detail?->department_primary);
+        $this->assertSame('営業課', $detail?->section_primary);
     }
 
     public function test_employee_edit_form_locks_current_org_fields(): void
@@ -106,7 +110,7 @@ class AffiliationCurrentOrgLockTest extends TestCase
         $response = $this->actingAs($user)->get(route('affiliations.edit', $affiliation));
 
         $response->assertOk();
-        $response->assertSee('現在の所属のため、部・課・期間の変更は人事部・情報システム部のみ可能です', false);
+        $response->assertSee('現在の所属のため、部・課・チーム・期間の変更は人事部・情報システム部のみ可能です', false);
         $response->assertDontSee('id="department"', false);
         $response->assertDontSee('id="start_date"', false);
     }

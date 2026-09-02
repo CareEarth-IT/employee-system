@@ -52,25 +52,30 @@ class EmployeeHrDetailAccess
         return self::permissions($viewer, $target)['canSave'];
     }
 
-    /** 基本情報〜備考: 人事部・役員が編集 */
+    /** 基本情報〜備考: 情シス・人事部・役員が編集 */
     public static function canEditCore(User $viewer, User $target): bool
     {
-        return $viewer->isHrDepartment() || $viewer->isExecutive();
+        return $viewer->isInformationSystems()
+            || $viewer->isHrDepartment()
+            || $viewer->isExecutive();
     }
 
-    /** 基本情報〜備考: 情シス・人事課・人事部・役員が閲覧 */
+    /** 基本情報〜備考: 情シス・人事課・人事部・経理部総務課・役員が閲覧 */
     public static function canViewCore(User $viewer, User $target): bool
     {
         return $viewer->isExecutive()
             || $viewer->isInformationSystems()
             || $viewer->isHrSection()
-            || $viewer->isHrDepartment();
+            || $viewer->isHrDepartment()
+            || $viewer->isGeneralAffairs();
     }
 
-    /** 入社・退職手続き: 人事部・役員が編集 */
+    /** 入社・退職手続き: 情シス・人事部・役員が編集 */
     public static function canEditProcedures(User $viewer, User $target): bool
     {
-        return $viewer->isHrDepartment() || $viewer->isExecutive();
+        return $viewer->isInformationSystems()
+            || $viewer->isHrDepartment()
+            || $viewer->isExecutive();
     }
 
     /** 入社・退職手続き: 人事部・役員と本人が閲覧 */
@@ -110,6 +115,7 @@ class EmployeeHrDetailAccess
 
         if (self::canEditCore($viewer, $target)) {
             $fields = array_merge($fields, EmployeeHrDetailFieldGroups::CORE);
+            $fields = array_merge($fields, EmployeeHrDetailFieldGroups::PROFILE_SYNC);
         }
 
         if (self::canEditProcedures($viewer, $target)) {

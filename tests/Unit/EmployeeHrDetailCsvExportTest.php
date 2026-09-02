@@ -25,12 +25,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $columns = EmployeeHrDetailAccess::exportColumnNames($viewer, [$target]);
 
         $this->assertEqualsCanonicalizing(
-            array_merge(
-                EmployeeHrDetailFieldLabels::META,
-                EmployeeHrDetailFieldGroups::CORE,
-                EmployeeHrDetailFieldGroups::PROCEDURES,
-                EmployeeHrDetailFieldGroups::IT,
-            ),
+            $this->expectedFullExportColumns(),
             $columns,
         );
     }
@@ -44,12 +39,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
 
         $this->assertContains('email', $columns);
         $this->assertEqualsCanonicalizing(
-            array_merge(
-                EmployeeHrDetailFieldLabels::META,
-                EmployeeHrDetailFieldGroups::CORE,
-                EmployeeHrDetailFieldGroups::PROCEDURES,
-                EmployeeHrDetailFieldGroups::IT,
-            ),
+            $this->expectedFullExportColumns(),
             $columns,
         );
     }
@@ -62,12 +52,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $columns = EmployeeHrDetailAccess::exportColumnNames($viewer, [$target]);
 
         $this->assertEqualsCanonicalizing(
-            array_merge(
-                EmployeeHrDetailFieldLabels::META,
-                EmployeeHrDetailFieldGroups::CORE,
-                EmployeeHrDetailFieldGroups::PROCEDURES,
-                EmployeeHrDetailFieldGroups::IT,
-            ),
+            $this->expectedFullExportColumns(),
             $columns,
         );
     }
@@ -79,11 +64,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $columns = EmployeeHrDetailAccess::exportColumnNames($viewer, [$viewer]);
 
         $this->assertEqualsCanonicalizing(
-            array_merge(
-                EmployeeHrDetailFieldLabels::META_PROCEDURES,
-                EmployeeHrDetailFieldGroups::PROCEDURES,
-                EmployeeHrDetailFieldGroups::IT,
-            ),
+            EmployeeHrDetailFieldGroups::IT,
             $columns,
         );
         $this->assertTrue(EmployeeHrDetailAccess::canExportCsvForTarget($viewer, $viewer));
@@ -116,7 +97,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $this->assertStringContainsString('女', $csv);
         $this->assertStringContainsString('はい', $csv);
         $this->assertStringContainsString('hanako@example.com', $csv);
-        $this->assertStringContainsString('大阪府大阪市', $csv);
+        $this->assertStringNotContainsString('大阪府大阪市', $csv);
     }
 
     public function test_exporter_outputs_viewable_values_for_hr_section(): void
@@ -139,8 +120,8 @@ class EmployeeHrDetailCsvExportTest extends TestCase
             'user_id' => $user->id,
             'primary_id' => 'P000123',
             'gender' => '女',
-            'my_number_verified' => true,
-            'has_pc' => false,
+            'has_pc' => true,
+            'has_mobile' => false,
             'address_as_of_jan1' => '大阪府大阪市',
         ]);
 
@@ -155,7 +136,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $this->assertStringContainsString('E100', $csv);
         $this->assertStringContainsString('hanako@example.com', $csv);
         $this->assertStringContainsString('女', $csv);
-        $this->assertStringContainsString('大阪府大阪市', $csv);
+        $this->assertStringNotContainsString('大阪府大阪市', $csv);
         $this->assertStringContainsString('はい', $csv);
         $this->assertStringContainsString('いいえ', $csv);
     }
@@ -181,7 +162,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $response = $this->actingAs($viewer)->get(route('profile.hr-detail.export'));
 
         $response->assertOk();
-        $this->assertStringContainsString('東京都千代田区', $response->streamedContent());
+        $this->assertStringNotContainsString('1月1日時点の住所', $response->streamedContent());
         $this->assertStringNotContainsString('性別', $response->streamedContent());
     }
 
@@ -194,6 +175,19 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $response->assertOk();
         $response->assertHeader('content-disposition');
         $this->assertStringContainsString('text/csv', (string) $response->headers->get('content-type'));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function expectedFullExportColumns(): array
+    {
+        return array_values(array_unique(array_merge(
+            EmployeeHrDetailFieldLabels::META,
+            EmployeeHrDetailFieldGroups::CORE,
+            EmployeeHrDetailFieldGroups::PROCEDURES,
+            EmployeeHrDetailFieldGroups::IT,
+        )));
     }
 
     private function userInAffiliation(string $department, string $section): User

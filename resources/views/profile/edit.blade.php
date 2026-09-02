@@ -4,6 +4,7 @@
 
 @section('content')
 @php
+    use App\Support\NationalityOptions;
     use App\Support\UserRouteHelper;
     $profile = $user->profile;
     $canEditIdentity = auth()->user()->canEditEmployeeIdentity($user);
@@ -52,7 +53,12 @@
                 </div>
                 <div>
                     <label for="nationality" class="block text-sm mb-1">国籍</label>
-                    <input id="nationality" name="nationality" value="{{ old('nationality', $profile?->nationality) }}" class="w-full rounded border border-slate-300 px-3 py-2">
+                    @include('partials.nationality-select', [
+                        'selected' => old(
+                            'nationality',
+                            NationalityOptions::toDisplayName($profile?->nationality) ?? $profile?->nationality,
+                        ),
+                    ])
                     @include('partials.field-error', ['field' => 'nationality'])
                 </div>
             </div>
@@ -94,7 +100,7 @@
 @if (EmployeeHrDetailAccess::canViewPage(auth()->user(), $user))
 <div class="mt-6 bg-white border border-slate-300 rounded-lg p-6">
     <h2 class="font-bold mb-2">詳細情報</h2>
-    <p class="text-sm text-slate-600 mb-4">入社・退職手続き、在留資格、社保、ITデバイスなどの詳細項目を登録・編集します。閲覧・編集できる範囲は所属により異なります。</p>
+    <p class="text-sm text-slate-600 mb-4">入社・退職手続き、社保、ITデバイスなどの詳細項目を登録・編集します。閲覧・編集できる範囲は所属により異なります。</p>
     <a
         href="{{ UserRouteHelper::route($user, 'profile.hr-detail.edit', 'users.profile.hr-detail.edit') }}"
         class="inline-block rounded bg-slate-700 text-white px-6 py-2 text-sm font-medium hover:bg-slate-800"

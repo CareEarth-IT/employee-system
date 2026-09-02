@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Services\DriveStaffSyncService;
 use App\Services\EmployeeHrDetailCsvExporter;
 use App\Support\EmployeeHrDetailAccess;
+use App\Support\EmployeeHrDetailFieldGroups;
+use App\Support\HrDetailOrgFormState;
 use App\Support\UserRouteHelper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -50,10 +52,21 @@ class ProfileHrDetailController extends Controller
 
         $hrDetail = EmployeeHrDetail::bootstrapForUser($target);
         $editableFields = EmployeeHrDetailAccess::editableFieldNames($viewer, $target);
-        $hrDetail->update($request->safe()->only($editableFields));
+        $profileFields = array_values(array_intersect(
+            $editableFields,
+            EmployeeHrDetailFieldGroups::PROFILE_SYNC,
+        ));
+        $hrDetailFields = array_values(array_diff($editableFields, $profileFields));
+
+        $validated = HrDetailOrgFormState::mergeSectionFields([
+            ...$request->validated(),
+            'team_primary' => $request->input('team_primary'),
+            'team_secondary' => $request->input('team_secondary'),
+        ]);
+        $hrDetail->update(collect($validated)->only($hrDetailFields)->all());
 
         if (EmployeeHrDetailAccess::canEditCore($viewer, $target)) {
-            $this->syncProfileFromHrDetail($target, $hrDetail);
+            $this->syncProfileFromHrDetail($target, $hrDetail, collect($validated)->only($profileFields)->all());
         }
 
         $this->driveStaffSync->syncUser($target->fresh());
@@ -106,21 +119,35 @@ class ProfileHrDetailController extends Controller
         }
     }
 
-    private function syncProfileFromHrDetail(User $user, EmployeeHrDetail $hrDetail): void
+    /**
+     * @param  array<string, mixed>  $profileFields
+     */
+    private function syncProfileFromHrDetail(User $user, EmployeeHrDetail $hrDetail, array $profileFields = []): void
     {
-        if (! $hrDetail->name_kana_fullwidth) {
+        $attributes = array_filter(
+            $profileFields,
+            fn ($value) => $value !== null && $value !== '',
+        );
+
+        if ($hrDetail->name_kana_fullwidth) {
+            $attributes['name_kana'] = $hrDetail->name_kana_fullwidth;
+        }
+
+        if ($attributes === []) {
             return;
         }
 
         $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
         $profile->update([
-            'name_kana' => $hrDetail->name_kana_fullwidth,
+            ...$attributes,
             'import_locked' => true,
         ]);
 
-        $user->update([
-            'name' => $hrDetail->name_kana_fullwidth,
-            'import_locked' => true,
-        ]);
+        if (isset($attributes['name_kana'])) {
+            $user->update([
+                'name' => $hrDetail->name_kana_fullwidth,
+                'import_locked' => true,
+            ]);
+        }
     }
 }

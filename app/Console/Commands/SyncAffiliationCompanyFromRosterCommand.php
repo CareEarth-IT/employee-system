@@ -20,7 +20,7 @@ class SyncAffiliationCompanyFromRosterCommand extends Command
         {--dry-run : 更新せず内容だけ表示}
         {--match-email-only : 氏名不一致でもメール一致なら更新（要確認）}';
 
-    protected $description = '社員名簿 CSV の所属コード（CE/GT/EM/MD/ME）を所属会社名に反映する（部署・開始日など他項目は変更しない）';
+    protected $description = '社員名簿 CSV の所属コード（CE/CEVN/GT/EM/ME など）を所属会社名に反映する（部署・開始日など他項目は変更しない）';
 
     public function handle(): int
     {

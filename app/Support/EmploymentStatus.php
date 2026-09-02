@@ -16,7 +16,7 @@ final class EmploymentStatus
     ];
 
     /**
-     * 詳細情報「状況」を社員一覧用の在籍 / 退職 / 辞退に正規化する。
+     * 詳細情報「状況」を 在籍 / 休職 / 退職 に正規化する。
      */
     public static function normalize(?string $status): string
     {
@@ -24,7 +24,7 @@ final class EmploymentStatus
 
         return match ($status) {
             '在職', '在籍中', AffiliationHistory::STATUS_ENROLLED => '在籍',
-            '退職済', '離職', AffiliationHistory::STATUS_RESIGNED => '退職',
+            '退職済', '離職', '辞退', AffiliationHistory::STATUS_RESIGNED => '退職',
             default => $status,
         };
     }
@@ -59,17 +59,19 @@ final class EmploymentStatus
             return;
         }
 
-        if ($status === '退職') {
-            $query->where(function (Builder $statusQuery) {
-                $statusQuery
-                    ->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '退職'))
-                    ->orWhereHas('affiliationHistories', fn (Builder $affiliationQuery) => $affiliationQuery
-                        ->where('enrollment_status', AffiliationHistory::STATUS_RESIGNED));
-            });
+        if ($status === '休職') {
+            $query->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '休職'));
 
             return;
         }
 
-        $query->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '辞退'));
+        if ($status === '退職') {
+            $query->where(function (Builder $statusQuery) {
+                $statusQuery
+                    ->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->whereIn('employment_status', ['退職', '辞退']))
+                    ->orWhereHas('affiliationHistories', fn (Builder $affiliationQuery) => $affiliationQuery
+                        ->where('enrollment_status', AffiliationHistory::STATUS_RESIGNED));
+            });
+        }
     }
 }

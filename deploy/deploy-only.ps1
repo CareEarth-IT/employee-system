@@ -1,20 +1,11 @@
-# Deploy existing image to Cloud Run (skip docker build/push)
-# Usage: deploy\deploy-only.cmd
-# Mail: defaults to preserving Cloud Run MAIL_* (do not push unverified local Sakura SMTP).
-# To push local .env mail intentionally: $env:DEPLOY_PRESERVE_CLOUD_RUN_MAIL = "0"
-
+# Deploy already-built image to Cloud Run (no docker build)
 $ErrorActionPreference = "Stop"
-
-if ($null -eq $env:DEPLOY_PRESERVE_CLOUD_RUN_MAIL -or $env:DEPLOY_PRESERVE_CLOUD_RUN_MAIL -eq "") {
-    $env:DEPLOY_PRESERVE_CLOUD_RUN_MAIL = "1"
-}
 
 $ProjectId = "ce-gr-employee-info-2606st"
 $Region = "asia-northeast1"
 $Service = "employee"
-$ArRepo = "employee"
+$Image = "${Region}-docker.pkg.dev/${ProjectId}/employee/${Service}:latest"
 $AppUrl = "https://employee.careearth.net"
-$Image = "${Region}-docker.pkg.dev/${ProjectId}/${ArRepo}/${Service}:latest"
 $Root = Split-Path $PSScriptRoot -Parent
 
 . (Join-Path $PSScriptRoot "deploy-common.ps1")
@@ -25,8 +16,7 @@ if ((Invoke-Gcloud config set project $ProjectId) -ne 0) {
 
 $appKey = Get-LocalAppKey -ProjectRoot $Root
 
-Write-Host "==> Deploy to Cloud Run: $Image"
-Write-CodeDeployNotice
+Write-Host "==> Deploy to Cloud Run"
 $deployCode = Invoke-CloudRunDeploy `
     -Service $Service `
     -Image $Image `
@@ -41,11 +31,10 @@ if ($deployCode -ne 0) {
 
 Grant-PublicInvoker -Service $Service -Region $Region
 
+$serviceUrl = Get-CloudRunServiceUrl -Service $Service -Region $Region
+$revision = & gcloud run services describe $Service --region=$Region --format="value(status.latestReadyRevisionName)" 2>&1
+
 Write-Host ""
 Write-Host "Done."
-$serviceUrl = Get-CloudRunServiceUrl -Service $Service -Region $Region
-if ($serviceUrl) {
-    Write-Host "Service URL: $serviceUrl"
-} else {
-    Write-Host "Check URL in Cloud Run console (employee service)."
-}
+Write-Host "Service URL: $serviceUrl"
+Write-Host "Revision   : $revision"

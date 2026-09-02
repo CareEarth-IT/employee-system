@@ -1,4 +1,4 @@
-# Fix affiliation position 一般 -> 正社員 via Cloud Run Job.
+# Fix affiliation position: clear 正社員/一般 and apply HR 役職① when available.
 # Does NOT change department, company, start_date, or other fields.
 #
 # Usage:
@@ -31,8 +31,8 @@ Set-Location $Root
 Write-Host "Image   : $Image"
 Write-Host "Job     : $JobName"
 Write-Host ""
-Write-Host "WARNING: Updates affiliation position only (一般 -> 正社員)."
-Write-Host "         Department, company, start_date, and other fields are NOT changed."
+Write-Host "WARNING: Clears invalid affiliation position labels (正社員, 一般, etc.)."
+Write-Host "         Applies HR detail position_primary when available."
 Write-Host ""
 
 if ((Invoke-Gcloud config set project $ProjectId) -ne 0) {
@@ -60,7 +60,13 @@ if (-not $SkipBuild) {
 $appKey = Get-LocalAppKey -ProjectRoot $Root
 $dbPassword = Get-LocalDbPassword -ProjectRoot $Root
 if (-not $dbPassword) {
-    throw "DB_PASSWORD is not set in .env"
+    $dbPassword = Get-CloudRunEnvVar -Service $Service -Region $Region -Name "DB_PASSWORD"
+    if ($dbPassword) {
+        Write-Host "DB_PASSWORD: reusing value from existing Cloud Run service"
+    }
+}
+if (-not $dbPassword) {
+    throw "DB_PASSWORD is not set in .env and could not be read from Cloud Run"
 }
 
 Grant-CloudSqlClient -ProjectId $ProjectId

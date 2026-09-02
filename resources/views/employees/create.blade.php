@@ -17,17 +17,22 @@
 <form method="POST" action="{{ route('employees.store') }}" class="bg-white border border-slate-300 rounded-lg p-6">
     @csrf
     @include('employees._registry_form', [
+        'splitSectionTeam' => true,
+        'sectionRequiredForGr' => true,
         'values' => [
             'name' => old('name'),
             'email' => old('email'),
             'employee_id' => old('employee_id'),
             'department' => old('department'),
+            'company' => old('company'),
             'section' => old('section'),
+            'team' => old('team'),
             'location' => old('location'),
             'employment_type' => old('employment_type'),
+            'employment_status' => old('employment_status', '在籍'),
             'name_kana' => old('name_kana'),
             'english_name' => old('english_name'),
-            'abbreviated_name' => old('abbreviated_name'),
+            'birth_date' => old('birth_date'),
             'gender' => old('gender'),
             'nationality' => old('nationality'),
             'joined_at' => old('joined_at'),

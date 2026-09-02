@@ -747,7 +747,7 @@ class EmployeeBulkImporter
         $employmentStatus = trim((string) ($payload['employment_status'] ?? ''));
         if ($employmentStatus !== '' && ! in_array($employmentStatus, User::EMPLOYMENT_STATUS_OPTIONS, true)) {
             throw new \InvalidArgumentException(
-                "在職区分「{$employmentStatus}」が不正です（在職/在籍、退職、辞退 など）。"
+                "在職区分「{$employmentStatus}」が不正です（在籍、休職、退職 など）。"
             );
         }
     }
@@ -807,11 +807,7 @@ class EmployeeBulkImporter
 
     private function normalizeEmploymentStatus(string $status): string
     {
-        return match ($status) {
-            '在職', '在籍中' => '在籍',
-            '退職済', '離職' => '退職',
-            default => $status,
-        };
+        return \App\Support\EmploymentStatus::normalize($status);
     }
 
     private function parseOptionalDate(string $value, string $label): ?string

@@ -37,7 +37,7 @@ function resolveInlineContext(element, root) {
 }
 
 function beginEdit(element, root = null) {
-    if (element.dataset.editing === '1' || element.querySelector('input, textarea')) {
+    if (element.dataset.editing === '1' || element.querySelector('input, textarea, select')) {
         return;
     }
 
@@ -64,6 +64,30 @@ function beginEdit(element, root = null) {
         input.rows = field === 'self_introduction' ? 6 : 4;
         input.className = 'textarea-contained w-full rounded border border-blue-400 px-3 py-2 outline-none';
         input.value = rawValue;
+    } else if (type === 'select') {
+        input = document.createElement('select');
+        input.className = 'w-full rounded border border-blue-400 px-3 py-2 outline-none bg-white';
+
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = '選択してください';
+        input.appendChild(emptyOption);
+
+        let options = [];
+
+        try {
+            options = JSON.parse(element.dataset.options ?? '[]');
+        } catch (error) {
+            options = [];
+        }
+
+        options.forEach((optionValue) => {
+            const option = document.createElement('option');
+            option.value = optionValue;
+            option.textContent = optionValue;
+            option.selected = optionValue === rawValue;
+            input.appendChild(option);
+        });
     } else if (type === 'date') {
         input = document.createElement('input');
         input.type = 'date';

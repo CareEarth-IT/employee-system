@@ -109,7 +109,7 @@
                 type="text"
                 name="keyword"
                 value="{{ $keyword }}"
-                placeholder="氏名・メール・部署・電話番号など"
+                placeholder="氏名（スペースなし可）・メール・社員ID・部署・電話番号など（*で部分一致）"
                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
             >
         </div>

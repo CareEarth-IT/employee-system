@@ -5,6 +5,7 @@
 @section('content')
 @php
     use App\Support\EmployeeHrDetailAccess;
+    use App\Support\NationalityOptions;
     use App\Support\UserRouteHelper;
     $profile = $user->profile;
     $updateUrl = UserRouteHelper::route($user, 'profile.update', 'users.profile.update');
@@ -78,7 +79,9 @@
             @include('profile.partials.inline-field', [
                 'field' => 'nationality',
                 'label' => '国籍',
-                'value' => $profile?->nationality ?? '',
+                'type' => 'select',
+                'options' => NationalityOptions::names(),
+                'value' => NationalityOptions::toDisplayName($profile?->nationality) ?? ($profile?->nationality ?? ''),
                 'editable' => $canEdit,
             ])
             <div>

@@ -6,6 +6,7 @@ use App\Models\EmployeeHrDetail;
 use App\Models\User;
 use App\Support\CompanyPhone;
 use App\Support\EmployeeHrDetailAccess;
+use App\Support\EmployeeKeywordSearch;
 use App\Support\EmploymentStatus;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -51,30 +52,7 @@ class EmployeeItDeviceListService
         }
 
         if ($keyword !== '') {
-            $like = '%'.$keyword.'%';
-            $query->where(function (Builder $keywordQuery) use ($like) {
-                $keywordQuery
-                    ->where('name', 'like', $like)
-                    ->orWhere('email', 'like', $like)
-                    ->orWhere('employee_id', 'like', $like)
-                    ->orWhere('last_name', 'like', $like)
-                    ->orWhere('first_name', 'like', $like)
-                    ->orWhereHas('profile', function (Builder $profileQuery) use ($like) {
-                        $profileQuery
-                            ->where('english_name', 'like', $like)
-                            ->orWhere('name_kana', 'like', $like);
-                    })
-                    ->orWhereHas('affiliationHistories', function (Builder $affiliationQuery) use ($like) {
-                        $affiliationQuery
-                            ->currentlyActive()
-                            ->where(function (Builder $activeAffiliationQuery) use ($like) {
-                                $activeAffiliationQuery
-                                    ->where('department', 'like', $like)
-                                    ->orWhere('section', 'like', $like)
-                                    ->orWhere('location', 'like', $like);
-                            });
-                    });
-            });
+            EmployeeKeywordSearch::apply($query, $keyword);
         }
 
         return $query

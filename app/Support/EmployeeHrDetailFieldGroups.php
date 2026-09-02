@@ -4,19 +4,19 @@ namespace App\Support;
 
 class EmployeeHrDetailFieldGroups
 {
+    /** @var list<string> 詳細情報の基本情報でプロフィールへ同期する項目 */
+    public const PROFILE_SYNC = [
+        'nationality',
+    ];
+
     /** @var list<string> */
     public const CORE = [
-        'name_kana_fullwidth',
-        'name_kana_halfwidth',
+        'gmail_address',
         'affiliation_code',
         'employment_type',
         'employment_status',
         'resigned_at',
         'last_working_day',
-        'residence_status',
-        'residence_expires_at',
-        'residence_renewal_memo',
-        'residence_card_renewal_status',
         'department_primary',
         'section_primary',
         'position_primary',
@@ -26,14 +26,15 @@ class EmployeeHrDetailFieldGroups
         'jurisdiction',
         'gender',
         'birth_date',
-        'phone',
-        'personal_email',
-        'my_number_verified',
+        'company_phone',
         'remarks',
     ];
 
-    /** @var list<string> */
-    public const PROCEDURES = [
+    /** @var list<string> 詳細情報画面に表示する入社・退職手続き項目 */
+    public const PROCEDURES = [];
+
+    /** @var list<string> 詳細情報画面・CSV から非表示（DB・同期用に保持） */
+    public const PROCEDURES_HIDDEN = [
         'address_as_of_jan1',
         'previous_withholding_slip',
         'resident_tax_switch_form',
@@ -55,6 +56,15 @@ class EmployeeHrDetailFieldGroups
         'withholding_tax_slip',
         'separation_certificate',
         'resignation_certificate',
+    ];
+
+    /** @var list<string> 詳細情報画面・CSV から非表示（DB・同期用に保持） */
+    public const CORE_HIDDEN = [
+        'name_kana_fullwidth',
+        'name_kana_halfwidth',
+        'phone',
+        'personal_email',
+        'my_number_verified',
     ];
 
     /** @var list<string> */
@@ -87,6 +97,12 @@ class EmployeeHrDetailFieldGroups
      */
     public static function all(): array
     {
-        return array_values(array_unique(array_merge(self::CORE, self::PROCEDURES, self::IT)));
+        return array_values(array_unique(array_merge(
+            self::CORE,
+            self::CORE_HIDDEN,
+            self::PROCEDURES,
+            self::PROCEDURES_HIDDEN,
+            self::IT,
+        )));
     }
 }

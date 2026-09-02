@@ -61,7 +61,7 @@ class RegistryDepartmentPermissionsTest extends TestCase
 
     public function test_sales_department_gets_attendance_access(): void
     {
-        $user = $this->userInRegistryDepartment('大阪営業部');
+        $user = $this->userInRegistryDepartment('営業部');
 
         $this->assertTrue($user->canViewAttendanceSection());
     }
@@ -73,6 +73,7 @@ class RegistryDepartmentPermissionsTest extends TestCase
             'user_id' => $admin->id,
             'start_date' => '2024-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
             'department' => '情報システム部',
             'section' => '事業IT推進課',
             'location' => '大阪',
@@ -85,7 +86,8 @@ class RegistryDepartmentPermissionsTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10992',
-                'department' => '通信事業部',
+                'company' => 'CareEarth',
+                'department' => 'Food Sales部',
                 'location' => '大阪',
                 'employment_type' => '正社員',
             ])
@@ -93,9 +95,9 @@ class RegistryDepartmentPermissionsTest extends TestCase
 
         $created = User::query()->where('email', 'permission_taro@careearth.info')->firstOrFail();
 
-        $this->assertSame('通信事業部', $created->currentAffiliation()?->department);
-        $this->assertTrue(DashboardTab::canViewTab($created, 'telecom'));
-        $this->assertSame('通信事業部', $created->hrDetail?->department_primary);
+        $this->assertSame('Food Sales部', $created->currentAffiliation()?->department);
+        $this->assertTrue(DashboardTab::canViewTab($created, 'food'));
+        $this->assertSame('Food Sales部', $created->hrDetail?->department_primary);
     }
 
     public static function dashboardTabProvider(): array
@@ -103,12 +105,14 @@ class RegistryDepartmentPermissionsTest extends TestCase
         $businessTabs = ['dispatch', 'specified-skills', 'real-estate', 'food', 'telecom', 'beauty'];
 
         $cases = [
-            '派遣事業部' => ['dispatch'],
+            '美容事業部' => ['beauty'],
             '不動産事業部' => ['real-estate'],
             '通信事業部' => ['telecom'],
             '特定技能事業部' => ['specified-skills'],
-            '食品事業部' => ['food'],
-            '美容事業部' => ['beauty'],
+            'Food Sales部' => ['food'],
+            'Food Retail部' => ['food'],
+            'Food Logistic部' => ['food'],
+            'Food GA部' => ['food'],
             '経理部' => ['specified-skills', 'real-estate'],
         ];
 

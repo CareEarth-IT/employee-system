@@ -23,12 +23,16 @@ class EmployeeRegistryService
      *     password: string,
      *     employee_id: string,
      *     department: string,
+     *     company: string,
      *     section?: string|null,
+     *     team?: string|null,
      *     location: string,
      *     employment_type: string,
+     *     employment_status?: string,
      *     name_kana?: string|null,
      *     english_name?: string|null,
      *     abbreviated_name?: string|null,
+     *     birth_date?: string|null,
      *     joined_at?: string|null,
      *     nationality?: string|null,
      *     gender?: string|null,
@@ -41,8 +45,26 @@ class EmployeeRegistryService
             $this->assertEmployeeIdIsAvailable($data['employee_id']);
 
             [$lastName, $firstName, $displayName] = $this->splitName($data['name']);
-            $affiliationOrg = \App\Support\RegistryDepartmentOptions::resolveAffiliation($data['department']);
-            $section = $data['section'] ?? null;
+            $affiliationOrg = \App\Support\RegistryDepartmentOptions::resolveAffiliation(
+                $data['department'],
+                $data['section'] ?? null,
+            );
+            [$section, $team] = array_slice(
+                \App\Support\RegistryOrgAssignment::resolveForStorage(
+                    $data['department'],
+                    $data['location'],
+                    $data['section'] ?? null,
+                    $data['team'] ?? null,
+                ),
+                0,
+                2,
+            );
+            $affiliationSection = \App\Support\RegistryOrgAssignment::combine($section, $team);
+            $hrOrgPrimary = \App\Support\RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
+                $affiliationOrg['department'],
+                $data['location'],
+                $affiliationSection,
+            );
 
             $user = User::create([
                 'employee_id' => $data['employee_id'],
@@ -64,9 +86,9 @@ class EmployeeRegistryService
             EmployeeHrDetail::create([
                 'user_id' => $user->id,
                 'employment_type' => $data['employment_type'],
-                'employment_status' => '在籍',
-                'department_primary' => $affiliationOrg['department'],
-                'section_primary' => $section,
+                'employment_status' => $data['employment_status'] ?? '在籍',
+                'department_primary' => $hrOrgPrimary['department_primary'],
+                'section_primary' => $hrOrgPrimary['section_primary'],
                 ...$this->hrDetailAttributes($data),
             ]);
 
@@ -76,11 +98,11 @@ class EmployeeRegistryService
                 'user_id' => $user->id,
                 'start_date' => $joinedAt,
                 'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
-                'company' => User::COMPANY_NAMES[0] ?? 'CareEarth',
+                'company' => $data['company'],
                 'location' => $data['location'],
                 'department' => $affiliationOrg['department'],
-                'section' => $section,
-                'position' => $data['employment_type'],
+                'section' => $affiliationSection,
+                'position' => null,
                 'import_locked' => true,
             ]);
 
@@ -99,12 +121,16 @@ class EmployeeRegistryService
      *     password?: string|null,
      *     employee_id: string,
      *     department: string,
+     *     company: string,
      *     section?: string|null,
+     *     team?: string|null,
      *     location: string,
      *     employment_type: string,
+     *     employment_status?: string,
      *     name_kana?: string|null,
      *     english_name?: string|null,
      *     abbreviated_name?: string|null,
+     *     birth_date?: string|null,
      *     joined_at?: string|null,
      *     nationality?: string|null,
      *     gender?: string|null,
@@ -117,8 +143,26 @@ class EmployeeRegistryService
             $this->assertEmployeeIdIsAvailable($data['employee_id'], $user->id);
 
             [$lastName, $firstName, $displayName] = $this->splitName($data['name']);
-            $affiliationOrg = \App\Support\RegistryDepartmentOptions::resolveAffiliation($data['department']);
-            $section = $data['section'] ?? null;
+            $affiliationOrg = \App\Support\RegistryDepartmentOptions::resolveAffiliation(
+                $data['department'],
+                $data['section'] ?? null,
+            );
+            [$section, $team] = array_slice(
+                \App\Support\RegistryOrgAssignment::resolveForStorage(
+                    $data['department'],
+                    $data['location'],
+                    $data['section'] ?? null,
+                    $data['team'] ?? null,
+                ),
+                0,
+                2,
+            );
+            $affiliationSection = \App\Support\RegistryOrgAssignment::combine($section, $team);
+            $hrOrgPrimary = \App\Support\RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
+                $affiliationOrg['department'],
+                $data['location'],
+                $affiliationSection,
+            );
 
             $user->fill([
                 'employee_id' => $data['employee_id'],
@@ -148,9 +192,9 @@ class EmployeeRegistryService
                 ['user_id' => $user->id],
                 [
                     'employment_type' => $data['employment_type'],
-                    'employment_status' => $user->hrDetail?->employment_status ?: '在籍',
-                    'department_primary' => $affiliationOrg['department'],
-                    'section_primary' => $section,
+                    'employment_status' => $data['employment_status'] ?? $user->hrDetail?->employment_status ?: '在籍',
+                    'department_primary' => $hrOrgPrimary['department_primary'],
+                    'section_primary' => $hrOrgPrimary['section_primary'],
                     ...$this->hrDetailAttributes($data, $user->hrDetail),
                 ],
             );
@@ -159,11 +203,10 @@ class EmployeeRegistryService
 
             $affiliationData = [
                 'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
-                'company' => $user->currentAffiliation()?->company ?: (User::COMPANY_NAMES[0] ?? 'CareEarth'),
+                'company' => $data['company'],
                 'location' => $data['location'],
                 'department' => $affiliationOrg['department'],
-                'section' => $section,
-                'position' => $data['employment_type'],
+                'section' => $affiliationSection,
                 'import_locked' => true,
                 'start_date' => $joinedAt,
             ];
@@ -245,7 +288,7 @@ class EmployeeRegistryService
             $attributes['name_kana'] = $data['name_kana'];
         }
 
-        foreach (['english_name', 'abbreviated_name', 'nationality'] as $field) {
+        foreach (['english_name', 'nationality'] as $field) {
             if (array_key_exists($field, $data)) {
                 $attributes[$field] = $data[$field];
             }
@@ -269,7 +312,7 @@ class EmployeeRegistryService
             $attributes['name_kana_fullwidth'] = $data['name_kana'];
         }
 
-        foreach (['gender', 'remarks'] as $field) {
+        foreach (['gender', 'remarks', 'birth_date'] as $field) {
             if (array_key_exists($field, $data)) {
                 $attributes[$field] = $data[$field];
             }

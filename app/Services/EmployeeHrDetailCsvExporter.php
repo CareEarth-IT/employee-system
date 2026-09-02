@@ -82,6 +82,7 @@ class EmployeeHrDetailCsvExporter
             'email' => $user->email,
             'english_name' => $user->profile?->english_name,
             'abbreviated_name' => $user->profile?->abbreviated_name,
+            'nationality' => $user->profile?->nationality,
             'joined_at' => $this->formatDate($user->profile?->joined_at),
             default => '',
         };

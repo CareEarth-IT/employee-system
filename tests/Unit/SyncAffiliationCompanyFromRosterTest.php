@@ -17,11 +17,33 @@ class SyncAffiliationCompanyFromRosterTest extends TestCase
     public function test_map_affiliation_code_to_company(): void
     {
         $this->assertSame('CareEarth', EmployeeRosterCsv::mapAffiliationCodeToCompany('CE'));
+        $this->assertSame('Care EarthVietnam', EmployeeRosterCsv::mapAffiliationCodeToCompany('CEVN'));
         $this->assertSame('GROWTEC', EmployeeRosterCsv::mapAffiliationCodeToCompany('GT'));
         $this->assertSame('Earth Management', EmployeeRosterCsv::mapAffiliationCodeToCompany('EM'));
         $this->assertSame('MidEarth', EmployeeRosterCsv::mapAffiliationCodeToCompany('MD'));
         $this->assertSame('MidEarth', EmployeeRosterCsv::mapAffiliationCodeToCompany('ME'));
         $this->assertNull(EmployeeRosterCsv::mapAffiliationCodeToCompany('XX'));
+    }
+
+    public function test_affiliation_code_mappings_use_registered_company_names(): void
+    {
+        foreach (User::AFFILIATION_CODE_TO_COMPANY as $companyName) {
+            $this->assertContains($companyName, User::COMPANY_NAMES);
+        }
+    }
+
+    public function test_affiliation_select_options_do_not_duplicate_company_names(): void
+    {
+        $labels = array_values(User::affiliationSelectOptions());
+
+        $this->assertSame($labels, array_values(array_unique($labels)));
+        $this->assertSame(1, count(array_filter($labels, fn (string $label) => $label === 'MidEarth')));
+    }
+
+    public function test_canonical_affiliation_code_maps_md_to_me(): void
+    {
+        $this->assertSame('ME', User::canonicalAffiliationCode('MD'));
+        $this->assertSame('ME', User::canonicalAffiliationCode('md'));
     }
 
     public function test_command_updates_bulk_import_affiliation_company(): void

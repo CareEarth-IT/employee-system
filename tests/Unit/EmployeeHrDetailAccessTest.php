@@ -13,15 +13,16 @@ class EmployeeHrDetailAccessTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_information_systems_cannot_edit_or_view_procedures_for_others(): void
+    public function test_information_systems_can_edit_hr_detail_for_others(): void
     {
         $viewer = $this->userInAffiliation('情報システム部', '事業IT推進課');
         $target = User::factory()->create();
 
-        $this->assertFalse(EmployeeHrDetailAccess::canEditProcedures($viewer, $target));
-        $this->assertFalse(EmployeeHrDetailAccess::canViewProcedures($viewer, $target));
-        $this->assertFalse(EmployeeHrDetailAccess::canEditCore($viewer, $target));
+        $this->assertTrue(EmployeeHrDetailAccess::canEditCore($viewer, $target));
+        $this->assertTrue(EmployeeHrDetailAccess::canEditProcedures($viewer, $target));
+        $this->assertTrue(EmployeeHrDetailAccess::canViewProcedures($viewer, $target));
         $this->assertTrue(EmployeeHrDetailAccess::canEditIt($viewer, $target));
+        $this->assertTrue(EmployeeHrDetailAccess::canUpdateAny($viewer, $target));
     }
 
     public function test_hr_section_can_edit_procedures_for_others(): void
@@ -41,6 +42,19 @@ class EmployeeHrDetailAccessTest extends TestCase
         $this->assertTrue(EmployeeHrDetailAccess::canEditProcedures($viewer, $target));
         $this->assertTrue(EmployeeHrDetailAccess::canViewProcedures($viewer, $target));
         $this->assertTrue(EmployeeHrDetailAccess::canEditCore($viewer, $target));
+    }
+
+    public function test_general_affairs_can_view_core_but_not_edit(): void
+    {
+        $viewer = $this->userInAffiliation('経理部', '総務課');
+        $target = User::factory()->create();
+
+        $this->assertTrue(EmployeeHrDetailAccess::canViewCore($viewer, $target));
+        $this->assertTrue(EmployeeHrDetailAccess::canViewPage($viewer, $target));
+        $this->assertFalse(EmployeeHrDetailAccess::canEditCore($viewer, $target));
+        $this->assertFalse(EmployeeHrDetailAccess::canEditProcedures($viewer, $target));
+        $this->assertFalse(EmployeeHrDetailAccess::canViewProcedures($viewer, $target));
+        $this->assertFalse(EmployeeHrDetailAccess::canUpdateAny($viewer, $target));
     }
 
     public function test_employee_can_view_but_not_edit_own_procedures(): void

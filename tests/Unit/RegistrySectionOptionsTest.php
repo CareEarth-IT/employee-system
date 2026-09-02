@@ -13,10 +13,12 @@ class RegistrySectionOptionsTest extends TestCase
         $options = RegistrySectionOptions::options();
 
         $this->assertContains('人事課', $options);
+        $this->assertContains('経理課', $options);
         $this->assertContains('SS課_名古屋', $options);
-        $this->assertNotContains('ベトナム支店', $options);
-        $this->assertNotContains('大阪グローバル事業部', $options);
-        $this->assertContains('Food Sales部', $options);
+        $this->assertContains('ベトナム支店', $options);
+        $this->assertContains('大阪グローバル事業部', $options);
+        $this->assertNotContains('Food Sales部', $options);
+        $this->assertNotContains('出荷チーム', $options);
 
         foreach ($options as $option) {
             $this->assertNotContains($option, RegistryDepartmentOptions::options());

@@ -18,6 +18,18 @@
     );
     $lockCurrentOrgFields = ($affiliation?->isCurrent() ?? false)
         && ! auth()->user()->canEditCurrentAffiliationOrg();
+    $orgValues = [
+        'company' => old('company', $affiliation?->company),
+        'location' => old('location', $affiliation?->location),
+        'department' => old('department', $affiliation?->department),
+        'section' => old('section', $affiliation?->section),
+        'stored_section' => $affiliation?->section,
+        'team' => old('team', ''),
+    ];
+    $lockedDisplay = [
+        'department' => $affiliation?->department ?: '—',
+        'section' => $affiliation?->section ?: '—',
+    ];
 @endphp
 
 <div class="space-y-4">
@@ -26,49 +38,17 @@
         <p class="w-full rounded border border-slate-200 bg-slate-50 px-3 py-2">{{ $user?->employee_id ?? '—' }}</p>
     </div>
 
-    <div class="grid sm:grid-cols-2 gap-4">
-        <div>
-            <label for="company" class="block text-sm mb-1">会社名</label>
-            <select id="company" name="company" class="w-full rounded border border-slate-300 px-3 py-2">
-                <option value="">選択してください</option>
-                @foreach (User::COMPANY_NAMES as $companyName)
-                    <option value="{{ $companyName }}" @selected(old('company', $affiliation?->company) === $companyName)>{{ $companyName }}</option>
-                @endforeach
-            </select>
-            @include('partials.field-error', ['field' => 'company'])
-        </div>
-        <div>
-            <label for="location" class="block text-sm mb-1">拠点</label>
-            <select id="location" name="location" class="w-full rounded border border-slate-300 px-3 py-2">
-                <option value="">選択してください</option>
-                @foreach (User::OFFICE_LOCATIONS as $office)
-                    <option value="{{ $office }}" @selected(old('location', $affiliation?->location) === $office)>{{ $office }}</option>
-                @endforeach
-            </select>
-            @include('partials.field-error', ['field' => 'location'])
-        </div>
-        <div>
-            <label for="department" class="block text-sm font-medium text-slate-700 mb-1">部</label>
-            @if ($lockCurrentOrgFields)
-                <p class="w-full rounded border border-slate-200 bg-slate-50 px-3 py-2">{{ $affiliation->department ?: '—' }}</p>
-                <input type="hidden" name="department" value="{{ $affiliation->department }}">
-                <p class="mt-1 text-xs text-slate-500">現在の所属のため、部・課・期間の変更は人事部・情報システム部のみ可能です</p>
-            @else
-                <input id="department" name="department" value="{{ old('department', $affiliation?->department) }}" class="w-full rounded border border-slate-300 px-3 py-2">
-                @include('partials.field-error', ['field' => 'department'])
-            @endif
-        </div>
-        <div>
-            <label for="section" class="block text-sm font-medium text-slate-700 mb-1">課</label>
-            @if ($lockCurrentOrgFields)
-                <p class="w-full rounded border border-slate-200 bg-slate-50 px-3 py-2">{{ $affiliation->section ?: '—' }}</p>
-                <input type="hidden" name="section" value="{{ $affiliation->section }}">
-            @else
-                <input id="section" name="section" value="{{ old('section', $affiliation?->section) }}" class="w-full rounded border border-slate-300 px-3 py-2">
-                @include('partials.field-error', ['field' => 'section'])
-            @endif
-        </div>
-    </div>
+    @include('partials.registry-org-fields', [
+        'values' => $orgValues,
+        'locationLabel' => '管轄',
+        'departmentLabel' => '部',
+        'lockOrgFields' => $lockCurrentOrgFields,
+        'lockedDisplay' => $lockedDisplay,
+    ])
+
+    @if ($lockCurrentOrgFields)
+        <p class="text-xs text-slate-500">現在の所属のため、部・課/チーム・期間の変更は人事部・情報システム部のみ可能です</p>
+    @endif
 
     <div>
         <div class="flex items-center justify-between mb-2">

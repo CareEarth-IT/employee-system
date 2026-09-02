@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Support\EmployeeHrDetailAccess;
+use App\Support\EmployeeKeywordSearch;
 use App\Support\EmploymentStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -43,7 +44,13 @@ class EmployeeController extends Controller
         }
 
         $query = User::query()
-            ->with(['profile', 'hrDetail', 'affiliationHistories']);
+            ->with([
+                'profile',
+                'hrDetail',
+                'affiliationHistories' => fn ($affiliationQuery) => $affiliationQuery
+                    ->orderByDesc('start_date')
+                    ->orderByDesc('id'),
+            ]);
 
         if ($sort === 'employee_id') {
             $this->applyEmployeeIdSort($query, $direction);
@@ -54,11 +61,7 @@ class EmployeeController extends Controller
         }
 
         if ($company !== '') {
-            $query->whereHas('affiliationHistories', function ($affiliationQuery) use ($company) {
-                $affiliationQuery
-                    ->currentlyActive()
-                    ->where('company', $company);
-            });
+            $query->whereDisplayCompany($company);
         }
 
         EmploymentStatus::applyUserStatusFilter($query, $status);
@@ -80,48 +83,7 @@ class EmployeeController extends Controller
         }
 
         if ($keyword !== '') {
-            $like = '%'.$keyword.'%';
-            $query->where(function ($keywordQuery) use ($like, $keyword) {
-                $keywordQuery
-                    ->where('name', 'like', $like)
-                    ->orWhere('email', 'like', $like)
-                    ->orWhere('last_name', 'like', $like)
-                    ->orWhere('first_name', 'like', $like)
-                    ->orWhereHas('profile', function ($profileQuery) use ($like) {
-                        $profileQuery
-                            ->where('english_name', 'like', $like)
-                            ->orWhere('name_kana', 'like', $like);
-                    })
-                    ->orWhereHas('affiliationHistories', function ($affiliationQuery) use ($like) {
-                        $affiliationQuery
-                            ->currentlyActive()
-                            ->where(function ($activeAffiliationQuery) use ($like) {
-                                $activeAffiliationQuery
-                                    ->where('department', 'like', $like)
-                                    ->orWhere('section', 'like', $like)
-                                    ->orWhere('position', 'like', $like);
-                            });
-                    })
-                    ->orWhereHas('hrDetail', function ($hrDetailQuery) use ($like, $keyword) {
-                        $hrDetailQuery
-                            ->where('company_phone', 'like', $like)
-                            ->orWhere('phone', 'like', $like);
-
-                        $digits = preg_replace('/\D/u', '', $keyword) ?? '';
-                        if ($digits !== '') {
-                            $digitLike = '%'.$digits.'%';
-                            $hrDetailQuery
-                                ->orWhereRaw(
-                                    "REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(company_phone, ''), '-', ''), ' ', ''), '，', ''), '、', '') LIKE ?",
-                                    [$digitLike],
-                                )
-                                ->orWhereRaw(
-                                    "REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(phone, ''), '-', ''), ' ', ''), '，', ''), '、', '') LIKE ?",
-                                    [$digitLike],
-                                );
-                        }
-                    });
-            });
+            EmployeeKeywordSearch::apply($query, $keyword);
         }
 
         return view('employees.index', [
@@ -139,7 +101,7 @@ class EmployeeController extends Controller
             'canExportHrDetails' => EmployeeHrDetailAccess::canExportCsv($request->user()),
             'canImportEmployees' => (bool) $request->user()?->isInformationSystems(),
             'canManageEmployeeRegistry' => (bool) $request->user()?->canManageEmployeeRegistry(),
-            'statusTabs' => ['在籍', '退職'],
+            'statusTabs' => User::EMPLOYMENT_STATUS_OPTIONS,
         ]);
     }
 

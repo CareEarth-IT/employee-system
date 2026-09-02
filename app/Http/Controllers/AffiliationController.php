@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\AssertsProfileAccess;
 use App\Http\Requests\AffiliationStoreRequest;
 use App\Http\Requests\AffiliationUpdateRequest;
 use App\Models\AffiliationHistory;
+use App\Models\EmployeeHrDetail;
 use App\Models\User;
 use App\Services\DriveStaffSyncService;
 use App\Support\UserRouteHelper;
@@ -47,6 +48,7 @@ class AffiliationController extends Controller
         }
 
         $target->syncRoleFromAffiliation();
+        EmployeeHrDetail::syncPrimaryOrgFromAffiliation($target->fresh(), $affiliation);
         $this->driveStaffSync->syncUser($target->fresh());
 
         $message = '所属部署を登録しました。';
@@ -86,6 +88,7 @@ class AffiliationController extends Controller
         }
 
         $affiliation->user->syncRoleFromAffiliation();
+        EmployeeHrDetail::syncPrimaryOrgFromAffiliation($affiliation->user->fresh(), $affiliation->fresh());
         $this->driveStaffSync->syncUser($affiliation->user->fresh());
 
         return $this->redirectToProfileEdit($affiliation->user, '所属部署を更新しました。');

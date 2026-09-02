@@ -6,6 +6,7 @@ use App\Http\Requests\EmployeeRegistryStoreRequest;
 use App\Http\Requests\EmployeeRegistryUpdateRequest;
 use App\Models\User;
 use App\Services\EmployeeRegistryService;
+use App\Support\NationalityOptions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -67,17 +68,27 @@ class EmployeeRegistryController extends Controller
             'email' => old('email', (string) $user->email),
             'employee_id' => old('employee_id', (string) ($user->employee_id ?? '')),
             'department' => old('department', (string) ($affiliation?->department ?? '')),
+            'company' => old('company', (string) ($affiliation?->company ?? '')),
             'section' => old('section', (string) ($affiliation?->section ?? '')),
+            'stored_section' => (string) ($affiliation?->section ?? ''),
+            'team' => old('team', ''),
             'location' => old('location', (string) ($affiliation?->location ?? '')),
             'employment_type' => old(
                 'employment_type',
                 (string) ($hrDetail?->employment_type ?: $affiliation?->position ?: ''),
             ),
+            'employment_status' => old(
+                'employment_status',
+                (string) ($hrDetail?->employment_status ?: '在籍'),
+            ),
             'name_kana' => old('name_kana', (string) ($profile?->name_kana ?? '')),
             'english_name' => old('english_name', (string) ($profile?->english_name ?? '')),
-            'abbreviated_name' => old('abbreviated_name', (string) ($profile?->abbreviated_name ?? '')),
+            'birth_date' => old('birth_date', $hrDetail?->birth_date?->format('Y-m-d') ?? ''),
             'gender' => old('gender', (string) ($hrDetail?->gender ?? '')),
-            'nationality' => old('nationality', (string) ($profile?->nationality ?? '')),
+            'nationality' => old(
+                'nationality',
+                NationalityOptions::toDisplayName($profile?->nationality) ?? (string) ($profile?->nationality ?? ''),
+            ),
             'joined_at' => old('joined_at', $profile?->joined_at?->format('Y-m-d') ?? ''),
             'remarks' => old('remarks', (string) ($hrDetail?->remarks ?? '')),
         ];

@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\User;
 use App\Support\EmployeeIdRules;
+use App\Support\NationalityOptions;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -49,6 +50,15 @@ class ProfileUpdateRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->exists('nationality')) {
+            $this->merge([
+                'nationality' => NationalityOptions::toDisplayName($this->input('nationality')),
+            ]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -64,7 +74,7 @@ class ProfileUpdateRequest extends FormRequest
             'name_kana' => ['nullable', 'string', 'max:255'],
             'abbreviated_name' => ['nullable', 'string', 'max:10'],
             'joined_at' => ['nullable', 'date'],
-            'nationality' => ['nullable', 'string', 'max:255'],
+            'nationality' => ['nullable', 'string', Rule::in(NationalityOptions::names())],
             'languages' => ['nullable', 'string', 'max:2000'],
             'self_introduction' => ['nullable', 'string', 'max:5000'],
             'photo' => ['nullable', 'image', 'max:2048'],
@@ -103,6 +113,7 @@ class ProfileUpdateRequest extends FormRequest
             'email.required' => 'メールアドレスを入力してください。',
             'email.email' => 'メールアドレスの形式が正しくありません。',
             'email.unique' => 'このメールアドレスは既に使用されています。',
+            'nationality.in' => '国籍を正しく選択してください。',
         ];
     }
 

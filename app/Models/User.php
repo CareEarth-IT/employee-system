@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\EmploymentStatus;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -89,16 +91,26 @@ class User extends Authenticatable
     /** @var list<string> */
     public const COMPANY_NAMES = [
         'CareEarth',
+        'Care EarthVietnam',
         'GROWTEC',
         'MidEarth',
         'Earth Management',
     ];
 
-    /** @var list<string> 社員一覧の状況フィルタ（CSV「状況」） */
+    /** @var array<string, string> 社員名簿 CSV「所属」コード → {@see self::COMPANY_NAMES} */
+    public const AFFILIATION_CODE_TO_COMPANY = [
+        'CE' => 'CareEarth',
+        'CEVN' => 'Care EarthVietnam',
+        'GT' => 'GROWTEC',
+        'EM' => 'Earth Management',
+        'ME' => 'MidEarth',
+    ];
+
+    /** @var list<string> 詳細情報・社員一覧の状況 */
     public const EMPLOYMENT_STATUS_OPTIONS = [
         '在籍',
+        '休職',
         '退職',
-        '辞退',
     ];
 
     /** @var list<string> 社員一覧の雇用形態フィルタ */
@@ -317,13 +329,17 @@ class User extends Authenticatable
         return $this->displayName();
     }
 
-    /** 社員一覧などで表示する状況（在籍 / 退職 / 辞退） */
+    /** 社員一覧などで表示する状況（在籍 / 休職 / 退職） */
     public function displayEmploymentStatus(): string
     {
         $hrStatus = trim((string) ($this->hrDetail?->employment_status ?? ''));
 
-        if (in_array($hrStatus, self::EMPLOYMENT_STATUS_OPTIONS, true)) {
-            return $hrStatus;
+        if ($hrStatus !== '') {
+            $normalized = EmploymentStatus::normalize($hrStatus);
+
+            if (in_array($normalized, self::EMPLOYMENT_STATUS_OPTIONS, true)) {
+                return $normalized;
+            }
         }
 
         if ($hrStatus === AffiliationHistory::STATUS_ENROLLED) {
@@ -354,6 +370,33 @@ class User extends Authenticatable
         return $hrStatus !== '' ? $hrStatus : '—';
     }
 
+    public static function canonicalAffiliationCode(?string $code): ?string
+    {
+        $code = strtoupper(trim((string) $code));
+
+        if ($code === '') {
+            return null;
+        }
+
+        // 社員名簿 CSV の旧コード MD は ME に統一
+        if ($code === 'MD') {
+            return 'ME';
+        }
+
+        return $code;
+    }
+
+    public static function mapAffiliationCodeToCompany(string $code): ?string
+    {
+        $code = self::canonicalAffiliationCode($code) ?? '';
+
+        if ($code === '') {
+            return null;
+        }
+
+        return self::AFFILIATION_CODE_TO_COMPANY[$code] ?? null;
+    }
+
     /** 社員一覧などで表示する所属会社 */
     public function displayCompany(): string
     {
@@ -362,11 +405,61 @@ class User extends Authenticatable
             return $current->company;
         }
 
-        $latest = $this->relationLoaded('affiliationHistories')
-            ? $this->affiliationHistories->first()
-            : $this->affiliationHistories()->orderByDesc('start_date')->first();
+        return $this->latestAffiliation()?->company ?? '—';
+    }
 
-        return $latest?->company ?? '—';
+    public function latestAffiliation(): ?AffiliationHistory
+    {
+        if ($this->relationLoaded('affiliationHistories')) {
+            return $this->affiliationHistories
+                ->sortByDesc(fn (AffiliationHistory $history) => sprintf(
+                    '%s-%010d',
+                    $history->start_date?->toDateString() ?? '',
+                    $history->id,
+                ))
+                ->first();
+        }
+
+        return $this->affiliationHistories()
+            ->orderByDesc('start_date')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * {@see displayCompany()} と同じ基準で所属会社を絞り込む。
+     *
+     * @param  Builder<User>  $query
+     */
+    public function scopeWhereDisplayCompany(Builder $query, string $company): void
+    {
+        $query->where(function (Builder $outer) use ($company) {
+            $outer->whereHas('affiliationHistories', function (Builder $affiliationQuery) use ($company) {
+                $affiliationQuery
+                    ->currentlyActive()
+                    ->where('company', $company);
+            })->orWhere(function (Builder $fallback) use ($company) {
+                $fallback
+                    ->whereDoesntHave('affiliationHistories', function (Builder $affiliationQuery) {
+                        $affiliationQuery
+                            ->currentlyActive()
+                            ->whereNotNull('company')
+                            ->where('company', '!=', '');
+                    })
+                    ->whereHas('affiliationHistories', function (Builder $affiliationQuery) use ($company) {
+                        $affiliationQuery
+                            ->where('company', $company)
+                            ->whereRaw(
+                                'affiliation_histories.id = (
+                                    SELECT ah.id FROM affiliation_histories ah
+                                    WHERE ah.user_id = users.id
+                                    ORDER BY ah.start_date DESC, ah.id DESC
+                                    LIMIT 1
+                                )'
+                            );
+                    });
+            });
+        });
     }
 
     /** 社員一覧などで表示する雇用形態 */
@@ -720,6 +813,110 @@ class User extends Authenticatable
     public static function registrySectionOptions(?string $current = null): array
     {
         return \App\Support\RegistrySectionOptions::forSelect($current);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function registrySectionOptionsForAssignment(
+        ?string $department,
+        ?string $location,
+        ?string $current = null,
+    ): array {
+        return \App\Support\RegistrySectionByAssignment::forSelect($department, $location, $current);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function registryTeamOptionsForAssignment(
+        ?string $department,
+        ?string $location,
+        ?string $section,
+        ?string $current = null,
+    ): array {
+        return \App\Support\RegistryTeamByAssignment::forSelect($department, $location, $section, $current);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function registryTeamOptions(?string $current = null): array
+    {
+        return \App\Support\RegistryTeamOptions::forSelect($current);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function registryPositionOptions(?string $current = null): array
+    {
+        return \App\Support\RegistryPositionOptions::forSelect($current);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function employmentTypeOptions(?string $current = null): array
+    {
+        return self::selectOptionsWithCurrent(self::EMPLOYMENT_TYPE_OPTIONS, $current);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function employmentStatusOptions(?string $current = null): array
+    {
+        return self::selectOptionsWithCurrent(self::EMPLOYMENT_STATUS_OPTIONS, $current);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function companyOptions(?string $current = null): array
+    {
+        return self::selectOptionsWithCurrent(self::COMPANY_NAMES, $current);
+    }
+
+    /**
+     * @return array<string, string> 所属コード => 会社名
+     */
+    public static function affiliationSelectOptions(?string $currentCode = null): array
+    {
+        $options = self::AFFILIATION_CODE_TO_COMPANY;
+
+        if ($currentCode === null || $currentCode === '') {
+            return $options;
+        }
+
+        $normalized = User::canonicalAffiliationCode($currentCode) ?? '';
+
+        if ($normalized !== '' && ! array_key_exists($normalized, $options)) {
+            $options[$normalized] = self::mapAffiliationCodeToCompany($normalized) ?? $currentCode;
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function affiliationCodeOptions(?string $current = null): array
+    {
+        return array_keys(self::affiliationSelectOptions($current));
+    }
+
+    /**
+     * @param  list<string>  $options
+     * @return list<string>
+     */
+    private static function selectOptionsWithCurrent(array $options, ?string $current): array
+    {
+        if ($current === null || $current === '' || in_array($current, $options, true)) {
+            return $options;
+        }
+
+        return [...$options, $current];
     }
 
     /** プロフィール閲覧時に編集画面へ誘導する（情シス・人事部人事課） */
