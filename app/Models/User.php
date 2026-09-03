@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\EmployeeIdRules;
 use App\Support\EmploymentStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
@@ -111,6 +113,12 @@ class User extends Authenticatable
         '在籍',
         '休職',
         '退職',
+    ];
+
+    /** @var list<string> 社員一覧の状況タブ */
+    public const EMPLOYMENT_STATUS_TAB_OPTIONS = [
+        '全体',
+        ...self::EMPLOYMENT_STATUS_OPTIONS,
     ];
 
     /** @var list<string> 社員一覧の雇用形態フィルタ */
@@ -332,42 +340,23 @@ class User extends Authenticatable
     /** 社員一覧などで表示する状況（在籍 / 休職 / 退職） */
     public function displayEmploymentStatus(): string
     {
+        if (! $this->isListedEmployee()) {
+            return '—';
+        }
+
         $hrStatus = trim((string) ($this->hrDetail?->employment_status ?? ''));
 
-        if ($hrStatus !== '') {
-            $normalized = EmploymentStatus::normalize($hrStatus);
-
-            if (in_array($normalized, self::EMPLOYMENT_STATUS_OPTIONS, true)) {
-                return $normalized;
-            }
+        if ($hrStatus === '') {
+            return '—';
         }
 
-        if ($hrStatus === AffiliationHistory::STATUS_ENROLLED) {
-            return '在籍';
+        $normalized = EmploymentStatus::normalize($hrStatus);
+
+        if (in_array($normalized, self::EMPLOYMENT_STATUS_OPTIONS, true)) {
+            return $normalized;
         }
 
-        if ($hrStatus === AffiliationHistory::STATUS_RESIGNED) {
-            return '退職';
-        }
-
-        $current = $this->currentAffiliation();
-        if ($current?->isEnrolled()) {
-            return '在籍';
-        }
-
-        $hasResigned = $this->relationLoaded('affiliationHistories')
-            ? $this->affiliationHistories->contains(
-                fn (AffiliationHistory $history) => $history->enrollment_status === AffiliationHistory::STATUS_RESIGNED
-            )
-            : $this->affiliationHistories()
-                ->where('enrollment_status', AffiliationHistory::STATUS_RESIGNED)
-                ->exists();
-
-        if ($hasResigned) {
-            return '退職';
-        }
-
-        return $hrStatus !== '' ? $hrStatus : '—';
+        return '—';
     }
 
     public static function canonicalAffiliationCode(?string $code): ?string
@@ -460,6 +449,34 @@ class User extends Authenticatable
                     });
             });
         });
+    }
+
+    /**
+     * 社員一覧の状況タブ（在籍・休職・退職・全体）の対象となる登録済み社員か。
+     */
+    public function isListedEmployee(): bool
+    {
+        return EmployeeIdRules::isValid($this->employee_id);
+    }
+
+    /**
+     * 社員一覧の状況タブ対象となる登録済み社員（5桁社員ID）に絞り込む。
+     *
+     * @param  Builder<User>  $query
+     */
+    public function scopeWhereListedEmployee(Builder $query): void
+    {
+        $length = EmployeeIdRules::LENGTH;
+
+        $query->whereNotNull('employee_id')
+            ->where('employee_id', '!=', '')
+            ->whereRaw('LENGTH(employee_id) = ?', [$length]);
+
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $query->whereRaw("employee_id GLOB '[0-9][0-9][0-9][0-9][0-9]'");
+        } else {
+            $query->whereRaw("employee_id REGEXP '^[0-9]{".$length."}$'");
+        }
     }
 
     /** 社員一覧などで表示する雇用形態 */

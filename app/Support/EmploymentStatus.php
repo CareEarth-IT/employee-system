@@ -34,44 +34,61 @@ final class EmploymentStatus
      */
     public static function applyUserStatusFilter(Builder $query, string $status): void
     {
-        if ($status === '在籍') {
-            $query->where(function (Builder $statusQuery) {
-                $statusQuery
-                    ->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->whereIn(
-                        'employment_status',
-                        self::ACTIVE_STORED_VALUES,
-                    ))
-                    ->orWhere(function (Builder $fallbackQuery) {
-                        $fallbackQuery
-                            ->where(function (Builder $missingStatusQuery) {
-                                $missingStatusQuery
-                                    ->whereDoesntHave('hrDetail')
-                                    ->orWhereHas('hrDetail', function (Builder $hrDetailQuery) {
-                                        $hrDetailQuery
-                                            ->whereNull('employment_status')
-                                            ->orWhere('employment_status', '');
-                                    });
-                            })
-                            ->whereHas('affiliationHistories', fn (Builder $affiliationQuery) => $affiliationQuery->currentlyActive());
+        if ($status === '全体') {
+            $query->where(function (Builder $allStatusQuery) {
+                $allStatusQuery
+                    ->where(function (Builder $activeQuery) {
+                        self::applyActiveStatusFilter($activeQuery);
+                    })
+                    ->orWhere(function (Builder $onLeaveQuery) {
+                        self::applyOnLeaveStatusFilter($onLeaveQuery);
+                    })
+                    ->orWhere(function (Builder $resignedQuery) {
+                        self::applyResignedStatusFilter($resignedQuery);
                     });
             });
 
             return;
         }
 
-        if ($status === '休職') {
-            $query->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '休職'));
+        match ($status) {
+            '在籍' => self::applyActiveStatusFilter($query),
+            '休職' => self::applyOnLeaveStatusFilter($query),
+            '退職' => self::applyResignedStatusFilter($query),
+            default => null,
+        };
+    }
 
-            return;
-        }
+    /**
+     * @param  Builder<User>  $query
+     */
+    private static function applyActiveStatusFilter(Builder $query): void
+    {
+        $query->whereListedEmployee()->whereHas(
+            'hrDetail',
+            fn (Builder $hrDetailQuery) => $hrDetailQuery->whereIn(
+                'employment_status',
+                self::ACTIVE_STORED_VALUES,
+            ),
+        );
+    }
 
-        if ($status === '退職') {
-            $query->where(function (Builder $statusQuery) {
-                $statusQuery
-                    ->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->whereIn('employment_status', ['退職', '辞退']))
-                    ->orWhereHas('affiliationHistories', fn (Builder $affiliationQuery) => $affiliationQuery
-                        ->where('enrollment_status', AffiliationHistory::STATUS_RESIGNED));
-            });
-        }
+    /**
+     * @param  Builder<User>  $query
+     */
+    private static function applyOnLeaveStatusFilter(Builder $query): void
+    {
+        $query->whereListedEmployee()->whereHas('hrDetail', fn (Builder $hrDetailQuery) => $hrDetailQuery->where('employment_status', '休職'));
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     */
+    private static function applyResignedStatusFilter(Builder $query): void
+    {
+        $query->whereListedEmployee()->whereHas(
+            'hrDetail',
+            fn (Builder $hrDetailQuery) => $hrDetailQuery->whereIn('employment_status', ['退職', '辞退']),
+        );
     }
 }

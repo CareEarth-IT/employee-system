@@ -29,6 +29,7 @@ class EmployeeIndexTest extends TestCase
             ->assertSee('name="employee_id"', false)
             ->assertSee('name="employment_type"', false)
             ->assertSee('aria-label="状況タブ"', false)
+            ->assertSee('status=%E5%85%A8%E4%BD%93', false)
             ->assertSee('status=%E5%9C%A8%E7%B1%8D', false)
             ->assertSee('status=%E9%80%80%E8%81%B7', false)
             ->assertDontSee('id="status"', false)
@@ -47,6 +48,7 @@ class EmployeeIndexTest extends TestCase
             'email' => 'sample_user@careearth.info',
             'last_name' => '山田',
             'first_name' => '太郎',
+            'employee_id' => '11001',
         ]);
         AffiliationHistory::create([
             'user_id' => $employee->id,
@@ -57,6 +59,7 @@ class EmployeeIndexTest extends TestCase
         ]);
         EmployeeHrDetail::create([
             'user_id' => $employee->id,
+            'employment_status' => '在籍',
             'company_phone' => '080-1234-5678',
         ]);
 
@@ -81,6 +84,7 @@ class EmployeeIndexTest extends TestCase
             'email' => 'multi_phone@careearth.info',
             'last_name' => '複数',
             'first_name' => '電話',
+            'employee_id' => '11002',
         ]);
         AffiliationHistory::create([
             'user_id' => $employee->id,
@@ -90,6 +94,7 @@ class EmployeeIndexTest extends TestCase
         ]);
         EmployeeHrDetail::create([
             'user_id' => $employee->id,
+            'employment_status' => '在籍',
             'company_phone' => '080-1111-2222, 080-3333-4444',
         ]);
 
@@ -105,7 +110,11 @@ class EmployeeIndexTest extends TestCase
     {
         $viewer = User::factory()->create();
 
-        $careEarthUser = User::factory()->create(['last_name' => 'ケア', 'first_name' => '太郎']);
+        $careEarthUser = User::factory()->create([
+            'last_name' => 'ケア',
+            'first_name' => '太郎',
+            'employee_id' => '11003',
+        ]);
         AffiliationHistory::create([
             'user_id' => $careEarthUser->id,
             'start_date' => '2024-01-01',
@@ -114,8 +123,13 @@ class EmployeeIndexTest extends TestCase
             'location' => '大阪',
             'department' => '通信部',
         ]);
+        $this->markEmploymentStatus($careEarthUser);
 
-        $growtecUser = User::factory()->create(['last_name' => 'グロ', 'first_name' => '花子']);
+        $growtecUser = User::factory()->create([
+            'last_name' => 'グロ',
+            'first_name' => '花子',
+            'employee_id' => '11004',
+        ]);
         AffiliationHistory::create([
             'user_id' => $growtecUser->id,
             'start_date' => '2024-01-01',
@@ -124,6 +138,7 @@ class EmployeeIndexTest extends TestCase
             'location' => '東京',
             'department' => '営業部',
         ]);
+        $this->markEmploymentStatus($growtecUser);
 
         $this->actingAs($viewer)
             ->get(route('employees.index', ['company' => 'CareEarth']))
@@ -136,7 +151,11 @@ class EmployeeIndexTest extends TestCase
     {
         $viewer = User::factory()->create();
 
-        $earthManagementResignee = User::factory()->create(['last_name' => 'EM', 'first_name' => '退職']);
+        $earthManagementResignee = User::factory()->create([
+            'last_name' => 'EM',
+            'first_name' => '退職',
+            'employee_id' => '11005',
+        ]);
         AffiliationHistory::create([
             'user_id' => $earthManagementResignee->id,
             'start_date' => '2018-01-01',
@@ -160,7 +179,11 @@ class EmployeeIndexTest extends TestCase
             'employment_status' => '退職',
         ]);
 
-        $growtecResignee = User::factory()->create(['last_name' => 'GT', 'first_name' => '退職']);
+        $growtecResignee = User::factory()->create([
+            'last_name' => 'GT',
+            'first_name' => '退職',
+            'employee_id' => '11006',
+        ]);
         AffiliationHistory::create([
             'user_id' => $growtecResignee->id,
             'start_date' => '2020-01-01',
@@ -200,7 +223,7 @@ class EmployeeIndexTest extends TestCase
         $matched = User::factory()->create([
             'last_name' => '社員',
             'first_name' => '一致',
-            'employee_id' => '255',
+            'employee_id' => '00255',
         ]);
         AffiliationHistory::create([
             'user_id' => $matched->id,
@@ -208,11 +231,12 @@ class EmployeeIndexTest extends TestCase
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'location' => '大阪',
         ]);
+        $this->markEmploymentStatus($matched);
 
         $other = User::factory()->create([
             'last_name' => '別',
             'first_name' => '人',
-            'employee_id' => '999',
+            'employee_id' => '00999',
         ]);
         AffiliationHistory::create([
             'user_id' => $other->id,
@@ -220,6 +244,7 @@ class EmployeeIndexTest extends TestCase
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'location' => '大阪',
         ]);
+        $this->markEmploymentStatus($other);
 
         $this->actingAs($viewer)
             ->get(route('employees.index', ['employee_id' => '255']))
@@ -232,7 +257,11 @@ class EmployeeIndexTest extends TestCase
     {
         $viewer = User::factory()->create();
 
-        $regular = User::factory()->create(['last_name' => '正社員', 'first_name' => '太郎']);
+        $regular = User::factory()->create([
+            'last_name' => '正社員',
+            'first_name' => '太郎',
+            'employee_id' => '11007',
+        ]);
         AffiliationHistory::create([
             'user_id' => $regular->id,
             'start_date' => '2024-01-01',
@@ -242,10 +271,15 @@ class EmployeeIndexTest extends TestCase
         ]);
         EmployeeHrDetail::create([
             'user_id' => $regular->id,
+            'employment_status' => '在籍',
             'employment_type' => '正社員',
         ]);
 
-        $partTime = User::factory()->create(['last_name' => 'アルバイト', 'first_name' => '花子']);
+        $partTime = User::factory()->create([
+            'last_name' => 'アルバイト',
+            'first_name' => '花子',
+            'employee_id' => '11008',
+        ]);
         AffiliationHistory::create([
             'user_id' => $partTime->id,
             'start_date' => '2024-01-01',
@@ -253,6 +287,7 @@ class EmployeeIndexTest extends TestCase
             'location' => '大阪',
             'position' => 'アルバイト',
         ]);
+        $this->markEmploymentStatus($partTime);
 
         $this->actingAs($viewer)
             ->get(route('employees.index', ['employment_type' => '正社員']))
@@ -265,15 +300,24 @@ class EmployeeIndexTest extends TestCase
     {
         $viewer = User::factory()->create();
 
-        $active = User::factory()->create(['last_name' => '在籍', 'first_name' => '太郎']);
+        $active = User::factory()->create([
+            'last_name' => '在籍',
+            'first_name' => '太郎',
+            'employee_id' => '11009',
+        ]);
         AffiliationHistory::create([
             'user_id' => $active->id,
             'start_date' => '2024-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'location' => '大阪',
         ]);
+        $this->markEmploymentStatus($active);
 
-        $resigned = User::factory()->create(['last_name' => '退職', 'first_name' => '花子']);
+        $resigned = User::factory()->create([
+            'last_name' => '退職',
+            'first_name' => '花子',
+            'employee_id' => '11010',
+        ]);
         AffiliationHistory::create([
             'user_id' => $resigned->id,
             'start_date' => '2020-01-01',
@@ -281,6 +325,7 @@ class EmployeeIndexTest extends TestCase
             'enrollment_status' => AffiliationHistory::STATUS_RESIGNED,
             'location' => '大阪',
         ]);
+        $this->markEmploymentStatus($resigned, '退職');
 
         $this->actingAs($viewer)
             ->get(route('employees.index', ['status' => '退職']))
@@ -293,19 +338,28 @@ class EmployeeIndexTest extends TestCase
     {
         $viewer = User::factory()->create();
 
-        $onLeave = User::factory()->create(['last_name' => '休職', 'first_name' => '太郎']);
+        $onLeave = User::factory()->create([
+            'last_name' => '休職',
+            'first_name' => '太郎',
+            'employee_id' => '11011',
+        ]);
         EmployeeHrDetail::create([
             'user_id' => $onLeave->id,
             'employment_status' => '休職',
         ]);
 
-        $active = User::factory()->create(['last_name' => '在籍', 'first_name' => '花子']);
+        $active = User::factory()->create([
+            'last_name' => '在籍',
+            'first_name' => '花子',
+            'employee_id' => '11012',
+        ]);
         AffiliationHistory::create([
             'user_id' => $active->id,
             'start_date' => '2024-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'location' => '大阪',
         ]);
+        $this->markEmploymentStatus($active);
 
         $this->actingAs($viewer)
             ->get(route('employees.index', ['status' => '休職']))
@@ -351,6 +405,10 @@ class EmployeeIndexTest extends TestCase
             'location' => '東京',
             'position' => '正社員',
         ]);
+        EmployeeHrDetail::create([
+            'user_id' => $resigned->id,
+            'employment_status' => '退職',
+        ]);
 
         $this->actingAs($viewer)
             ->get(route('employees.index', ['status' => '在籍']))
@@ -379,15 +437,24 @@ class EmployeeIndexTest extends TestCase
     {
         $viewer = User::factory()->create();
 
-        $active = User::factory()->create(['last_name' => '在籍', 'first_name' => '太郎']);
+        $active = User::factory()->create([
+            'last_name' => '在籍',
+            'first_name' => '太郎',
+            'employee_id' => '11009',
+        ]);
         AffiliationHistory::create([
             'user_id' => $active->id,
             'start_date' => '2024-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'location' => '大阪',
         ]);
+        $this->markEmploymentStatus($active);
 
-        $resigned = User::factory()->create(['last_name' => '退職', 'first_name' => '花子']);
+        $resigned = User::factory()->create([
+            'last_name' => '退職',
+            'first_name' => '花子',
+            'employee_id' => '11010',
+        ]);
         AffiliationHistory::create([
             'user_id' => $resigned->id,
             'start_date' => '2020-01-01',
@@ -395,6 +462,7 @@ class EmployeeIndexTest extends TestCase
             'enrollment_status' => AffiliationHistory::STATUS_RESIGNED,
             'location' => '大阪',
         ]);
+        $this->markEmploymentStatus($resigned, '退職');
 
         $this->actingAs($viewer)
             ->get(route('employees.index'))
@@ -413,6 +481,7 @@ class EmployeeIndexTest extends TestCase
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'location' => '大阪',
         ]);
+        $this->markEmploymentStatus($employee);
 
         $this->actingAs($viewer)
             ->get(route('employees.index'))
@@ -435,6 +504,7 @@ class EmployeeIndexTest extends TestCase
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'location' => '大阪',
         ]);
+        $this->markEmploymentStatus($employee);
 
         $this->actingAs($viewer)
             ->get(route('employees.index'))
@@ -451,7 +521,7 @@ class EmployeeIndexTest extends TestCase
         $low = User::factory()->create([
             'last_name' => '小',
             'first_name' => '番号',
-            'employee_id' => '255',
+            'employee_id' => '00255',
         ]);
         $high = User::factory()->create([
             'last_name' => '大',
@@ -471,18 +541,19 @@ class EmployeeIndexTest extends TestCase
                 'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
                 'company' => 'CareEarth',
             ]);
+            $this->markEmploymentStatus($employee);
         }
 
         $this->actingAs($viewer)
             ->get(route('employees.index', ['sort' => 'employee_id', 'direction' => 'asc']))
             ->assertOk()
-            ->assertSeeInOrder(['255', '10042', '10269'], false)
+            ->assertSeeInOrder(['00255', '10042', '10269'], false)
             ->assertSee('社員ID: 昇順', false);
 
         $this->actingAs($viewer)
             ->get(route('employees.index', ['sort' => 'employee_id', 'direction' => 'desc']))
             ->assertOk()
-            ->assertSeeInOrder(['10269', '10042', '255'], false)
+            ->assertSeeInOrder(['10269', '10042', '00255'], false)
             ->assertSee('社員ID: 降順', false);
     }
 
@@ -509,6 +580,7 @@ class EmployeeIndexTest extends TestCase
             'last_name' => '山田',
             'first_name' => '太郎',
             'email' => 'yamada@careearth.info',
+            'employee_id' => '11013',
         ]);
         AffiliationHistory::create([
             'user_id' => $employee->id,
@@ -516,6 +588,7 @@ class EmployeeIndexTest extends TestCase
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'company' => 'CareEarth',
         ]);
+        $this->markEmploymentStatus($employee);
 
         $this->actingAs($viewer)
             ->get(route('employees.index', ['keyword' => '山田太郎']))
@@ -536,6 +609,7 @@ class EmployeeIndexTest extends TestCase
             'last_name' => '検索',
             'first_name' => '対象',
             'email' => 'search-target@careearth.info',
+            'employee_id' => '11014',
         ]);
         AffiliationHistory::create([
             'user_id' => $employee->id,
@@ -545,6 +619,7 @@ class EmployeeIndexTest extends TestCase
         ]);
         EmployeeHrDetail::create([
             'user_id' => $employee->id,
+            'employment_status' => '在籍',
             'gmail_address' => 'unique-index-gmail@example.com',
         ]);
 
@@ -552,6 +627,153 @@ class EmployeeIndexTest extends TestCase
             ->get(route('employees.index', ['keyword' => 'unique-index-gmail']))
             ->assertOk()
             ->assertSee('search-target@careearth.info', false);
+    }
+
+    public function test_display_employment_status_is_blank_for_non_listed_account(): void
+    {
+        $portalAccount = User::factory()->create([
+            'employee_id' => null,
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $portalAccount->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '情報システム部',
+            'location' => '大阪',
+        ]);
+
+        $this->assertSame('—', $portalAccount->displayEmploymentStatus());
+    }
+
+    public function test_index_excludes_non_listed_accounts_from_status_tabs(): void
+    {
+        $viewer = User::factory()->create();
+
+        $portalAccount = User::factory()->create([
+            'last_name' => '情シス',
+            'first_name' => '担当',
+            'email' => 'is-admin@careearth.info',
+            'employee_id' => null,
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $portalAccount->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '情報システム部',
+            'location' => '大阪',
+        ]);
+
+        $listedEmployee = User::factory()->create([
+            'last_name' => '登録',
+            'first_name' => '社員',
+            'employee_id' => '11015',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $listedEmployee->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '大阪',
+        ]);
+        $this->markEmploymentStatus($listedEmployee);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['status' => '在籍']))
+            ->assertOk()
+            ->assertSee('登録 社員', false)
+            ->assertDontSee('is-admin@careearth.info', false);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['status' => '全体']))
+            ->assertOk()
+            ->assertSee('登録 社員', false)
+            ->assertDontSee('is-admin@careearth.info', false);
+    }
+
+    public function test_index_all_tab_shows_registered_employees_across_statuses(): void
+    {
+        $viewer = User::factory()->create();
+
+        $active = User::factory()->create([
+            'last_name' => '全体',
+            'first_name' => '在籍',
+            'employee_id' => '11016',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $active->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '大阪',
+        ]);
+        $this->markEmploymentStatus($active);
+
+        $onLeave = User::factory()->create([
+            'last_name' => '全体',
+            'first_name' => '休職',
+            'employee_id' => '11017',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $onLeave->id,
+            'employment_status' => '休職',
+        ]);
+
+        $resigned = User::factory()->create([
+            'last_name' => '全体',
+            'first_name' => '退職',
+            'employee_id' => '11018',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $resigned->id,
+            'start_date' => '2020-01-01',
+            'end_date' => '2023-12-31',
+            'enrollment_status' => AffiliationHistory::STATUS_RESIGNED,
+            'location' => '大阪',
+        ]);
+        $this->markEmploymentStatus($resigned, '退職');
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['status' => '全体']))
+            ->assertOk()
+            ->assertSee('全体 在籍', false)
+            ->assertSee('全体 休職', false)
+            ->assertSee('全体 退職', false);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['status' => '在籍']))
+            ->assertOk()
+            ->assertSee('全体 在籍', false)
+            ->assertDontSee('全体 休職', false)
+            ->assertDontSee('全体 退職', false);
+    }
+
+    public function test_listed_employee_without_hr_status_shows_blank_and_not_in_active_tab(): void
+    {
+        $viewer = User::factory()->create();
+
+        $employee = User::factory()->create([
+            'last_name' => '未設定',
+            'first_name' => '状況',
+            'employee_id' => '11019',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $employee->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '大阪',
+        ]);
+
+        $this->assertSame('—', $employee->displayEmploymentStatus());
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['status' => '在籍']))
+            ->assertOk()
+            ->assertDontSee('未設定 状況', false);
+    }
+
+    private function markEmploymentStatus(User $user, string $status = '在籍'): void
+    {
+        $detail = EmployeeHrDetail::query()->firstOrNew(['user_id' => $user->id]);
+        $detail->employment_status = $status;
+        $detail->save();
     }
 
     private function userInDepartment(string $department): User

@@ -27,7 +27,7 @@ class EmployeeController extends Controller
             $company = '';
         }
 
-        if (! in_array($status, User::EMPLOYMENT_STATUS_OPTIONS, true)) {
+        if (! in_array($status, User::EMPLOYMENT_STATUS_TAB_OPTIONS, true)) {
             $status = '在籍';
         }
 
@@ -91,7 +91,7 @@ class EmployeeController extends Controller
             'company' => $company,
             'companies' => User::COMPANY_NAMES,
             'status' => $status,
-            'statuses' => User::EMPLOYMENT_STATUS_OPTIONS,
+            'statuses' => User::EMPLOYMENT_STATUS_TAB_OPTIONS,
             'employeeId' => $employeeId,
             'employmentType' => $employmentType,
             'employmentTypes' => User::EMPLOYMENT_TYPE_OPTIONS,
@@ -101,7 +101,7 @@ class EmployeeController extends Controller
             'canExportHrDetails' => EmployeeHrDetailAccess::canExportCsv($request->user()),
             'canImportEmployees' => (bool) $request->user()?->isInformationSystems(),
             'canManageEmployeeRegistry' => (bool) $request->user()?->canManageEmployeeRegistry(),
-            'statusTabs' => User::EMPLOYMENT_STATUS_OPTIONS,
+            'statusTabs' => User::EMPLOYMENT_STATUS_TAB_OPTIONS,
         ]);
     }
 
