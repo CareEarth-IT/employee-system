@@ -77,7 +77,6 @@ class RealEstatePortalSsoHandoff
             throw new RuntimeException('不動産ポータルへの SSO 完了に失敗しました。');
         }
 
-        $setCookies = $this->browserSetCookiesFromJar($cookieJar, $proxyPath);
         $sessionCookieHeader = $this->sessionCookieHeaderFromJar($cookieJar);
 
         if ($sessionCookieHeader === null) {
@@ -85,7 +84,7 @@ class RealEstatePortalSsoHandoff
         }
 
         try {
-            // Cookie Jar は path 不一致で /home に Cookie を付けないため、明示的に付与する。
+            // upstream のルートは /admin/... のため Cookie Jar の path では送れない。明示的に付与する。
             $upstream = $this->upstreamClient($internalBase)
                 ->withHeaders(['Cookie' => $sessionCookieHeader])
                 ->get($targetUrl);
@@ -103,6 +102,11 @@ class RealEstatePortalSsoHandoff
             ]);
 
             throw new RuntimeException('不動産ポータルへの認証に失敗しました。', previous: $e);
+        }
+
+        $setCookies = $this->browserSetCookiesFromUpstreamResponse($upstream, $proxyPath);
+        if ($setCookies === []) {
+            $setCookies = $this->browserSetCookiesFromJar($cookieJar, $proxyPath);
         }
 
         return [
@@ -127,6 +131,65 @@ class RealEstatePortalSsoHandoff
     /**
      * @return list<string>
      */
+    private function browserSetCookiesFromUpstreamResponse(ClientResponse $upstream, string $proxyPath): array
+    {
+        $headers = $upstream->headers();
+        $rawCookies = $headers['Set-Cookie'] ?? $headers['set-cookie'] ?? [];
+
+        if (! is_array($rawCookies)) {
+            $rawCookies = [$rawCookies];
+        }
+
+        return $this->normalizeBrowserSetCookies($rawCookies, $proxyPath);
+    }
+
+    /**
+     * @param  list<string>  $rawCookies
+     * @return list<string>
+     */
+    private function normalizeBrowserSetCookies(array $rawCookies, string $proxyPath): array
+    {
+        $allowedNames = ['real_estate_portal_session', 'XSRF-TOKEN'];
+        $path = '/'.trim($proxyPath, '/');
+        $setCookies = [];
+
+        foreach ($rawCookies as $cookieHeader) {
+            if (! is_string($cookieHeader) || ! str_contains($cookieHeader, '=')) {
+                continue;
+            }
+
+            [$name] = explode('=', $cookieHeader, 2);
+            if (! in_array($name, $allowedNames, true)) {
+                continue;
+            }
+
+            $value = trim(explode(';', explode('=', $cookieHeader, 2)[1], 2)[0]);
+            $setCookies[] = $this->formatBrowserSetCookie($name, $value, $path);
+        }
+
+        return $setCookies;
+    }
+
+    private function formatBrowserSetCookie(string $name, string $value, string $path): string
+    {
+        $parts = [
+            $name.'='.$value,
+            'path='.$path,
+            'Max-Age=7200',
+            'secure',
+            'samesite=lax',
+        ];
+
+        if ($name === 'real_estate_portal_session') {
+            $parts[] = 'httponly';
+        }
+
+        return implode('; ', $parts);
+    }
+
+    /**
+     * @return list<string>
+     */
     private function browserSetCookiesFromJar(CookieJar $jar, string $proxyPath): array
     {
         $allowedNames = ['real_estate_portal_session', 'XSRF-TOKEN'];
@@ -139,21 +202,11 @@ class RealEstatePortalSsoHandoff
                 continue;
             }
 
-            $parts = [$name.'='.($cookie['Value'] ?? ''), 'path='.$path];
-
-            if (! empty($cookie['HttpOnly'])) {
-                $parts[] = 'httponly';
-            }
-
-            if (! empty($cookie['Secure'])) {
-                $parts[] = 'secure';
-            }
-
-            if (! empty($cookie['SameSite'])) {
-                $parts[] = 'samesite='.strtolower((string) $cookie['SameSite']);
-            }
-
-            $setCookies[] = implode('; ', $parts);
+            $setCookies[] = $this->formatBrowserSetCookie(
+                $name,
+                (string) ($cookie['Value'] ?? ''),
+                $path,
+            );
         }
 
         if (! collect($setCookies)->contains(fn (string $cookie): bool => str_starts_with($cookie, 'real_estate_portal_session='))) {

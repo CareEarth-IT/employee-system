@@ -5,11 +5,11 @@
 @section('content')
 <div class="max-w-4xl mx-auto">
     <div class="mb-4 flex items-center justify-between">
-        <h1 class="text-xl font-bold">備品購入の申請承認</h1>
-        <a href="{{ route('equipment-purchases.pending') }}" class="text-sm text-blue-600 hover:underline">承認待ち一覧へ</a>
+        <h1 class="text-2xl font-bold">備品購入の申請承認</h1>
+        <a href="{{ route('equipment-purchases.pending') }}" class="text-base text-blue-600 hover:underline">承認待ち一覧へ</a>
     </div>
 
-    @include('partials.validation-errors-banner', ['class' => 'mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm'])
+    @include('partials.validation-errors-banner', ['class' => 'mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-base'])
 
     <form
         method="POST"
@@ -32,7 +32,7 @@
         ])
 
         <div class="flex justify-end pt-4 border-t border-slate-200">
-            <button type="submit" class="rounded bg-blue-600 text-white px-10 py-2.5 font-medium hover:bg-blue-700">
+            <button type="submit" class="rounded bg-blue-600 text-white px-10 py-2.5 text-base font-medium hover:bg-blue-700">
                 承認を確定
             </button>
         </div>

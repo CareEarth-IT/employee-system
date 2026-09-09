@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AffiliationHrDetailSync;
 use App\Support\CompanyPhone;
 use App\Support\EmploymentStatus;
 use Illuminate\Database\Eloquent\Model;
@@ -130,23 +131,30 @@ class EmployeeHrDetail extends Model
     {
         $affiliation = $user->currentAffiliation();
         $profile = $user->profile;
-        $orgPrimary = \App\Support\RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
-            $affiliation?->department,
-            $affiliation?->location,
-            $affiliation?->section,
-        );
+        $orgAttributes = $affiliation !== null
+            ? AffiliationHrDetailSync::hrDetailAttributesFromAffiliation($affiliation)
+            : [
+                'department_primary' => null,
+                'section_primary' => null,
+                'position_primary' => null,
+                'jurisdiction' => null,
+                'affiliation_code' => null,
+            ];
 
         $detail = self::firstOrCreate(
             ['user_id' => $user->id],
             [
                 'name_kana_fullwidth' => $profile?->name_kana,
                 'employment_status' => EmploymentStatus::normalize($affiliation?->enrollment_status),
-                'department_primary' => $orgPrimary['department_primary'],
-                'section_primary' => $orgPrimary['section_primary'],
-                'position_primary' => $affiliation?->position,
-                'jurisdiction' => $affiliation?->location,
+                ...$orgAttributes,
             ],
         );
+
+        if (trim((string) $detail->employment_status) === '' && $affiliation !== null) {
+            $detail->update([
+                'employment_status' => EmploymentStatus::normalize($affiliation->enrollment_status) ?: '在籍',
+            ]);
+        }
 
         if (! $detail->primary_id) {
             $detail->update(['primary_id' => self::generatePrimaryId($user)]);
@@ -157,82 +165,19 @@ class EmployeeHrDetail extends Model
 
     public static function syncPrimaryOrgFromAffiliation(User $user, ?AffiliationHistory $affiliation = null): void
     {
-        $affiliation ??= $user->currentAffiliation();
-
-        if ($affiliation === null || ! $affiliation->isEnrolled()) {
-            return;
-        }
-
-        $current = $user->fresh(['affiliationHistories'])?->currentAffiliation();
-
-        if ($current?->id !== $affiliation->id) {
-            return;
-        }
-
-        self::query()->updateOrCreate(
-            ['user_id' => $user->id],
-            \App\Support\RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
-                $affiliation->department,
-                $affiliation->location,
-                $affiliation->section,
-            ),
-        );
+        AffiliationHrDetailSync::syncAffiliationFromHrDetail($user);
     }
 
     /**
      * @return array{
      *     changed: bool,
-     *     current: array{department_primary: ?string, section_primary: ?string},
-     *     target: array{department_primary: ?string, section_primary: ?string},
+     *     current: array<string, ?string>,
+     *     target: array<string, ?string>,
      * }|null
      */
     public static function primaryOrgSyncPlan(User $user): ?array
     {
-        $affiliation = $user->currentAffiliation();
-
-        if ($affiliation === null || ! $affiliation->isEnrolled()) {
-            return null;
-        }
-
-        $target = \App\Support\RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
-            $affiliation->department,
-            $affiliation->location,
-            $affiliation->section,
-        );
-
-        $detail = $user->hrDetail;
-        $current = [
-            'department_primary' => $detail?->department_primary,
-            'section_primary' => $detail?->section_primary,
-        ];
-
-        return [
-            'changed' => self::primaryOrgValuesDiffer($current, $target),
-            'current' => $current,
-            'target' => $target,
-        ];
-    }
-
-    /**
-     * @param  array{department_primary: ?string, section_primary: ?string}  $current
-     * @param  array{department_primary: ?string, section_primary: ?string}  $target
-     */
-    private static function primaryOrgValuesDiffer(array $current, array $target): bool
-    {
-        foreach (['department_primary', 'section_primary'] as $field) {
-            if (self::normalizePrimaryOrgValue($current[$field]) !== self::normalizePrimaryOrgValue($target[$field])) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static function normalizePrimaryOrgValue(mixed $value): ?string
-    {
-        $value = trim((string) $value);
-
-        return $value !== '' ? $value : null;
+        return AffiliationHrDetailSync::currentAffiliationSyncPlan($user);
     }
 
     public static function generatePrimaryId(User $user): string

@@ -20,14 +20,14 @@ class EmployeeIndexTest extends TestCase
             ->get(route('employees.index'))
             ->assertOk()
             ->assertSee('状況', false)
+            ->assertSee('キーワード検索', false)
+            ->assertSee('フィルター', false)
+            ->assertSee('条件を追加', false)
             ->assertSee('所属会社', false)
             ->assertSee('社員ID', false)
             ->assertSee('雇用形態', false)
             ->assertSee('アドレス', false)
             ->assertSee('電話番号', false)
-            ->assertSee('name="company"', false)
-            ->assertSee('name="employee_id"', false)
-            ->assertSee('name="employment_type"', false)
             ->assertSee('aria-label="状況タブ"', false)
             ->assertSee('status=%E5%85%A8%E4%BD%93', false)
             ->assertSee('status=%E5%9C%A8%E7%B1%8D', false)
@@ -35,9 +35,7 @@ class EmployeeIndexTest extends TestCase
             ->assertDontSee('id="status"', false)
             ->assertDontSee('name="location"', false)
             ->assertDontSee('name="position"', false)
-            ->assertSee('CareEarth', false)
-            ->assertSee('正社員', false)
-            ->assertSee('アルバイト', false);
+            ->assertSee('CareEarth', false);
     }
 
     public function test_index_shows_company_email_and_company_phone_columns(): void
@@ -247,7 +245,7 @@ class EmployeeIndexTest extends TestCase
         $this->markEmploymentStatus($other);
 
         $this->actingAs($viewer)
-            ->get(route('employees.index', ['employee_id' => '255']))
+            ->get(route('employees.index', ['employee_id' => '00255']))
             ->assertOk()
             ->assertSee('社員 一致', false)
             ->assertDontSee('別 人', false);
@@ -294,6 +292,104 @@ class EmployeeIndexTest extends TestCase
             ->assertOk()
             ->assertSee('正社員 太郎', false)
             ->assertDontSee('アルバイト 花子', false);
+    }
+
+    public function test_index_filters_by_hr_detail_department_primary(): void
+    {
+        $viewer = User::factory()->create();
+
+        $matched = User::factory()->create([
+            'last_name' => '人事',
+            'first_name' => '太郎',
+            'employee_id' => '11020',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $matched->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '大阪',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $matched->id,
+            'employment_status' => '在籍',
+            'department_primary' => '人事部',
+        ]);
+
+        $other = User::factory()->create([
+            'last_name' => '通信',
+            'first_name' => '花子',
+            'employee_id' => '11021',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $other->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '大阪',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $other->id,
+            'employment_status' => '在籍',
+            'department_primary' => '通信事業部',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', [
+                'filters' => [
+                    ['field' => 'department_primary', 'op' => 'eq', 'value' => '人事部'],
+                ],
+            ]))
+            ->assertOk()
+            ->assertSee('人事 太郎', false)
+            ->assertDontSee('通信 花子', false);
+    }
+
+    public function test_index_filters_by_hr_detail_gender(): void
+    {
+        $viewer = User::factory()->create();
+
+        $female = User::factory()->create([
+            'last_name' => '女性',
+            'first_name' => '太郎',
+            'employee_id' => '11022',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $female->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '大阪',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $female->id,
+            'employment_status' => '在籍',
+            'gender' => '女',
+        ]);
+
+        $male = User::factory()->create([
+            'last_name' => '男性',
+            'first_name' => '花子',
+            'employee_id' => '11023',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $male->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '大阪',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $male->id,
+            'employment_status' => '在籍',
+            'gender' => '男',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', [
+                'filters' => [
+                    ['field' => 'gender', 'op' => 'eq', 'value' => '女'],
+                ],
+            ]))
+            ->assertOk()
+            ->assertSee('女性 太郎', false)
+            ->assertDontSee('男性 花子', false);
     }
 
     public function test_index_filters_by_status_resigned(): void
@@ -489,7 +585,6 @@ class EmployeeIndexTest extends TestCase
             ->assertSee('新規登録', false)
             ->assertSee('社員追加 CSV', false)
             ->assertSee(route('employees.import.create'), false)
-            ->assertSee('情報システム部・人事部人事課のみ', false)
             ->assertDontSee('>編集<', false)
             ->assertDontSee('data-field="employee_id"', false);
     }

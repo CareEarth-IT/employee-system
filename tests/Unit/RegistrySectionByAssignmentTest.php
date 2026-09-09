@@ -39,7 +39,7 @@ class RegistrySectionByAssignmentTest extends TestCase
     public function test_sales_department_sections_depend_on_location(): void
     {
         $this->assertSame(
-            ['人材育成課', 'SS課', '営業1課', '営業2課', '営業3課', '営業4課'],
+            ['人材育成課', 'SS課', '営業1課', '営業2課', '営業3課', '営業4課', '営業5課'],
             RegistrySectionByAssignment::optionsFor('営業部', '大阪'),
         );
         $this->assertSame(
@@ -68,18 +68,27 @@ class RegistrySectionByAssignmentTest extends TestCase
         );
     }
 
+    public function test_food_department_sections_do_not_require_location(): void
+    {
+        $this->assertSame(
+            ['Food Sales部', 'Food Retail部', 'Food Logistic部', 'Food GA部'],
+            RegistrySectionByAssignment::optionsFor('食品事業部', '大阪'),
+        );
+        $this->assertTrue(RegistrySectionByAssignment::hasRules('食品事業部'));
+    }
+
     public function test_section_field_is_always_shown(): void
     {
         $this->assertTrue(RegistrySectionByAssignment::shouldShowField('', ''));
-        $this->assertTrue(RegistrySectionByAssignment::shouldShowField('Food Sales部', '大阪'));
+        $this->assertTrue(RegistrySectionByAssignment::shouldShowField('食品事業部', '大阪'));
         $this->assertTrue(RegistrySectionByAssignment::shouldShowField('経理部', ''));
     }
 
-    public function test_department_without_rules_returns_standalone_sections(): void
+    public function test_department_without_rules_returns_empty_sections(): void
     {
         $this->assertSame(
-            ['庶務課'],
-            RegistrySectionByAssignment::optionsFor('Food Sales部', '大阪'),
+            [],
+            RegistrySectionByAssignment::optionsFor('情報システム部', '大阪'),
         );
         $this->assertFalse(RegistrySectionByAssignment::hasRules('情報システム部'));
     }

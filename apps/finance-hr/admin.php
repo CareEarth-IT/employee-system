@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
-require_admin();
+$user = require_admin();
 
 $categoryOptions = [];
 foreach (inquiry_categories() as $key => $cat) {
@@ -21,7 +21,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="assets/favicon.png?v=5" type="image/png">
   <link rel="apple-touch-icon" href="assets/favicon.png?v=5">
-  <title>担当者画面 — 社内お問い合わせ</title>
+  <title>社内お問い合わせ</title>
   <style>
     :root {
       --indigo-950: #0f172a;
@@ -47,11 +47,35 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif;
-      font-size: 14px;
+      font-size: 16px;
       color: var(--text);
       background: linear-gradient(180deg, var(--indigo-50) 0%, var(--surface) 320px);
       min-height: 100vh;
     }
+    .portal-header { background: #fff; border-bottom: 1px solid #e2e8f0; margin-bottom: 0; }
+    .portal-header-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 16px;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .portal-header-logo { display: inline-flex; align-items: center; text-decoration: none; }
+    .portal-header-logo img {
+      height: 36px;
+      width: auto;
+      max-width: 12rem;
+      object-fit: contain;
+      object-position: left center;
+      display: block;
+    }
+    .portal-header-actions { display: flex; align-items: center; gap: 16px; font-size: 16px; font-weight: 600; color: #334155; }
+    .portal-header-user { white-space: nowrap; }
+    .portal-header-logout { color: #2563eb; text-decoration: none; white-space: nowrap; }
+    .portal-header-logout:hover { text-decoration: underline; }
     .container { max-width: 1320px; margin: 0 auto; padding: 20px 16px; }
 
     .page-header {
@@ -65,20 +89,9 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       align-items: center;
       gap: 10px;
     }
-    .page-header h1 { font-size: 15px; font-weight: 700; color: var(--indigo-950); letter-spacing: 0.02em; }
-    .admin-badge {
-      margin-left: auto;
-      font-size: 11px;
-      background: var(--indigo-50);
-      color: var(--indigo-900);
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-weight: 600;
-      border: 1px solid var(--indigo-200);
-    }
-    .header-links { display: flex; align-items: center; gap: 10px; margin-left: 8px; }
-    .header-links a { font-size: 12px; color: var(--indigo-700); text-decoration: none; font-weight: 600; }
-    .header-links a:hover { text-decoration: underline; }
+    .page-header h1 { font-size: 20px; font-weight: 700; color: var(--indigo-950); letter-spacing: 0.02em; flex: 1; min-width: 0; }
+    .permissions-link { font-size: 14px; color: var(--indigo-700); text-decoration: none; font-weight: 700; margin-left: auto; }
+    .permissions-link:hover { text-decoration: underline; }
 
     .card {
       background: var(--card);
@@ -90,9 +103,9 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
     }
     .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--indigo-50); }
     .tab {
-      padding: 11px 20px;
-      font-size: 13px;
-      font-weight: 500;
+      padding: 13px 22px;
+      font-size: 16px;
+      font-weight: 600;
       cursor: pointer;
       border-bottom: 3px solid transparent;
       color: var(--text-muted);
@@ -115,13 +128,13 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
     .category-btn {
       flex: 1 1 0;
       min-width: 0;
-      padding: 10px 12px;
+      padding: 12px 14px;
       border-radius: 10px;
       border: 1px solid var(--border-strong);
       background: #fff;
       color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 16px;
+      font-weight: 700;
       cursor: pointer;
       font-family: inherit;
       text-align: center;
@@ -153,11 +166,11 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
         minmax(140px, 1.35fr)
         50px;
       gap: 6px;
-      padding: 9px 12px;
+      padding: 11px 14px;
       align-items: center;
     }
     .table-header {
-      font-size: 10px;
+      font-size: 13px;
       color: var(--indigo-950);
       font-weight: 800;
       letter-spacing: 0.04em;
@@ -166,9 +179,9 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       background: linear-gradient(180deg, var(--indigo-100) 0%, var(--indigo-50) 100%);
     }
     .table-row {
-      font-size: 11px;
+      font-size: 14px;
       color: var(--text);
-      font-weight: 500;
+      font-weight: 600;
       border-bottom: 1px solid #e8eaf6;
       cursor: pointer;
       transition: background 0.12s, box-shadow 0.12s;
@@ -181,7 +194,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
     .table-row:nth-child(even):hover { background: var(--indigo-50); }
 
     .flag-done {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--success-text);
       font-weight: 700;
       background: var(--success-bg);
@@ -190,7 +203,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       border: 1px solid var(--success-border);
     }
     .flag-pending {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--indigo-900);
       font-weight: 700;
       background: #e3e7fc;
@@ -213,7 +226,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       margin-bottom: 14px;
     }
     .detail-field label {
-      font-size: 11px;
+      font-size: 14px;
       color: var(--indigo-800);
       font-weight: 700;
       display: block;
@@ -221,45 +234,45 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       letter-spacing: 0.02em;
     }
     .detail-field .val {
-      font-size: 13px;
+      font-size: 15px;
       background: var(--card);
       border: 1px solid var(--border-strong);
       border-radius: 10px;
       padding: 10px 12px;
       color: var(--text);
-      font-weight: 500;
+      font-weight: 600;
       line-height: 1.65;
       box-shadow: 0 1px 2px rgba(26, 35, 126, 0.04);
     }
     .detail-field .val-auto {
-      font-size: 13px;
+      font-size: 15px;
       background: var(--indigo-50);
       border: 1px solid var(--indigo-200);
       border-radius: 10px;
       padding: 10px 12px;
       color: var(--indigo-900);
-      font-weight: 600;
+      font-weight: 700;
       line-height: 1.65;
       display: flex;
       align-items: center;
       gap: 6px;
     }
     .detail-field .val-auto .auto-hint {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--indigo-500);
-      font-weight: 500;
+      font-weight: 600;
       margin-left: auto;
     }
     .detail-field input[type="text"] {
       width: 100%;
-      padding: 9px 12px;
+      padding: 10px 12px;
       border: 1px solid var(--border-strong);
       border-radius: 10px;
-      font-size: 13px;
+      font-size: 15px;
       color: var(--text);
       background: var(--card);
       font-family: inherit;
-      font-weight: 500;
+      font-weight: 600;
     }
     .detail-field input[type="text"]:focus {
       outline: none;
@@ -270,14 +283,14 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
     .detail-field select,
     .detail-field textarea {
       width: 100%;
-      padding: 9px 12px;
+      padding: 10px 12px;
       border: 1px solid var(--border-strong);
       border-radius: 10px;
-      font-size: 13px;
+      font-size: 15px;
       color: var(--text);
       background: var(--card);
       font-family: inherit;
-      font-weight: 500;
+      font-weight: 600;
     }
     .detail-field textarea { resize: vertical; min-height: 76px; line-height: 1.7; }
     .detail-field textarea.readonly-like {
@@ -290,7 +303,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
 
     .read-only-banner {
       grid-column: 1 / -1;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       color: var(--indigo-950);
       background: linear-gradient(90deg, var(--indigo-100) 0%, #e3e7fc 100%);
@@ -309,9 +322,9 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       margin-top: 12px;
     }
     .updated-at {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--indigo-700);
-      font-weight: 600;
+      font-weight: 700;
     }
     .flag-section {
       margin-top: 14px;
@@ -323,16 +336,16 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       flex-wrap: wrap;
     }
     .flag-label {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--indigo-800);
       font-weight: 700;
     }
     .flag-approve-btn {
-      padding: 6px 16px;
+      padding: 8px 18px;
       border: 2px solid var(--indigo-600);
       border-radius: 24px;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 700;
       color: var(--indigo-800);
       background: var(--card);
       cursor: pointer;
@@ -345,10 +358,10 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
     }
 
     .btn {
-      padding: 8px 18px;
+      padding: 10px 20px;
       border-radius: 10px;
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 16px;
+      font-weight: 700;
       cursor: pointer;
       border: 1px solid var(--border-strong);
       background: var(--card);
@@ -363,19 +376,19 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
     .btn-primary:hover { background: var(--indigo-800); border-color: var(--indigo-800); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .empty { text-align: center; padding: 36px; color: var(--text-muted); font-size: 14px; font-weight: 500; }
-    .loading { text-align: center; padding: 28px; color: var(--indigo-600); font-size: 14px; font-weight: 500; }
-    .ts { font-size: 10px; color: var(--indigo-900); font-weight: 600; }
+    .empty { text-align: center; padding: 36px; color: var(--text-muted); font-size: 16px; font-weight: 600; }
+    .loading { text-align: center; padding: 28px; color: var(--indigo-600); font-size: 16px; font-weight: 600; }
+    .ts { font-size: 12px; color: var(--indigo-900); font-weight: 700; }
     .cell-ell {
-      font-size: 10px;
+      font-size: 13px;
       color: var(--text);
-      font-weight: 500;
+      font-weight: 600;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .taiousha-cell {
-      font-size: 10px;
+      font-size: 13px;
       color: var(--indigo-800);
       font-weight: 700;
       overflow: hidden;
@@ -383,15 +396,15 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       white-space: nowrap;
     }
     .tantousha-cell {
-      font-size: 10px;
+      font-size: 13px;
       color: var(--indigo-950);
-      font-weight: 600;
+      font-weight: 700;
       white-space: normal;
       word-break: break-word;
       line-height: 1.4;
     }
     .table-row-title {
-      font-size: 11px;
+      font-size: 14px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -399,9 +412,9 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       font-weight: 700;
     }
     .table-row-subname {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--text-muted);
-      font-weight: 500;
+      font-weight: 600;
       margin-top: 2px;
     }
     .alert-error {
@@ -411,24 +424,20 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       border-radius: 10px;
       padding: 12px 16px;
       margin: 8px 14px;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 700;
     }
   </style>
 </head>
 <body>
+<?php require __DIR__ . '/includes/portal-header.php'; ?>
 <div class="container">
   <div class="page-header">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
     </svg>
-    <h1>社内お問い合わせ — 担当者画面</h1>
-    <div class="admin-badge" id="admin-badge">管理者</div>
-    <div class="header-links">
-      <a href="index.php">ユーザー画面</a>
-      <a href="permissions.php" id="permissions-link" style="display:none">権限設定</a>
-      <a href="logout.php">社員サイトへ</a>
-    </div>
+    <h1>社内お問い合わせ</h1>
+    <a href="permissions.php" id="permissions-link" class="permissions-link" style="display:none">権限設定</a>
   </div>
 
   <div class="card">
@@ -467,6 +476,14 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       if (INQUIRY_CATEGORIES[i].key === key) return INQUIRY_CATEGORIES[i];
     }
     return null;
+  }
+
+  function defaultCategoryKeyForSession(session) {
+    if (session && session.isIsStaff) return 'is';
+    if (session && session.isHrStaff) return 'hr';
+    var ids = (session && session.departmentGroupIds) || [];
+    if (ids.indexOf('keiri_ka') !== -1 || ids.indexOf('soumu_ka') !== -1) return 'finance';
+    return (INQUIRY_CATEGORIES[0] && INQUIRY_CATEGORIES[0].key) || 'hr';
   }
 
   function categoryKeyForRow(r) {
@@ -567,30 +584,19 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
     return isRowLocked(r) || (r && r.access === 'view');
   }
 
-  function updateAdminBadge() {
-    var el = document.getElementById('admin-badge');
-    if (!adminSession.isRegistered) {
-      el.textContent = '担当者未登録（管理者権限が必要）';
-      return;
-    }
-    var role = adminSession.staffLabel ? '担当：' + adminSession.staffLabel + '　' : '';
-    el.textContent = role + (adminName || adminSession.fullName || '管理者');
-  }
-
   window.onload = function () {
-    renderCategoryBar();
     apiGet('api/admin_session.php')
       .then(function (session) {
         adminSession = session || { isRegistered: false, staffLabel: '' };
         adminName = adminSession.fullName || '';
-        updateAdminBadge();
+        currentCategoryKey = defaultCategoryKeyForSession(adminSession);
+        renderCategoryBar();
         if (adminSession.canManagePermissions) {
           document.getElementById('permissions-link').style.display = '';
         }
         loadData();
       })
       .catch(function (err) {
-        document.getElementById('admin-badge').textContent = '管理者（プロフィール取得失敗）';
         console.error(err);
         loadData();
       });
@@ -634,8 +640,17 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
     if (!filtered || filtered.length === 0) {
       var cat = findCategory(currentCategoryKey);
       var label = cat && cat.label ? cat.label : '';
+      var otherCount = allData.filter(function (r) {
+        return categoryKeyForRow(r) !== currentCategoryKey;
+      }).length;
+      var hint =
+        otherCount > 0
+          ? '<p style="margin-top:10px;font-size:14px;color:#64748b">他のカテゴリに ' +
+            otherCount +
+            ' 件あります。上部のタブを切り替えてご確認ください。</p>'
+          : '';
       document.getElementById('admin-list').innerHTML =
-        '<div class="empty">' + attrEscape(label) + 'の該当がありません</div>';
+        '<div class="empty">' + attrEscape(label) + 'の該当がありません' + hint + '</div>';
       return;
     }
 
@@ -646,10 +661,10 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
         var rowArgs = rowKeyArg(r);
         var sheetBadge =
           r.sheetKey === 'hr'
-            ? '<span style="font-size:10px;background:#fce7f3;color:#9d174d;padding:2px 6px;border-radius:8px;margin-right:4px">人事</span>'
+            ? '<span style="font-size:12px;font-weight:700;background:#fce7f3;color:#9d174d;padding:2px 6px;border-radius:8px;margin-right:4px">人事</span>'
             : r.sheetKey === 'is'
-              ? '<span style="font-size:10px;background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:8px;margin-right:4px">情シス</span>'
-              : '<span style="font-size:10px;background:#ecfdf5;color:#047857;padding:2px 6px;border-radius:8px;margin-right:4px">経理</span>';
+              ? '<span style="font-size:12px;font-weight:700;background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:8px;margin-right:4px">情シス</span>'
+              : '<span style="font-size:12px;font-weight:700;background:#ecfdf5;color:#047857;padding:2px 6px;border-radius:8px;margin-right:4px">経理</span>';
         var locked = isRowReadOnly(r);
         var flagHtml =
           r.flag === '済'
@@ -659,13 +674,13 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
           r.status === '未対応' ? '#fff8e1' : r.status === '対応中' ? '#e3f2fd' : '#e8f5e9';
 
         var selectHtml = locked
-          ? '<select disabled style="font-size:10px;padding:3px 6px;border-radius:10px;border:1px solid #94a3b8;width:100%;background:#e2e8f0;color:#0f172a;font-weight:700">' +
+          ? '<select disabled style="font-size:13px;padding:4px 8px;border-radius:10px;border:1px solid #94a3b8;width:100%;background:#e2e8f0;color:#0f172a;font-weight:700">' +
             '<option>' +
             attrEscape(r.status || '未対応') +
             '</option></select>'
           : '<select onchange="quickUpdateStatus(' +
             rowArgs +
-            ',this.value)" style="font-size:10px;padding:3px 6px;border-radius:10px;border:1px solid #cbd5e1;width:100%;background:' +
+            ',this.value)" style="font-size:13px;padding:4px 8px;border-radius:10px;border:1px solid #cbd5e1;width:100%;background:' +
             statusBg +
             ';color:#0f172a;font-weight:700">' +
             ['未対応', '対応中', '解決済']
@@ -802,7 +817,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       ? '<div class="detail-field"><label>担当者</label><div class="val">' +
         attrEscape(r.tantousha || '—') +
         '</div></div>'
-      : '<div class="detail-field"><label>担当者 <span style="font-size:10px;color:#64748b;font-weight:500">（手入力・任意）</span></label>' +
+      : '<div class="detail-field"><label>担当者 <span style="font-size:12px;color:#64748b;font-weight:600">（手入力・任意）</span></label>' +
         '<input type="text" id="tantousha-' +
         domId +
         '" value="' +
@@ -833,7 +848,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
         '</span>' +
         '<button type="button" class="btn btn-primary" onclick="event.stopPropagation();saveUpdate(' +
         rowArgs +
-        ')" style="font-size:12px;padding:7px 18px">保存</button>' +
+        ')" style="font-size:16px;padding:10px 20px">保存</button>' +
         '</div>';
 
     return (
@@ -867,7 +882,7 @@ $categoriesJson = json_encode($categoryOptions, JSON_UNESCAPED_UNICODE);
       categoryField +
       statusField +
       tantoushaField +
-      '<div class="detail-field full"><label>対応者 <span style="font-size:10px;color:#64748b;font-weight:500">（自動）</span></label>' +
+      '<div class="detail-field full"><label>対応者 <span style="font-size:12px;color:#64748b;font-weight:600">（自動）</span></label>' +
       '<div class="val-auto">👤 ' +
       attrEscape(taioushaDisplay) +
       '<span class="auto-hint">保存時に記録</span></div></div>' +

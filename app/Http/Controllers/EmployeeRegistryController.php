@@ -62,6 +62,11 @@ class EmployeeRegistryController extends Controller
         $affiliation = $user->currentAffiliation();
         $profile = $user->profile;
         $hrDetail = $user->hrDetail;
+        $orgSplit = \App\Support\RegistryOrgAssignment::splitForRegistryForm(
+            $affiliation?->section,
+            $affiliation?->department,
+            $affiliation?->location,
+        );
 
         return [
             'name' => old('name', $this->registry->displayName($user)),
@@ -69,9 +74,9 @@ class EmployeeRegistryController extends Controller
             'employee_id' => old('employee_id', (string) ($user->employee_id ?? '')),
             'department' => old('department', (string) ($affiliation?->department ?? '')),
             'company' => old('company', (string) ($affiliation?->company ?? '')),
-            'section' => old('section', (string) ($affiliation?->section ?? '')),
+            'section' => old('section', (string) ($orgSplit['section'] ?? '')),
             'stored_section' => (string) ($affiliation?->section ?? ''),
-            'team' => old('team', ''),
+            'team' => old('team', (string) ($orgSplit['team'] ?? '')),
             'location' => old('location', (string) ($affiliation?->location ?? '')),
             'employment_type' => old(
                 'employment_type',

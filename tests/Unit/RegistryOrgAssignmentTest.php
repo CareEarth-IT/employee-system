@@ -40,7 +40,7 @@ class RegistryOrgAssignmentTest extends TestCase
         $this->assertSame([], array_values($overlap));
     }
 
-    public function test_hr_detail_primary_from_food_sales_team_only_affiliation(): void
+    public function test_hr_detail_primary_from_legacy_food_sales_team_only_affiliation(): void
     {
         $primary = RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
             'Food Sales部',
@@ -52,6 +52,18 @@ class RegistryOrgAssignmentTest extends TestCase
         $this->assertSame('法人チーム', $primary['section_primary']);
     }
 
+    public function test_hr_detail_primary_from_food_department_with_section_and_team(): void
+    {
+        $primary = RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
+            '食品事業部',
+            '大阪',
+            'Food Sales部,法人チーム',
+        );
+
+        $this->assertSame('食品事業部', $primary['department_primary']);
+        $this->assertSame('Food Sales部,法人チーム', $primary['section_primary']);
+    }
+
     public function test_hr_detail_primary_from_gr_affiliation(): void
     {
         $primary = RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
@@ -61,6 +73,9 @@ class RegistryOrgAssignmentTest extends TestCase
         );
 
         $this->assertSame('GR部（グローバル部）', $primary['department_primary']);
-        $this->assertSame('GR-O_大阪', $primary['section_primary']);
+        $this->assertSame(
+            'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
+            $primary['section_primary'],
+        );
     }
 }

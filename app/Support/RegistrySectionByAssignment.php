@@ -16,15 +16,20 @@ class RegistrySectionByAssignment
         '人事部' => [
             '*' => ['人事課', '人材開発・人材育成課', '広報・マーケティング課'],
         ],
-        'Food GA部' => [
-            '*' => ['総務課'],
+        RegistryDepartmentOptions::FOOD_DEPARTMENT => [
+            '*' => [
+                'Food Sales部',
+                'Food Retail部',
+                'Food Logistic部',
+                'Food GA部',
+            ],
         ],
         '管理部' => [
             '大阪' => ['業務課', '労務法務課', '情報管理課'],
             '東京' => ['業務課'],
         ],
         '営業部' => [
-            '大阪' => ['人材育成課', 'SS課', '営業1課', '営業2課', '営業3課', '営業4課'],
+            '大阪' => ['人材育成課', 'SS課', '営業1課', '営業2課', '営業3課', '営業4課', '営業5課'],
             '東京' => ['営業1課', '営業2課', 'SS課'],
             '名古屋' => ['営業課_名古屋', 'SS課_名古屋'],
             '福岡' => ['営業課_福岡', 'SS課_福岡'],
@@ -51,6 +56,11 @@ class RegistrySectionByAssignment
         return self::STANDALONE_SECTIONS;
     }
 
+    public static function isStandaloneSection(?string $section): bool
+    {
+        return in_array(trim((string) $section), self::STANDALONE_SECTIONS, true);
+    }
+
     /**
      * @return list<string>
      */
@@ -59,8 +69,12 @@ class RegistrySectionByAssignment
         $department = trim((string) $department);
         $location = trim((string) $location);
 
-        if ($department === '' || ! isset(self::ASSIGNMENTS[$department])) {
+        if ($department === '') {
             return self::standaloneSections();
+        }
+
+        if (! isset(self::ASSIGNMENTS[$department])) {
+            return [];
         }
 
         $rules = self::ASSIGNMENTS[$department];
@@ -108,6 +122,10 @@ class RegistrySectionByAssignment
         $options = self::optionsFor($department, $location);
 
         if ($current === null || $current === '' || in_array($current, $options, true)) {
+            return $options;
+        }
+
+        if (self::isStandaloneSection($current) && $department !== '') {
             return $options;
         }
 

@@ -30,7 +30,10 @@ class RealEstatePortalSsoHandoffTest extends TestCase
                 'Set-Cookie' => 'real_estate_portal_session=new-session; path=/realestate-portal; httponly; secure',
                 'Location' => 'https://real-estate.example.test/home',
             ]),
-            'https://real-estate.example.test/home' => Http::response('<html>home</html>', 200, ['Content-Type' => 'text/html']),
+            'https://real-estate.example.test/home' => Http::response('<html>home</html>', 200, [
+                'Content-Type' => 'text/html',
+                'Set-Cookie' => 'real_estate_portal_session=rotated-session; path=/realestate-portal; httponly; secure',
+            ]),
         ]);
 
         $user = $this->userInDepartment('不動産部');
@@ -42,7 +45,7 @@ class RealEstatePortalSsoHandoffTest extends TestCase
 
         $this->assertSame(200, $result['upstream']->status());
         $this->assertTrue(
-            collect($result['set_cookies'])->contains(fn (string $cookie): bool => str_contains($cookie, 'real_estate_portal_session=new-session')),
+            collect($result['set_cookies'])->contains(fn (string $cookie): bool => str_contains($cookie, 'real_estate_portal_session=rotated-session')),
         );
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/auth/portal/callback?code=abc'));

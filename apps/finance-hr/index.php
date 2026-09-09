@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
 $user = require_login();
-$canAdmin = is_admin($user);
 
 $inquiryCategories = [];
 foreach (inquiry_categories() as $key => $cat) {
@@ -31,6 +30,30 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif; font-size: 14px; color: #333; background: #f5f6f8; }
+    .portal-header { background: #fff; border-bottom: 1px solid #e2e8f0; margin-bottom: 0; }
+    .portal-header-inner {
+      max-width: min(1480px, calc(100vw - 24px));
+      margin: 0 auto;
+      padding: 0 16px;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .portal-header-logo { display: inline-flex; align-items: center; text-decoration: none; }
+    .portal-header-logo img {
+      height: 36px;
+      width: auto;
+      max-width: 12rem;
+      object-fit: contain;
+      object-position: left center;
+      display: block;
+    }
+    .portal-header-actions { display: flex; align-items: center; gap: 16px; font-size: 14px; color: #334155; }
+    .portal-header-user { white-space: nowrap; }
+    .portal-header-logout { color: #2563eb; text-decoration: none; white-space: nowrap; }
+    .portal-header-logout:hover { text-decoration: underline; }
     .container {
       max-width: min(1480px, calc(100vw - 24px));
       width: 100%;
@@ -49,34 +72,34 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
       gap: 12px;
     }
     .page-header-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .page-header h1 { font-size: 16px; font-weight: 600; flex: 1; min-width: 0; }
-    .user-chip { margin-left: auto; font-size: 12px; color: #666; background: #f0f0f0; padding: 4px 10px; border-radius: 20px; }
-    .logout-link { font-size: 12px; color: #1a73e8; text-decoration: none; }
-    .logout-link:hover { text-decoration: underline; }
+    .page-header h1 { font-size: 20px; font-weight: 700; flex: 1; min-width: 0; color: #333; }
 
     .inquiry-form-notice {
       color: #c5221f;
-      font-size: 12px;
+      font-size: 15px;
       line-height: 1.65;
-      font-weight: 500;
-      padding: 10px 12px;
+      font-weight: 700;
+      padding: 12px 14px;
       background: #fff5f5;
       border: 1px solid #f5c2c7;
       border-radius: 8px;
     }
 
     .tabs { display: flex; gap: 0; margin-bottom: 12px; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #e0e0e0; }
-    .tab-btn { flex: 1; padding: 11px 8px; border: none; background: transparent; cursor: pointer; font-size: 13px; color: #666; border-right: 1px solid #e0e0e0; transition: background 0.15s; }
+    .tab-btn { flex: 1; padding: 14px 10px; border: none; background: transparent; cursor: pointer; font-size: 16px; font-weight: 700; color: #333; border-right: 1px solid #e0e0e0; transition: background 0.15s; font-family: inherit; }
     .tab-btn:last-child { border-right: none; }
-    .tab-btn.active { background: #1a73e8; color: #fff; font-weight: 500; }
+    .tab-btn.active { color: #333; font-weight: 700; }
+    .tab-btn.active[data-tab="new-form"],
+    .tab-btn.active[data-tab="confirm"] { background: #d86340; }
+    .tab-btn.active[data-tab="history"] { background: #6296d0; }
 
     .category-bar {
       display: flex; gap: 8px; margin-bottom: 16px;
     }
     .category-btn {
-      flex: 1 1 0; min-width: 0; padding: 10px 12px; border-radius: 10px;
-      border: 1px solid #dadce0; background: #fff; color: #555;
-      font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit;
+      flex: 1 1 0; min-width: 0; padding: 12px 14px; border-radius: 10px;
+      border: 1px solid #dadce0; background: #fff; color: #333;
+      font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;
       text-align: center;
       transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
@@ -87,18 +110,46 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
     }
 
     .card { background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; overflow: hidden; margin-bottom: 16px; }
-    .card-header { padding: 14px 18px; border-bottom: 1px solid #f0f0f0; font-weight: 500; font-size: 14px; color: #444; display: flex; align-items: center; gap: 8px; }
+    .card-header { padding: 14px 18px; border-bottom: 1px solid #f0f0f0; font-weight: 700; font-size: 18px; color: #333; display: flex; align-items: center; gap: 8px; }
 
-    .info-bar { display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 18px; background: #f8f9ff; border-bottom: 1px solid #e8eaf6; font-size: 12px; color: #555; }
-    .info-bar .info-item { display: flex; align-items: center; gap: 4px; }
+    .info-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px 16px;
+      padding: 14px 18px;
+      background: #f8f9ff;
+      border-bottom: 1px solid #e8eaf6;
+      font-size: 15px;
+      font-weight: 700;
+      color: #333;
+    }
+    .info-bar .info-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .info-bar .info-item strong {
+      font-weight: 700;
+      color: #222;
+    }
 
     .form-body { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
-    .form-group label { display: block; font-size: 12px; font-weight: 500; color: #555; margin-bottom: 6px; }
+    .form-group label { display: block; font-size: 15px; font-weight: 700; color: #333; margin-bottom: 8px; line-height: 1.5; }
     .form-group select,
     .form-group input[type="text"],
     .form-group textarea {
       width: 100%; padding: 9px 12px; border: 1px solid #dadce0; border-radius: 8px;
       font-size: 13px; color: #333; background: #fff; transition: border-color 0.2s;
+    }
+    .form-group select,
+    .form-group select option {
+      font-size: 15px;
+      font-weight: 700;
+      color: #222;
+    }
+    .form-group select {
+      padding: 11px 12px;
     }
     .form-group select:focus,
     .form-group input:focus,
@@ -108,35 +159,92 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
     .char-hint span { color: #333; font-weight: 500; }
 
     .form-actions { padding: 12px 18px; border-top: 1px solid #f0f0f0; display: flex; gap: 8px; justify-content: flex-end; background: #fafafa; }
-    .btn { padding: 8px 18px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 1px solid #dadce0; background: #fff; color: #444; font-family: inherit; transition: background 0.15s; }
+    .btn { padding: 12px 22px; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; border: 1px solid #dadce0; background: #fff; color: #444; font-family: inherit; transition: background 0.15s; }
     .btn:hover { background: #f5f5f5; }
     .btn-primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
     .btn-primary:hover { background: #1557b0; }
+    .btn-confirm { background: #9ec18e; border-color: #9ec18e; color: #333; }
+    .btn-confirm:hover { background: #86a97a; border-color: #86a97a; color: #333; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .confirm-row { display: flex; padding: 10px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .confirm-row { display: flex; padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-size: 15px; gap: 12px; align-items: flex-start; }
     .confirm-row:last-child { border-bottom: none; }
-    .confirm-label { width: 130px; flex-shrink: 0; color: #888; font-size: 12px; padding-top: 1px; }
-    .confirm-value { flex: 1; color: #333; line-height: 1.7; white-space: pre-wrap; }
+    .confirm-label { width: 170px; flex-shrink: 0; color: #333; font-size: 15px; font-weight: 700; padding-top: 1px; line-height: 1.6; }
+    .confirm-value { flex: 1; color: #222; font-size: 15px; font-weight: 700; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+    #tab-confirm .card-header { font-size: 18px; font-weight: 700; }
+    #tab-confirm-btn { font-size: 16px; font-weight: 700; }
+    .confirm-body { padding: 16px 18px; }
 
-    .table-header { display: grid; grid-template-columns: 44px 108px minmax(0,1.1fr) minmax(0,1.2fr) 76px 72px; gap: 8px; padding: 8px 18px; font-size: 11px; color: #999; font-weight: 600; letter-spacing: 0.04em; border-bottom: 1px solid #f0f0f0; background: #fafafa; }
-    .table-row { display: grid; grid-template-columns: 44px 108px minmax(0,1.1fr) minmax(0,1.2fr) 76px 72px; gap: 8px; padding: 11px 18px; border-bottom: 1px solid #f7f7f7; align-items: center; font-size: 13px; }
-    .table-row:last-child { border-bottom: none; }
+    .table-header { display: grid; grid-template-columns: 60px 48px 120px minmax(0,1.1fr) minmax(0,1.2fr) 84px 80px; gap: 10px; padding: 10px 18px; font-size: 14px; color: #666; font-weight: 700; letter-spacing: 0.02em; border-bottom: 1px solid #f0f0f0; background: #fafafa; }
+    .table-row { display: grid; grid-template-columns: 60px 48px 120px minmax(0,1.1fr) minmax(0,1.2fr) 84px 80px; gap: 10px; padding: 13px 18px; border-bottom: 1px solid #f7f7f7; align-items: center; font-size: 15px; font-weight: 600; }
+    .history-row-wrap:last-child .table-row { border-bottom: none; }
     .table-row:hover { background: #f8f9ff; }
+    .btn-detail {
+      font-size: 14px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #dadce0;
+      background: #fff;
+      color: #1a73e8;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+      line-height: 1.3;
+    }
+    .btn-detail:hover { background: #e8f0fe; border-color: #1a73e8; }
+    .history-detail-panel {
+      display: none;
+      padding: 14px 18px 18px;
+      background: #f8f9ff;
+      border-bottom: 1px solid #e8eaed;
+      font-size: 15px;
+    }
+    .history-detail-panel.open { display: block; }
+    .history-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 18px;
+    }
+    .history-detail-field label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #555;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .history-detail-field .val {
+      color: #222;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .history-detail-field.full { grid-column: 1 / -1; }
+    .history-detail-attachments a {
+      display: inline-block;
+      margin: 0 8px 4px 0;
+      color: #1a73e8;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .history-detail-attachments a:hover { text-decoration: underline; }
     .row-num {
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       color: #5c6bc0;
       text-align: center;
       font-variant-numeric: tabular-nums;
     }
-    .ts { font-size: 11px; color: #888; }
-    .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+    .ts { font-size: 14px; color: #666; font-weight: 600; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 13px; font-weight: 700; }
     .badge-pending  { background: #fff3cd; color: #856404; }
     .badge-progress { background: #cfe2ff; color: #084298; }
     .badge-done     { background: #d1e7dd; color: #0a3622; }
-    .dept-tag { font-size: 11px; background: #f0f0f0; color: #555; padding: 2px 8px; border-radius: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: inline-block; vertical-align: middle; }
-    .type-cell { font-size: 12px; color: #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dept-tag { font-size: 13px; font-weight: 700; background: #f0f0f0; color: #444; padding: 3px 10px; border-radius: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: inline-block; vertical-align: middle; }
+    .type-cell { font-size: 15px; font-weight: 600; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .dept-select {
       font-size: 11px;
       padding: 3px 6px;
@@ -152,30 +260,14 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
       border-color: #1a73e8;
       box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
     }
-    .empty { text-align: center; padding: 32px; color: #aaa; font-size: 13px; }
+    .empty { text-align: center; padding: 32px; color: #888; font-size: 15px; font-weight: 600; }
 
-    .is-dev-panel { display: none; }
-    .is-dev-frame-wrap {
-      background: #fff;
-      border-radius: 10px;
-      border: 1px solid #e0e0e0;
-      overflow: hidden;
-      min-height: 720px;
-      width: 100%;
-    }
-    .is-dev-frame {
-      width: 100%;
-      min-height: 720px;
-      height: 78vh;
-      border: 0;
-      display: block;
-      background: #fff;
-    }
-    .filter-bar { display: flex; gap: 6px; padding: 10px 18px; border-bottom: 1px solid #f0f0f0; flex-wrap: wrap; }
-    .filter-btn { padding: 4px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid #dadce0; background: #fff; color: #666; }
-    .filter-btn.active { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; font-weight: 500; }
+    .filter-bar { display: flex; gap: 8px; padding: 12px 18px; border-bottom: 1px solid #f0f0f0; flex-wrap: wrap; align-items: center; }
+    .filter-label { font-size: 14px; font-weight: 700; color: #666; margin-right: 2px; }
+    .filter-btn { padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #dadce0; background: #fff; color: #555; font-family: inherit; }
+    .filter-btn.active { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; font-weight: 700; }
 
-    .loading { text-align: center; padding: 24px; color: #aaa; font-size: 13px; }
+    .loading { text-align: center; padding: 24px; color: #888; font-size: 15px; font-weight: 600; }
     .alert-success { background: #d1e7dd; color: #0a3622; border: 1px solid #a3cfbb; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; font-size: 13px; }
     .alert-error   { background: #fce8e6; color: #c5221f; border: 1px solid #f5c2c7; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; font-size: 13px; }
 
@@ -212,64 +304,53 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
     .file-item-remove:hover { background: #fce8e6; color: #c5221f; }
 
     @media (max-width: 640px) {
-      .table-header, .table-row { grid-template-columns: 40px 86px 1fr 72px; }
-      .table-header > *:nth-child(4), .table-row > *:nth-child(4),
-      .table-header > *:nth-child(5), .table-row > *:nth-child(5) { display: none; }
+      .info-bar { grid-template-columns: repeat(2, 1fr); font-size: 14px; }
+      .table-header, .table-row { grid-template-columns: 48px 32px minmax(0,1fr) 72px; }
+      .table-header > *:nth-child(3), .table-row > *:nth-child(3),
+      .table-header > *:nth-child(5), .table-row > *:nth-child(5),
+      .table-header > *:nth-child(6), .table-row > *:nth-child(6) { display: none; }
+      .history-detail-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
+<?php require __DIR__ . '/includes/portal-header.php'; ?>
 <div class="container">
 
   <div class="page-header">
     <div class="page-header-row">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
       <h1>社内に関するお問い合わせ</h1>
-      <div class="user-chip" id="user-name-chip">読み込み中...</div>
-      <?php if ($canAdmin): ?>
-      <a class="logout-link" href="admin.php">担当者画面へ</a>
-      <?php endif; ?>
-      <a class="logout-link" href="logout.php">社員サイトへ</a>
     </div>
     <p class="inquiry-form-notice">
-      お問い合わせフォームは情報システム部で管理されます。内容をみられては困る内容は入力を控えて、総務・経理の担当からの対応時に情報を伝えるようにしてください。
+      お問い合わせフォームは情報システム部で管理されます。内容をみられては困る内容は入力を控えて、総務・経理・労務の担当からの対応時に情報を伝えるようにしてください。
     </p>
   </div>
 
   <div class="tabs">
-    <button type="button" class="tab-btn active" onclick="showTab('history')">📋 履歴一覧</button>
-    <button type="button" class="tab-btn" onclick="showTab('new-form')">✉️ 新規お問い合わせ</button>
-    <button type="button" class="tab-btn" onclick="showTab('confirm')" id="tab-confirm-btn" style="display:none">✅ 確認画面</button>
+    <button type="button" class="tab-btn active" data-tab="new-form" onclick="showTab('new-form')">✉️ 新規お問い合わせ</button>
+    <button type="button" class="tab-btn" data-tab="history" onclick="showTab('history')">📋 履歴一覧</button>
+    <button type="button" class="tab-btn" data-tab="confirm" onclick="showTab('confirm')" id="tab-confirm-btn" style="display:none">✅ 確認画面</button>
   </div>
 
   <div class="category-bar" id="category-bar" role="tablist" aria-label="問い合わせカテゴリ"></div>
 
   <div id="alert-area"></div>
 
-  <div id="is-dev-panel" class="is-dev-panel">
-    <div class="is-dev-frame-wrap">
-      <iframe
-        id="is-dev-frame"
-        class="is-dev-frame"
-        title="開発依頼"
-        src="about:blank"
-      ></iframe>
-    </div>
-  </div>
-
-  <div id="tab-history">
+  <div id="tab-history" style="display:none">
     <div class="card">
       <div class="card-header">
         📋 <span id="history-title">お問い合わせ履歴（最大50件）</span>
       </div>
       <div class="filter-bar">
-        <span style="font-size:12px;color:#888;align-self:center;margin-right:2px">進捗</span>
+        <span class="filter-label">進捗</span>
         <button type="button" class="filter-btn active" onclick="filterHistory('all',this)">すべて</button>
         <button type="button" class="filter-btn" onclick="filterHistory('未対応',this)">未対応</button>
         <button type="button" class="filter-btn" onclick="filterHistory('対応中',this)">対応中</button>
         <button type="button" class="filter-btn" onclick="filterHistory('解決済',this)">解決済</button>
       </div>
       <div class="table-header">
+        <span></span>
         <span title="お問い合わせ番号">行</span>
         <span>日時</span>
         <span>お問い合わせ内容</span>
@@ -281,7 +362,7 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
     </div>
   </div>
 
-  <div id="tab-new-form" style="display:none">
+  <div id="tab-new-form">
     <div class="card">
       <div class="card-header" id="form-card-header">✉️ お問い合わせ</div>
       <div class="info-bar">
@@ -307,7 +388,7 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
           <textarea id="f-body" placeholder="詳細をご記入ください..."></textarea>
         </div>
         <div class="form-group upload-section" id="upload-section">
-          <label>（４）入社書類を添付してください <span style="color:#c5221f">*</span></label>
+          <label>（４）関連書類を添付してください <span style="color:#c5221f">*</span></label>
           <div class="upload-box" id="upload-box">
             <input type="file" id="f-attachments" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" multiple>
             <span class="upload-icon">📎</span>
@@ -321,7 +402,7 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
       </div>
       <div class="form-actions">
         <button type="button" class="btn" onclick="showTab('history')">キャンセル</button>
-        <button type="button" class="btn btn-primary" onclick="goToConfirm()">内容を確認 ›</button>
+        <button type="button" class="btn btn-confirm" onclick="goToConfirm()">内容を確認 ›</button>
       </div>
     </div>
   </div>
@@ -335,7 +416,7 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
         <div class="info-item">🏢 所属会社：<strong id="c-company">—</strong></div>
         <div class="info-item">🏬 所属部署：<strong id="c-dept">—</strong></div>
       </div>
-      <div style="padding:16px 18px">
+      <div class="confirm-body">
         <div class="confirm-row"><span class="confirm-label">カテゴリ</span><span class="confirm-value" id="c-category">—</span></div>
         <div class="confirm-row"><span class="confirm-label">（１）質問内容</span><span class="confirm-value" id="c-type">—</span></div>
         <div class="confirm-row"><span class="confirm-label">（２）タイトル</span><span class="confirm-value" id="c-title">—</span></div>
@@ -362,10 +443,7 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
   var MAX_ATTACHMENTS = 10;
   var MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
   var selectedFiles = [];
-  var currentMainTab = 'history';
-  var DEV_REQUEST_LIST_URL = '/development-requests?embed=1';
-  var DEV_REQUEST_CREATE_URL = '/development-requests/create?embed=1';
-  var isDevDetailView = false;
+  var currentMainTab = 'new-form';
 
   function findCategory(key) {
     for (var i = 0; i < INQUIRY_CATEGORIES.length; i++) {
@@ -378,17 +456,10 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
     return findCategory(currentCategoryKey) || INQUIRY_CATEGORIES[0] || { key: 'finance', label: '経理', types: [] };
   }
 
-  function visibleCategories() {
-    if (isIsCategory() && isDevDetailView) {
-      return INQUIRY_CATEGORIES.filter(function (cat) { return cat.key === 'is'; });
-    }
-    return INQUIRY_CATEGORIES;
-  }
-
   function renderCategoryBar() {
     var bar = document.getElementById('category-bar');
     if (!bar) return;
-    bar.innerHTML = visibleCategories().map(function (cat) {
+    bar.innerHTML = INQUIRY_CATEGORIES.map(function (cat) {
       var active = cat.key === currentCategoryKey ? ' active' : '';
       var key = String(cat.key || '').replace(/[^a-z0-9_-]/gi, '');
       return (
@@ -406,110 +477,10 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
   function selectCategory(key) {
     if (!findCategory(key)) return;
     currentCategoryKey = key;
-    if (key !== 'is') {
-      isDevDetailView = false;
-    }
     renderCategoryBar();
     rebuildTypeOptions();
     updateFormHeader();
     renderHistory();
-    syncIsDevPanel();
-  }
-
-  function isIsCategory() {
-    return currentCategoryKey === 'is';
-  }
-
-  function syncIsDevPanel() {
-    var panel = document.getElementById('is-dev-panel');
-    var history = document.getElementById('tab-history');
-    var form = document.getElementById('tab-new-form');
-    var confirm = document.getElementById('tab-confirm');
-    var confirmBtn = document.getElementById('tab-confirm-btn');
-    if (!panel || !history || !form || !confirm) return;
-
-    if (isIsCategory()) {
-      panel.style.display = 'block';
-      history.style.display = 'none';
-      form.style.display = 'none';
-      confirm.style.display = 'none';
-      if (confirmBtn) confirmBtn.style.display = 'none';
-      var mode = currentMainTab === 'new-form' ? 'create' : 'list';
-      var next = mode === 'create' ? DEV_REQUEST_CREATE_URL : DEV_REQUEST_LIST_URL;
-      var frame = document.getElementById('is-dev-frame');
-      var force = isDevDetailView || !frame || frame.getAttribute('data-src') !== next;
-      loadIsDevFrame(mode, force);
-      return;
-    }
-
-    panel.style.display = 'none';
-    isDevDetailView = false;
-    renderCategoryBar();
-    if (currentMainTab === 'history') {
-      history.style.display = '';
-      form.style.display = 'none';
-      confirm.style.display = 'none';
-    } else if (currentMainTab === 'new-form') {
-      history.style.display = 'none';
-      form.style.display = '';
-      confirm.style.display = 'none';
-    } else if (currentMainTab === 'confirm') {
-      history.style.display = 'none';
-      form.style.display = 'none';
-      confirm.style.display = '';
-      if (confirmBtn) confirmBtn.style.display = '';
-    }
-  }
-
-  function isDevRequestDetailUrl(url) {
-    try {
-      var path = new URL(url, window.location.origin).pathname;
-      return /^\/development-requests\/\d+(\/)?$/.test(path);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function syncDevDetailFromFrame() {
-    var frame = document.getElementById('is-dev-frame');
-    if (!frame || !isIsCategory()) {
-      if (isDevDetailView) {
-        isDevDetailView = false;
-        renderCategoryBar();
-      }
-      return;
-    }
-    var href = '';
-    try {
-      href = frame.contentWindow && frame.contentWindow.location
-        ? String(frame.contentWindow.location.href || '')
-        : '';
-    } catch (e) {
-      href = frame.getAttribute('src') || '';
-    }
-    var next = isDevRequestDetailUrl(href);
-    if (next === isDevDetailView) return;
-    isDevDetailView = next;
-    renderCategoryBar();
-  }
-
-  function bindIsDevFrameEvents() {
-    var frame = document.getElementById('is-dev-frame');
-    if (!frame || frame.getAttribute('data-bound') === '1') return;
-    frame.setAttribute('data-bound', '1');
-    frame.addEventListener('load', syncDevDetailFromFrame);
-  }
-
-  function loadIsDevFrame(mode, force) {
-    var frame = document.getElementById('is-dev-frame');
-    if (!frame) return;
-    bindIsDevFrameEvents();
-    var next = mode === 'create' ? DEV_REQUEST_CREATE_URL : DEV_REQUEST_LIST_URL;
-    if (!force && frame.getAttribute('data-src') === next && !isDevDetailView) return;
-    isDevDetailView = false;
-    renderCategoryBar();
-    frame.setAttribute('data-src', next);
-    frame.src = next;
   }
 
   function updateFormHeader() {
@@ -527,7 +498,7 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
     var cat = currentCategory();
     var html = '<option value="">選択してください ▼</option>';
     (cat.types || []).forEach(function (type) {
-      var value = type.indexOf('入社書類提出') >= 0 ? ONBOARDING_DOC_VALUE : type;
+      var value = (ONBOARDING_DOC_TYPE !== '' && type === ONBOARDING_DOC_TYPE) ? ONBOARDING_DOC_VALUE : type;
       html += '<option value="' + escapeHtml(value) + '">' + escapeHtml(type) + '</option>';
     });
     sel.innerHTML = html;
@@ -606,15 +577,12 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
     var initialCategory = params.get('category');
     if (initialCategory && findCategory(initialCategory)) {
       selectCategory(initialCategory);
-    } else {
-      syncIsDevPanel();
     }
 
     apiGet('api/profile.php')
       .then(function (profile) {
         if (!profile) return;
         userProfile = profile;
-        document.getElementById('user-name-chip').textContent = profile.fullName || '—';
         document.getElementById('f-name').textContent = profile.fullName || '—';
         document.getElementById('f-employee-id').textContent = profile.employeeId || '—';
         document.getElementById('f-company').textContent = profile.company || '—';
@@ -680,7 +648,11 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
         var rowNo = r.row != null && r.row !== '' ? String(r.row) : '—';
         var deptLabel = escapeHtml(r.categoryLabel || ((findCategory(r.category) || {}).label) || '—');
         return (
+          '<div class="history-row-wrap">' +
           '<div class="table-row">' +
+          '<span><button type="button" class="btn-detail" onclick="toggleHistoryDetail(' +
+          escapeHtml(rowNo) +
+          ')">詳細</button></span>' +
           '<span class="row-num" title="お問い合わせ番号">' +
           escapeHtml(rowNo) +
           '</span>' +
@@ -689,10 +661,73 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
           '<span title="' + escapeHtml(r.title || '') + '">' + escapeHtml(r.title || '—') + '</span>' +
           '<span title="' + deptLabel + '">' + deptLabel + '</span>' +
           '<span>' + badgeHtml(r.status || '未対応') + '</span>' +
+          '</div>' +
+          '<div class="history-detail-panel" id="history-detail-' +
+          escapeHtml(rowNo) +
+          '">' +
+          buildHistoryDetailHtml(r) +
+          '</div>' +
           '</div>'
         );
       })
       .join('');
+  }
+
+  function buildHistoryDetailHtml(r) {
+    var rowNo = r.row != null && r.row !== '' ? String(r.row) : '—';
+    var deptLabel = escapeHtml(r.categoryLabel || ((findCategory(r.category) || {}).label) || '—');
+    var attachments = Array.isArray(r.attachments) ? r.attachments : [];
+    var attachmentsHtml = '—';
+    if (attachments.length > 0) {
+      attachmentsHtml = attachments
+        .map(function (a) {
+          var url = escapeHtml((a && a.url) || '');
+          var name = escapeHtml((a && a.name) || '添付ファイル');
+          return '<a href="' + url + '" target="_blank" rel="noopener">' + name + '</a>';
+        })
+        .join('');
+    }
+
+    return (
+      '<div class="history-detail-grid">' +
+      '<div class="history-detail-field"><label>お問い合わせ番号</label><div class="val">' +
+      escapeHtml(rowNo) +
+      '</div></div>' +
+      '<div class="history-detail-field"><label>日時</label><div class="val">' +
+      escapeHtml(r.timestamp || '—') +
+      '</div></div>' +
+      '<div class="history-detail-field"><label>担当部署</label><div class="val">' +
+      deptLabel +
+      '</div></div>' +
+      '<div class="history-detail-field"><label>進捗</label><div class="val">' +
+      badgeHtml(r.status || '未対応') +
+      '</div></div>' +
+      '<div class="history-detail-field full"><label>お問い合わせ内容</label><div class="val">' +
+      escapeHtml(r.type || '—') +
+      '</div></div>' +
+      '<div class="history-detail-field full"><label>タイトル</label><div class="val">' +
+      escapeHtml(r.title || '—') +
+      '</div></div>' +
+      '<div class="history-detail-field full"><label>問い合わせ内容</label><div class="val">' +
+      escapeHtml(r.body || '—') +
+      '</div></div>' +
+      '<div class="history-detail-field full"><label>添付ファイル</label><div class="val history-detail-attachments">' +
+      attachmentsHtml +
+      '</div></div>' +
+      '</div>'
+    );
+  }
+
+  function toggleHistoryDetail(rowNum) {
+    var panel = document.getElementById('history-detail-' + rowNum);
+    if (!panel) return;
+    var willOpen = !panel.classList.contains('open');
+    document.querySelectorAll('.history-detail-panel').forEach(function (p) {
+      p.classList.remove('open');
+    });
+    if (willOpen) {
+      panel.classList.add('open');
+    }
   }
 
   function badgeHtml(s) {
@@ -713,20 +748,9 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
   function showTab(id) {
     currentMainTab = id === 'confirm' ? 'confirm' : (id === 'new-form' ? 'new-form' : 'history');
 
-    document.querySelectorAll('.tab-btn').forEach(function (b, i) {
-      b.classList.remove('active');
-      if ((i === 0 && currentMainTab === 'history') || (i === 1 && currentMainTab === 'new-form') || (i === 2 && currentMainTab === 'confirm')) {
-        b.classList.add('active');
-      }
+    document.querySelectorAll('.tab-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.tab === currentMainTab);
     });
-
-    if (isIsCategory()) {
-      if (id === 'confirm') {
-        currentMainTab = 'new-form';
-      }
-      syncIsDevPanel();
-      return;
-    }
 
     ['history', 'new-form', 'confirm'].forEach(function (t) {
       document.getElementById('tab-' + t).style.display = 'none';
@@ -756,7 +780,7 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
 
   function isOnboardingDocType(type) {
     var t = String(type || '').trim();
-    return t === ONBOARDING_DOC_VALUE || t === ONBOARDING_DOC_TYPE || t.indexOf('入社書類提出') >= 0;
+    return t === ONBOARDING_DOC_VALUE || (ONBOARDING_DOC_TYPE !== '' && t === ONBOARDING_DOC_TYPE);
   }
 
   function toggleUploadSection() {
@@ -909,7 +933,7 @@ $onboardingType = (string) (app_config()['onboarding_doc_type'] ?? '');
       return;
     }
     if (isOnboardingDocType(type) && selectedFiles.length === 0) {
-      alert('入社書類提出の場合は、書類ファイルまたは画像を1件以上添付してください。');
+      alert('入社・退社手続きの場合は、書類ファイルまたは画像を1件以上添付してください。');
       return;
     }
     document.getElementById('c-category').textContent = currentCategory().label || '—';

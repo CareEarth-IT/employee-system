@@ -9,7 +9,8 @@
     $roIt = ! ($access['it']['edit'] ?? false);
     $roItDevice = ! (($access['it']['edit'] ?? false) || ($access['it']['edit_self_device'] ?? false));
     $nationalityValue = NationalityOptions::toDisplayName($user->profile?->nationality) ?? ($user->profile?->nationality ?? '');
-    $affiliationSelectOptions = User::affiliationSelectOptions($d->affiliation_code);
+    $affiliationSelectOptions = User::companyAffiliationSelectOptions($d->affiliation_code);
+    $affiliationDisplayName = User::affiliationDisplayName($d->affiliation_code);
     $employmentTypeOptions = User::employmentTypeOptions($d->employment_type);
     $employmentStatusOptions = User::employmentStatusOptions($d->employment_status);
     $positionPrimaryOptions = User::registryPositionOptions($d->position_primary);
@@ -22,27 +23,27 @@
     @if ($access['core']['view'])
         <section class="space-y-4">
             <div class="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-200 pb-2">
-                <h2 class="text-lg font-bold">基本情報・個人情報</h2>
+                <h2 class="text-xl font-bold">基本情報・個人情報</h2>
                 @if ($roCore)
-                    <span class="text-xs text-slate-500">閲覧のみ（編集は人事部）</span>
+                    <span class="text-sm text-slate-500">閲覧のみ（編集は人事部）</span>
                 @endif
             </div>
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-sm mb-1">ID</label>
-                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">{{ $user->employee_id ?? '—' }}</p>
+                    <label class="mb-1 block text-base">ID</label>
+                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->employee_id ?? '—' }}</p>
                 </div>
                 <div>
-                    <label class="block text-sm mb-1">名前</label>
-                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">{{ $user->displayName() }}</p>
+                    <label class="mb-1 block text-base">名前</label>
+                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->displayName() }}</p>
                 </div>
                 <div>
-                    <label class="block text-sm mb-1">Name</label>
-                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">{{ $user->profile?->english_name ?? '—' }}</p>
+                    <label class="mb-1 block text-base">Name</label>
+                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->profile?->english_name ?? '—' }}</p>
                 </div>
                 <div>
-                    <label class="block text-sm mb-1">社用メール</label>
-                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm break-all">{{ $user->email }}</p>
+                    <label class="mb-1 block text-base">社用メール</label>
+                    <p class="break-all rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->email }}</p>
                 </div>
                 @include('partials.form-field', [
                     'name' => 'gmail_address',
@@ -56,7 +57,7 @@
                     'label' => '所属',
                     'type' => 'select',
                     'options' => $affiliationSelectOptions,
-                    'value' => $d->affiliation_code,
+                    'value' => $affiliationDisplayName,
                     'readonly' => $roCore,
                 ])
                 @include('partials.form-field', [
@@ -69,9 +70,9 @@
                     'readonly' => $roCore,
                 ])
                 <div>
-                    <label for="nationality" class="block text-sm mb-1">国籍</label>
+                    <label for="nationality" class="mb-1 block text-base">国籍</label>
                     @if ($roCore)
-                        <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">{{ $nationalityValue !== '' ? $nationalityValue : '—' }}</p>
+                        <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $nationalityValue !== '' ? $nationalityValue : '—' }}</p>
                     @else
                         @include('partials.nationality-select', [
                             'selected' => old('nationality', $nationalityValue),
@@ -89,8 +90,18 @@
                     'readonly' => $roCore,
                 ])
                 <div>
-                    <label class="block text-sm mb-1">入社日</label>
-                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">{{ $user->profile?->joined_at?->format('Y/m/d') ?? '—' }}</p>
+                    <label class="mb-1 block text-base">入社日</label>
+                    @if ($roCore)
+                        <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->profile?->joined_at?->format('Y/m/d') ?? '—' }}</p>
+                    @else
+                        @include('partials.date-field', [
+                            'name' => 'joined_at',
+                            'id' => 'joined_at',
+                            'value' => old('joined_at', $user->profile?->joined_at),
+                        ])
+                        <p class="mt-1 text-sm text-slate-500">不明な場合は空欄のままで構いません。</p>
+                        @include('partials.field-error', ['field' => 'joined_at'])
+                    @endif
                 </div>
                 @include('partials.form-field', ['name' => 'resigned_at', 'label' => '退職日', 'type' => 'date', 'value' => $date($d->resigned_at), 'readonly' => $roCore])
                 @include('partials.form-field', ['name' => 'last_working_day', 'label' => '最終出勤日', 'type' => 'date', 'value' => $date($d->last_working_day), 'readonly' => $roCore])
@@ -98,7 +109,17 @@
         </section>
 
         <section class="space-y-4">
-            <h3 class="text-base font-semibold text-slate-800">部署・役職</h3>
+            <h3 class="text-lg font-semibold text-slate-800">部署・役職</h3>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                @include('partials.form-field', [
+                    'name' => 'jurisdiction',
+                    'label' => '管轄',
+                    'type' => 'select',
+                    'options' => User::OFFICE_LOCATIONS,
+                    'value' => $d->jurisdiction,
+                    'readonly' => $roCore,
+                ])
+            </div>
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 @include('partials.hr-detail-org-assignment', [
                     'hrDetail' => $d,
@@ -124,14 +145,6 @@
                     'type' => 'select',
                     'options' => $positionSecondaryOptions,
                     'value' => $d->position_secondary,
-                    'readonly' => $roCore,
-                ])
-                @include('partials.form-field', [
-                    'name' => 'jurisdiction',
-                    'label' => '管轄',
-                    'type' => 'select',
-                    'options' => User::OFFICE_LOCATIONS,
-                    'value' => $d->jurisdiction,
                     'readonly' => $roCore,
                 ])
             </div>
@@ -168,7 +181,7 @@
         @endunless
 
         <section class="space-y-4">
-            <h3 class="text-base font-semibold text-slate-800">個人情報</h3>
+            <h3 class="text-lg font-semibold text-slate-800">個人情報</h3>
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 @include('partials.form-field', ['name' => 'gender', 'label' => '性別', 'type' => 'select', 'options' => EmployeeHrDetail::GENDERS, 'value' => $d->gender, 'readonly' => $roCore])
                 @include('partials.form-field', ['name' => 'birth_date', 'label' => '生年月日', 'type' => 'date', 'value' => $date($d->birth_date), 'readonly' => $roCore])

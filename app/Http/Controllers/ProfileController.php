@@ -28,13 +28,14 @@ class ProfileController extends Controller
             return redirect()->to(UserRouteHelper::route($target, 'profile.edit', 'users.profile.edit'));
         }
 
-        $canEdit = $viewer->canEditProfile($target);
+        $editableProfileFields = $viewer->editableProfileFieldNames($target);
 
         $target->load(['profile', 'hrDetail', 'affiliationHistories']);
 
         return view('profile.show', [
             'user' => $target,
-            'canEdit' => $canEdit,
+            'canEdit' => $editableProfileFields !== [],
+            'editableProfileFields' => $editableProfileFields,
         ]);
     }
 
@@ -48,8 +49,11 @@ class ProfileController extends Controller
 
         $target->load(['profile', 'affiliationHistories']);
 
+        $editableProfileFields = auth()->user()->editableProfileFieldNames($target);
+
         return view('profile.edit', [
             'user' => $target,
+            'editableProfileFields' => $editableProfileFields,
             'canDeleteEmployee' => auth()->user()->isHrDepartment() && auth()->id() !== $target->id,
         ]);
     }
@@ -83,18 +87,19 @@ class ProfileController extends Controller
     {
         $target = $user ?? auth()->user();
         $viewer = auth()->user();
-        $data = $request->validated();
+        $allowedProfileFields = $viewer->editableProfileFieldNames($target);
+        $validated = $request->validated();
+        $data = collect($validated)->only($allowedProfileFields)->all();
 
         $identityData = [];
         if ($viewer->canEditEmployeeIdentity($target)) {
-            if (array_key_exists('employee_id', $data)) {
-                $identityData['employee_id'] = trim((string) $data['employee_id']);
+            if (array_key_exists('employee_id', $validated)) {
+                $identityData['employee_id'] = trim((string) $validated['employee_id']);
             }
-            if (array_key_exists('email', $data)) {
-                $identityData['email'] = strtolower(trim((string) $data['email']));
+            if (array_key_exists('email', $validated)) {
+                $identityData['email'] = strtolower(trim((string) $validated['email']));
             }
         }
-        unset($data['employee_id'], $data['email']);
 
         if ($identityData !== []) {
             $identityData['import_locked'] = true;
@@ -185,8 +190,6 @@ class ProfileController extends Controller
             'nationality' => $this->inlineTextField(
                 NationalityOptions::toDisplayName($profile->nationality) ?? $profile->nationality,
             ),
-            'languages' => $this->inlineTextField($profile->languages),
-            'self_introduction' => $this->inlineTextField($profile->self_introduction),
         ];
     }
 

@@ -18,10 +18,7 @@ class RegistryDepartmentOptionsTest extends TestCase
             '経理部',
             '情報システム部',
             '人事部',
-            'Food Sales部',
-            'Food Retail部',
-            'Food Logistic部',
-            'Food GA部',
+            '食品事業部',
             '管理部',
             '営業部',
             'GR部（グローバル部）',
@@ -30,7 +27,8 @@ class RegistryDepartmentOptionsTest extends TestCase
 
     public function test_dashboard_tabs_for_business_departments(): void
     {
-        $this->assertSame(['food'], RegistryDepartmentOptions::dashboardTabsFor('Food Sales部'));
+        $this->assertSame(['food'], RegistryDepartmentOptions::dashboardTabsFor('食品事業部'));
+        $this->assertSame([], RegistryDepartmentOptions::dashboardTabsFor('Food Sales部'));
         $this->assertSame(['specified-skills', 'real-estate'], RegistryDepartmentOptions::dashboardTabsFor('経理部'));
         $this->assertSame([], RegistryDepartmentOptions::dashboardTabsFor('営業部'));
     }
@@ -40,7 +38,8 @@ class RegistryDepartmentOptionsTest extends TestCase
         $options = RegistryDepartmentOptions::forSelect('食品部');
 
         $this->assertSame('食品部', $options[array_key_last($options)]);
-        $this->assertContains('Food Sales部', $options);
+        $this->assertContains('食品事業部', $options);
+        $this->assertNotContains('Food Sales部', $options);
         $this->assertNotContains('SS課_名古屋', $options);
     }
 

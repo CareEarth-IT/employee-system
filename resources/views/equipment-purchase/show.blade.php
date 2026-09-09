@@ -5,21 +5,21 @@
 @section('content')
 <div class="max-w-4xl mx-auto">
     <div class="mb-4 flex items-center justify-between">
-        <h1 class="text-xl font-bold">備品購入 申請詳細</h1>
-        <a href="{{ route('equipment-purchases.list', request()->only(['department', 'location', 'date_from', 'date_to', 'page'])) }}" class="text-sm text-blue-600 hover:underline">一覧へ戻る</a>
+        <h1 class="text-2xl font-bold">備品購入 申請詳細</h1>
+        <a href="{{ route('equipment-purchases.list', request()->only(['department', 'location', 'date_from', 'date_to', 'page'])) }}" class="text-base text-blue-600 hover:underline">一覧へ戻る</a>
     </div>
 
     <div class="bg-white border border-slate-300 rounded-lg p-8 space-y-6">
-        @include('partials.validation-errors-banner', ['class' => 'rounded border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm'])
+        @include('partials.validation-errors-banner', ['class' => 'rounded border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-base'])
         @if (session('success'))
-            <div class="rounded border border-green-200 bg-green-50 px-4 py-3 text-green-800 text-sm">
+            <div class="rounded border border-green-200 bg-green-50 px-4 py-3 text-green-800 text-base">
                 {{ session('success') }}
             </div>
         @endif
 
         @if ($application->isPending() && auth()->user()->canApproveEquipmentPurchase($application))
             <div class="flex justify-end">
-                <a href="{{ route('equipment-purchases.approve', $application) }}" class="rounded bg-blue-600 text-white px-6 py-2 text-sm font-medium hover:bg-blue-700">
+                <a href="{{ route('equipment-purchases.approve', $application) }}" class="rounded bg-blue-600 text-white px-6 py-2 text-base font-medium hover:bg-blue-700">
                     承認画面へ
                 </a>
             </div>
@@ -39,7 +39,7 @@
                     'editable' => true,
                 ])
                 <div class="flex justify-end">
-                    <button type="submit" class="rounded bg-blue-600 text-white px-6 py-2 text-sm font-medium hover:bg-blue-700">
+                    <button type="submit" class="rounded bg-blue-600 text-white px-6 py-2 text-base font-medium hover:bg-blue-700">
                         発注情報を保存
                     </button>
                 </div>

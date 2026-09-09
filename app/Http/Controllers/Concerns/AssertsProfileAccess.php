@@ -15,6 +15,13 @@ trait AssertsProfileAccess
         }
     }
 
+    protected function assertCanManageAffiliation(User $target): void
+    {
+        if (! auth()->user()->canManageAffiliation($target)) {
+            abort(403);
+        }
+    }
+
     protected function redirectToProfileEdit(User $target, string $message): RedirectResponse
     {
         return redirect()

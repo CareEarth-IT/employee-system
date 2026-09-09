@@ -119,6 +119,33 @@ class RegistryGrAssignment
     ];
 
     /**
+     * 社員名簿・詳細CSV向けの部署表示（GR 部は「管轄＋グローバル事業部」）。
+     */
+    public static function rosterDepartmentLabel(?string $jurisdiction, ?string $departmentPrimary): string
+    {
+        $departmentPrimary = trim((string) $departmentPrimary);
+        $jurisdiction = trim((string) $jurisdiction);
+
+        if ($departmentPrimary === '') {
+            return '';
+        }
+
+        if (str_ends_with($departmentPrimary, 'グローバル事業部')) {
+            return $departmentPrimary;
+        }
+
+        if ($departmentPrimary !== self::DEPARTMENT) {
+            return $departmentPrimary;
+        }
+
+        if ($jurisdiction === '') {
+            return $departmentPrimary;
+        }
+
+        return $jurisdiction.'グローバル事業部';
+    }
+
+    /**
      * @return list<string>
      */
     public static function sectionOptionsFor(?string $location): array

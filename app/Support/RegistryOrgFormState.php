@@ -103,7 +103,10 @@ class RegistryOrgFormState
             $current !== '' ? $current : null,
         );
 
-        if (RegistryTeamByAssignment::isDepartmentTeamOnly($department)) {
+        if (
+            RegistryTeamByAssignment::isDepartmentTeamOnly($department)
+            && $department !== RegistryDepartmentOptions::FOOD_DEPARTMENT
+        ) {
             $options = array_values(array_unique([
                 ...$options,
                 ...RegistryTeamByAssignment::optionsFor($department, $location, ''),

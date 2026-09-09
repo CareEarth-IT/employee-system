@@ -14,6 +14,22 @@ class SyncAffiliationCompanyFromRosterTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_affiliation_select_options_use_official_company_names(): void
+    {
+        $options = User::companyAffiliationSelectOptions();
+
+        $this->assertSame('CareEarth', $options['CareEarth'] ?? null);
+        $this->assertSame('GROWTEC', $options['GROWTEC'] ?? null);
+        $this->assertArrayNotHasKey('CE', $options);
+    }
+
+    public function test_affiliation_display_name_maps_code_to_company(): void
+    {
+        $this->assertSame('CareEarth', User::affiliationDisplayName('CE'));
+        $this->assertSame('GROWTEC', User::affiliationDisplayName('GT'));
+        $this->assertSame('CareEarth', User::affiliationDisplayName('CareEarth'));
+    }
+
     public function test_map_affiliation_code_to_company(): void
     {
         $this->assertSame('CareEarth', EmployeeRosterCsv::mapAffiliationCodeToCompany('CE'));

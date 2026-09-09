@@ -4,6 +4,8 @@ namespace App\Support;
 
 class RegistryDepartmentOptions
 {
+    public const FOOD_DEPARTMENT = '食品事業部';
+
     /** @var list<string> 社員登録フォームの所属部署 */
     public const OPTIONS = [
         'M&A戦略推進部',
@@ -14,10 +16,7 @@ class RegistryDepartmentOptions
         '経理部',
         '情報システム部',
         '人事部',
-        'Food Sales部',
-        'Food Retail部',
-        'Food Logistic部',
-        'Food GA部',
+        self::FOOD_DEPARTMENT,
         '管理部',
         '営業部',
         'GR部（グローバル部）',
@@ -34,6 +33,7 @@ class RegistryDepartmentOptions
         '通信事業部' => ['telecom'],
         '特定技能事業部' => ['specified-skills'],
         '経理部' => ['specified-skills', 'real-estate'],
+        self::FOOD_DEPARTMENT => ['food'],
         'Food Sales部' => ['food'],
         'Food Retail部' => ['food'],
         'Food Logistic部' => ['food'],
@@ -52,6 +52,7 @@ class RegistryDepartmentOptions
         '経理部' => ['department' => '経理部', 'section' => null],
         '情報システム部' => ['department' => '情報システム部', 'section' => null],
         '人事部' => ['department' => '人事部', 'section' => null],
+        self::FOOD_DEPARTMENT => ['department' => self::FOOD_DEPARTMENT, 'section' => null],
         'Food Sales部' => ['department' => 'Food Sales部', 'section' => null],
         'Food Retail部' => ['department' => 'Food Retail部', 'section' => null],
         'Food Logistic部' => ['department' => 'Food Logistic部', 'section' => null],
@@ -99,6 +100,26 @@ class RegistryDepartmentOptions
 
         return self::AFFILIATION_MAP[$registryDepartment]
             ?? ['department' => $registryDepartment, 'section' => null];
+    }
+
+    public static function registryFormDepartment(?string $storedDepartment, ?string $storedSection): string
+    {
+        if (RegistrySectionByAssignment::isStandaloneSection($storedSection)) {
+            return '';
+        }
+
+        return trim((string) $storedDepartment);
+    }
+
+    public static function hrDetailDepartment(?string $registryDepartment, ?string $section): ?string
+    {
+        if (RegistrySectionByAssignment::isStandaloneSection($section)) {
+            return '管理本部';
+        }
+
+        $registryDepartment = trim((string) $registryDepartment);
+
+        return $registryDepartment !== '' ? $registryDepartment : null;
     }
 
     /**

@@ -48,7 +48,7 @@
     }
 
     .equipment-purchase-type-btn {
-        @apply rounded border border-slate-300 px-3 py-3 text-center text-sm whitespace-nowrap transition-colors hover:bg-slate-50 hover:border-blue-400;
+        @apply rounded border border-slate-300 px-3 py-3 text-center text-base whitespace-nowrap transition-colors hover:bg-slate-50 hover:border-blue-400;
     }
 
     .equipment-purchase-type-actions {
@@ -58,7 +58,7 @@
     }
 
     .equipment-purchase-catalog {
-        @apply mt-8 border-t border-slate-200 pt-6 text-center text-sm text-slate-600;
+        @apply mt-8 border-t border-slate-200 pt-6 text-center text-base text-slate-600;
     }
 
     .equipment-purchase-catalog-link {

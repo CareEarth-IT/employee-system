@@ -15,10 +15,32 @@ $stmt = db()->prepare(
 $stmt->execute([(int) $user['id']]);
 $rows = $stmt->fetchAll();
 
-$history = array_map(static function (array $r): array {
+$ids = array_map(static fn(array $r): int => (int) $r['id'], $rows);
+$attachmentsByInquiry = [];
+
+if ($ids) {
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $aStmt = db()->prepare(
+        "SELECT id, inquiry_id, original_name
+         FROM inquiry_attachments
+         WHERE inquiry_id IN ($placeholders)
+         ORDER BY id ASC"
+    );
+    $aStmt->execute($ids);
+    foreach ($aStmt->fetchAll() as $a) {
+        $inqId = (int) $a['inquiry_id'];
+        $attachmentsByInquiry[$inqId][] = [
+            'url' => 'api/download.php?id=' . (int) $a['id'],
+            'name' => (string) $a['original_name'],
+        ];
+    }
+}
+
+$history = array_map(static function (array $r) use ($attachmentsByInquiry): array {
     $sheetKey = (string) ($r['sheet_key'] ?: 'main');
+    $id = (int) $r['id'];
     return [
-        'row' => (int) $r['id'],
+        'row' => $id,
         'sheetKey' => $sheetKey,
         'category' => category_key_for_sheet($sheetKey),
         'categoryLabel' => category_label_for_sheet($sheetKey),
@@ -27,6 +49,7 @@ $history = array_map(static function (array $r): array {
         'type' => $r['inquiry_type'],
         'status' => $r['status'],
         'body' => $r['body'],
+        'attachments' => $attachmentsByInquiry[$id] ?? [],
     ];
 }, $rows);
 

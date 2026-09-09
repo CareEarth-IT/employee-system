@@ -17,9 +17,9 @@
             >
                 <span class="block leading-none tracking-tighter" aria-hidden="true">⋮⋮</span>
             </button>
-            <p class="text-sm font-medium text-slate-700" data-link-title>リンク {{ is_numeric($index) ? ((int) $index + 1) : '' }}</p>
+            <p class="text-base font-medium text-slate-700" data-link-title>リンク {{ is_numeric($index) ? ((int) $index + 1) : '' }}</p>
         </div>
-        <button type="button" data-remove-link-row class="text-xs text-red-700 hover:underline">削除</button>
+        <button type="button" data-remove-link-row class="text-sm text-red-700 hover:underline">削除</button>
     </div>
 
     <input type="hidden" name="links[{{ $index }}][kind]" value="{{ $kind }}">
@@ -31,10 +31,10 @@
     <div class="grid gap-4 {{ $showCategorySelect ? 'sm:grid-cols-[1fr_1.5fr_10rem_auto]' : 'sm:grid-cols-[1fr_1.5fr_auto]' }} sm:items-end">
         @if ($showCategorySelect)
             <div>
-                <label class="mb-1 block text-sm">カテゴリ</label>
+                <label class="mb-1 block text-base text-slate-800">カテゴリ</label>
                 <select
                     name="links[{{ $index }}][category_key]"
-                    class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    class="w-full rounded border border-slate-300 px-3 py-2 text-base"
                 >
                     <option value="">未分類</option>
                     @foreach ($categoryOptions as $option)
@@ -49,19 +49,19 @@
             </div>
         @endif
         <div>
-            <label class="mb-1 block text-sm">表示名</label>
+            <label class="mb-1 block text-base text-slate-800">表示名</label>
             <input
                 type="text"
                 name="links[{{ $index }}][label]"
                 value="{{ old("links.$index.label", $link['label'] ?? '') }}"
-                class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                class="w-full rounded border border-slate-300 px-3 py-2 text-base"
                 required
             >
         </div>
         <div>
-            <label class="mb-1 block text-sm">URL</label>
+            <label class="mb-1 block text-base text-slate-800">URL</label>
             @if ($isSpecialKind)
-                <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base text-slate-600">
                     {{ $kind === 'form_post' ? 'フォーム送信リンク（URLなし）' : 'モーダル表示リンク（URLなし）' }}
                 </p>
             @else
@@ -69,12 +69,12 @@
                     type="text"
                     name="links[{{ $index }}][url]"
                     value="{{ old("links.$index.url", $link['url'] ?? '') }}"
-                    class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    class="w-full rounded border border-slate-300 px-3 py-2 text-base"
                     placeholder="/employees または https://..."
                 >
             @endif
         </div>
-        <label class="flex items-center gap-2 pb-2 text-sm">
+        <label class="flex items-center gap-2 pb-2 text-base">
             <input type="hidden" name="links[{{ $index }}][is_visible]" value="0">
             <input
                 type="checkbox"

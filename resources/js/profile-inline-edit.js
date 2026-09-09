@@ -1,3 +1,5 @@
+import { initDateField, normalizeDateInput } from './date-field';
+
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-profile-inline-edit]').forEach((root) => {
         bindInlineFields(root);
@@ -89,10 +91,37 @@ function beginEdit(element, root = null) {
             input.appendChild(option);
         });
     } else if (type === 'date') {
-        input = document.createElement('input');
-        input.type = 'date';
-        input.className = 'w-full rounded border border-blue-400 px-3 py-2 outline-none';
-        input.value = rawValue;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'date-field relative w-full';
+        wrapper.dataset.dateField = '1';
+
+        const textInput = document.createElement('input');
+        textInput.type = 'text';
+        textInput.placeholder = 'YYYY/MM/DD';
+        textInput.value = rawValue;
+        textInput.dataset.dateText = '1';
+        textInput.className = 'w-full rounded border border-blue-400 px-3 py-2 pr-10 outline-none';
+
+        const trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.dataset.dateTrigger = '1';
+        trigger.className = 'absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 hover:text-slate-600';
+        trigger.setAttribute('aria-label', 'カレンダーから選択');
+        trigger.tabIndex = -1;
+        trigger.innerHTML = '<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>';
+
+        const picker = document.createElement('input');
+        picker.type = 'date';
+        picker.value = rawValue;
+        picker.dataset.datePicker = '1';
+        picker.className = 'sr-only';
+        picker.tabIndex = -1;
+        picker.setAttribute('aria-hidden', 'true');
+
+        wrapper.append(textInput, trigger, picker);
+        initDateField(wrapper);
+        input = textInput;
+        element.replaceChildren(wrapper);
     } else {
         input = document.createElement('input');
         input.type = type === 'email' ? 'email' : 'text';
@@ -111,8 +140,13 @@ function beginEdit(element, root = null) {
         input.value = rawValue;
     }
 
-    input.dataset.inlineInput = '1';
-    element.replaceChildren(input);
+    if (type !== 'date') {
+        input.dataset.inlineInput = '1';
+        element.replaceChildren(input);
+    } else {
+        input.dataset.inlineInput = '1';
+    }
+
     input.focus();
 
     if (type !== 'textarea' && input.select) {
@@ -126,7 +160,9 @@ function beginEdit(element, root = null) {
             return;
         }
 
-        const nextValue = input.value.trim();
+        const nextValue = type === 'date'
+            ? normalizeDateInput(input.value.trim())
+            : input.value.trim();
         const previousValue = element.dataset.originalValue ?? '';
 
         if (! save || nextValue === previousValue) {

@@ -7,6 +7,7 @@ class EmployeeHrDetailFieldGroups
     /** @var list<string> 詳細情報の基本情報でプロフィールへ同期する項目 */
     public const PROFILE_SYNC = [
         'nationality',
+        'joined_at',
     ];
 
     /** @var list<string> */

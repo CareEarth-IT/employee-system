@@ -5,12 +5,12 @@
 @section('content')
 <div class="max-w-5xl mx-auto">
     <div class="mb-4 flex items-center justify-between">
-        <h1 class="text-xl font-bold">備品購入 承認待ち一覧</h1>
-        <a href="{{ route('equipment-purchases.index') }}" class="text-sm text-blue-600 hover:underline">備品購入トップへ</a>
+        <h1 class="text-2xl font-bold">備品購入 承認待ち一覧</h1>
+        <a href="{{ route('equipment-purchases.index') }}" class="text-base text-blue-600 hover:underline">備品購入トップへ</a>
     </div>
 
     <div class="bg-white border border-slate-300 rounded-lg overflow-hidden">
-        <table class="w-full text-sm">
+        <table class="w-full text-base">
             <thead class="bg-slate-50 border-b border-slate-200">
                 <tr class="text-left text-slate-500">
                     <th class="px-4 py-3">申請日</th>

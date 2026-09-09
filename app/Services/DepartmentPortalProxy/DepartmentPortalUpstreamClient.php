@@ -35,13 +35,29 @@ class DepartmentPortalUpstreamClient
             $client = $client->withToken($token);
         }
 
-        return match ($request->method()) {
+        $method = strtoupper($request->method());
+
+        if (in_array($method, ['POST', 'PUT', 'PATCH'], true) && $this->isMultipartRequest($request)) {
+            return $client
+                ->withBody($request->getContent(), (string) $request->header('Content-Type'))
+                ->send($method, $targetUrl);
+        }
+
+        return match ($method) {
             'POST' => $client->asForm()->post($targetUrl, $request->all()),
             'PUT' => $client->asForm()->put($targetUrl, $request->all()),
             'PATCH' => $client->asForm()->patch($targetUrl, $request->all()),
             'DELETE' => $client->delete($targetUrl, $request->all()),
             default => $client->get($targetUrl),
         };
+    }
+
+    private function isMultipartRequest(Request $request): bool
+    {
+        return str_contains(
+            strtolower((string) $request->header('Content-Type', '')),
+            'multipart/form-data',
+        );
     }
 
     /**
@@ -89,7 +105,7 @@ class DepartmentPortalUpstreamClient
             }
         }
 
-        $cookie = $this->forwardCookieHeader($request->headers->get('Cookie'), $portalPath);
+        $cookie = $this->forwardCookieHeader($request, $portalPath);
         if ($cookie !== null) {
             $headers['Cookie'] = $cookie;
         }
@@ -104,39 +120,17 @@ class DepartmentPortalUpstreamClient
     /**
      * 社員サイト側 Cookie を upstream へ渡さない（ポータル専用 Cookie のみ転送）。
      */
-    public function forwardCookieHeader(?string $cookieHeader, string $portalPath): ?string
+    public function forwardCookieHeader(Request $request, string $portalPath): ?string
     {
+        if (trim($portalPath, '/') === 'realestate-portal') {
+            return app(RealEstatePortalProxyHandler::class)->portalSessionCookieHeader($request);
+        }
+
+        $cookieHeader = $request->headers->get('Cookie');
         if (! is_string($cookieHeader) || $cookieHeader === '') {
             return null;
         }
 
-        $allowedNames = match (trim($portalPath, '/')) {
-            'realestate-portal' => ['real_estate_portal_session', 'XSRF-TOKEN'],
-            default => [],
-        };
-
-        if ($allowedNames === []) {
-            return $cookieHeader;
-        }
-
-        $pairs = array_filter(array_map('trim', explode(';', $cookieHeader)));
-        $forwarded = [];
-
-        foreach ($pairs as $pair) {
-            if (! str_contains($pair, '=')) {
-                continue;
-            }
-
-            [$name] = explode('=', $pair, 2);
-            if (in_array($name, $allowedNames, true)) {
-                $forwarded[] = $pair;
-            }
-        }
-
-        if ($forwarded === []) {
-            return null;
-        }
-
-        return implode('; ', $forwarded);
+        return $cookieHeader;
     }
 }

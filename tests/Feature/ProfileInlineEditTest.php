@@ -13,25 +13,34 @@ class ProfileInlineEditTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_can_update_profile_field_via_json_request(): void
+    public function test_user_cannot_update_languages_via_json_request(): void
+    {
+        $user = User::factory()->create();
+        EmployeeProfile::create([
+            'user_id' => $user->id,
+            'languages' => '日本語',
+        ]);
+
+        $this->actingAs($user)->putJson(route('profile.update'), [
+            'languages' => '日本語,英語',
+        ])->assertForbidden();
+
+        $this->assertSame('日本語', $user->fresh()->profile?->languages);
+    }
+
+    public function test_user_cannot_update_restricted_profile_field_via_json_request(): void
     {
         $user = User::factory()->create();
         EmployeeProfile::create([
             'user_id' => $user->id,
             'name_kana' => '山田太郎',
-            'nationality' => '日本',
         ]);
 
-        $response = $this->actingAs($user)->putJson(route('profile.update'), [
+        $this->actingAs($user)->putJson(route('profile.update'), [
             'name_kana' => '山田 太郎',
-        ]);
+        ])->assertForbidden();
 
-        $response->assertOk()
-            ->assertJsonPath('fields.name_kana.value', '山田 太郎')
-            ->assertJsonPath('fields.name_kana.display', '山田 太郎');
-
-        $this->assertSame('山田 太郎', $user->fresh()->profile?->name_kana);
-        $this->assertSame('山田 太郎', $user->fresh()->name);
+        $this->assertSame('山田太郎', $user->fresh()->profile?->name_kana);
     }
 
     public function test_other_user_cannot_update_profile_via_json_request(): void
@@ -105,6 +114,82 @@ class ProfileInlineEditTest extends TestCase
             ->assertRedirect(route('users.profile.edit', $target));
     }
 
+    public function test_hr_section_edit_page_hides_languages_and_self_introduction(): void
+    {
+        $viewer = User::factory()->create();
+        AffiliationHistory::create([
+            'user_id' => $viewer->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '人事部',
+            'section' => '人事課',
+        ]);
+        $target = User::factory()->create();
+        EmployeeProfile::create([
+            'user_id' => $target->id,
+            'languages' => '日本語',
+            'self_introduction' => '自己紹介',
+        ]);
+
+        $this->actingAs($viewer->fresh())
+            ->get(route('users.profile.edit', $target))
+            ->assertOk()
+            ->assertDontSee('話せる言語', false)
+            ->assertDontSee('自己紹介文', false)
+            ->assertDontSee('日本語', false)
+            ->assertDontSee('自己紹介', false);
+    }
+
+    public function test_information_systems_edit_page_hides_languages_and_self_introduction(): void
+    {
+        $viewer = $this->userInDepartment('情報システム部');
+        $target = User::factory()->create();
+        EmployeeProfile::create([
+            'user_id' => $target->id,
+            'languages' => '日本語',
+            'self_introduction' => '自己紹介',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('users.profile.edit', $target))
+            ->assertOk()
+            ->assertDontSee('話せる言語', false)
+            ->assertDontSee('自己紹介文', false);
+    }
+
+    public function test_general_affairs_edit_page_hides_languages_and_self_introduction(): void
+    {
+        $viewer = $this->userInDepartment('経理部', '総務課');
+        $target = User::factory()->create();
+        EmployeeProfile::create([
+            'user_id' => $target->id,
+            'languages' => '日本語',
+            'self_introduction' => '自己紹介',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('users.profile.edit', $target))
+            ->assertOk()
+            ->assertDontSee('話せる言語', false)
+            ->assertDontSee('自己紹介文', false);
+    }
+
+    public function test_hr_section_cannot_update_languages_via_json_request(): void
+    {
+        $viewer = $this->userInDepartment('人事部', '人事課');
+        $target = User::factory()->create();
+        EmployeeProfile::create([
+            'user_id' => $target->id,
+            'languages' => '日本語',
+        ]);
+
+        $this->actingAs($viewer)->putJson(route('users.profile.update', $target), [
+            'languages' => '日本語,英語',
+        ])->assertForbidden();
+
+        $this->assertSame('日本語', $target->fresh()->profile?->languages);
+    }
+
     public function test_executive_sees_inline_edit_on_other_profile(): void
     {
         $executive = User::factory()->create();
@@ -124,15 +209,16 @@ class ProfileInlineEditTest extends TestCase
             ->assertSee('data-profile-inline-edit', false);
     }
 
-    public function test_show_page_includes_inline_edit_markers_for_self(): void
+    public function test_show_page_hides_inline_edit_markers_for_self(): void
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get(route('profile.show'));
-
-        $response->assertOk()
-            ->assertSee('data-profile-inline-edit', false)
-            ->assertSee('ダブルクリックで編集', false);
+        $this->actingAs($user)->get(route('profile.show'))
+            ->assertOk()
+            ->assertDontSee('data-profile-inline-edit', false)
+            ->assertDontSee('話せる言語', false)
+            ->assertDontSee('自己紹介文', false)
+            ->assertDontSee('写真登録', false);
     }
 
     public function test_show_page_hides_inline_edit_markers_for_other_viewer(): void

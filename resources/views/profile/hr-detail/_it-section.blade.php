@@ -9,11 +9,11 @@
 
 <section class="space-y-4">
     <div class="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-200 pb-2">
-        <h2 class="text-lg font-bold">IT・デバイス</h2>
+        <h2 class="text-xl font-bold">IT・デバイス</h2>
         @if ($roIt && ($access['it']['edit_self_device'] ?? false))
-            <span class="text-xs text-slate-500">メーカー・型番・MACは本人編集可（その他は閲覧のみ）</span>
+            <span class="text-sm text-slate-500">メーカー・型番・MACは本人編集可（その他は閲覧のみ）</span>
         @elseif ($roIt)
-            <span class="text-xs text-slate-500">閲覧のみ（編集は情シス）</span>
+            <span class="text-sm text-slate-500">閲覧のみ（編集は情シス）</span>
         @endif
     </div>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

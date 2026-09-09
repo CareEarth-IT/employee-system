@@ -6,7 +6,7 @@
 <div class="mx-auto max-w-[1000px]">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 class="text-xl font-bold">リンク編集</h1>
-        <a href="{{ route('dashboard', ['tab' => $tab]) }}" class="text-sm text-blue-600 hover:underline">Top Page へ戻る</a>
+        <a href="{{ route('dashboard', ['tab' => $tab]) }}" class="text-base text-blue-600 hover:underline">Top Page へ戻る</a>
     </div>
 
     <form method="POST" action="{{ route('dashboard.links.update') }}" class="rounded-lg border border-slate-300 bg-white p-6">
@@ -17,13 +17,13 @@
 
         <input type="hidden" name="tab" value="{{ $tab }}">
 
-        <p class="mb-4 text-sm text-slate-600">部署タブ: <span class="font-medium">{{ $tabLabel }}</span></p>
-        <p class="mb-4 text-xs text-slate-500">左の ⋮⋮ をドラッグすると並び順を変更できます。保存するとダッシュボードの表示順に反映されます。</p>
+        <p class="mb-4 text-base text-slate-700">部署タブ: <span class="font-medium">{{ $tabLabel }}</span></p>
+        <p class="mb-4 text-base text-slate-600">左の ⋮⋮ をドラッグすると並び順を変更できます。保存するとダッシュボードの表示順に反映されます。</p>
 
         @if ($supportsCategories)
             <div class="mb-8 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <h2 class="mb-2 text-sm font-semibold text-slate-800">カテゴリ設定</h2>
-                <p class="mb-4 text-xs text-slate-500">
+                <h2 class="mb-2 text-base font-semibold text-slate-800">カテゴリ設定</h2>
+                <p class="mb-4 text-base text-slate-600">
                     リンクをグループ分けする見出しを設定します。Top Page ではカテゴリ名を押すとリンクが表示されます。
                 </p>
                 <div class="space-y-4" id="dashboard-categories-editor">
@@ -38,14 +38,14 @@
                 <button
                     type="button"
                     id="add-category-row"
-                    class="mt-4 rounded border border-slate-300 px-4 py-2 text-sm hover:bg-white"
+                    class="mt-4 rounded border border-slate-300 px-4 py-2 text-base hover:bg-white"
                 >
                     カテゴリを追加
                 </button>
             </div>
         @endif
 
-        <h2 class="mb-3 text-sm font-semibold text-slate-800">リンク</h2>
+        <h2 class="mb-3 text-base font-semibold text-slate-800">リンク</h2>
         <div class="space-y-4" id="dashboard-links-editor">
             @foreach (old('links', $links->map(fn ($link) => [
                 'label' => $link->label,
@@ -70,16 +70,16 @@
             <button
                 type="button"
                 id="add-link-row"
-                class="rounded border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
+                class="rounded border border-slate-300 px-4 py-2 text-base hover:bg-slate-50"
             >
                 リンクを追加
             </button>
-            <button type="submit" class="rounded bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <button type="submit" class="rounded bg-blue-600 px-6 py-2 text-base font-medium text-white hover:bg-blue-700">
                 保存
             </button>
         </div>
 
-        <p class="mt-4 text-xs text-slate-500">
+        <p class="mt-4 text-base text-slate-600">
             通常のリンクは「表示名」と「URL」を入力してください。URL はサイト内のパス（例: /employees）でも外部サイトでも構いません。
         </p>
     </form>

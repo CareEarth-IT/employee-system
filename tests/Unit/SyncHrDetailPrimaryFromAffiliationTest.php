@@ -6,6 +6,7 @@ use App\Console\Commands\SyncHrDetailPrimaryFromAffiliationCommand;
 use App\Models\AffiliationHistory;
 use App\Models\EmployeeHrDetail;
 use App\Models\User;
+use App\Support\AffiliationHrDetailSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
@@ -14,39 +15,45 @@ class SyncHrDetailPrimaryFromAffiliationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_command_syncs_department_primary_from_current_affiliation(): void
+    public function test_command_syncs_current_affiliation_from_hr_detail(): void
     {
         $user = User::factory()->create(['email' => 'sample@careearth.info']);
 
-        AffiliationHistory::create([
+        $affiliation = AffiliationHistory::create([
             'user_id' => $user->id,
             'start_date' => '2024-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
-            'company' => 'CareEarth',
-            'location' => '大阪',
-            'department' => '人事部',
-            'section' => '人事課',
-            'position' => '一般',
+            'company' => 'GROWTEC',
+            'location' => '東京',
+            'department' => '旧部署',
+            'section' => '旧課',
+            'position' => '部長',
         ]);
 
         EmployeeHrDetail::create([
             'user_id' => $user->id,
-            'department_primary' => '旧部署',
-            'section_primary' => '旧課',
+            'affiliation_code' => 'CE',
+            'jurisdiction' => '大阪',
+            'department_primary' => '人事部',
+            'section_primary' => '人事課',
+            'position_primary' => '課長',
         ]);
 
         Artisan::call(SyncHrDetailPrimaryFromAffiliationCommand::class);
 
-        $detail = $user->fresh()->hrDetail;
-        $this->assertSame('人事部', $detail?->department_primary);
-        $this->assertSame('人事課', $detail?->section_primary);
+        $affiliation->refresh();
+        $this->assertSame('CareEarth', $affiliation->company);
+        $this->assertSame('大阪', $affiliation->location);
+        $this->assertSame('人事部', $affiliation->department);
+        $this->assertSame('人事課', $affiliation->section);
+        $this->assertSame('課長', $affiliation->position);
     }
 
-    public function test_command_dry_run_does_not_update_hr_detail(): void
+    public function test_command_dry_run_does_not_update_current_affiliation(): void
     {
         $user = User::factory()->create();
 
-        AffiliationHistory::create([
+        $affiliation = AffiliationHistory::create([
             'user_id' => $user->id,
             'start_date' => '2024-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
@@ -57,17 +64,18 @@ class SyncHrDetailPrimaryFromAffiliationTest extends TestCase
 
         EmployeeHrDetail::create([
             'user_id' => $user->id,
-            'department_primary' => '旧部署',
-            'section_primary' => null,
+            'department_primary' => '人事部',
+            'section_primary' => '人事課',
+            'jurisdiction' => '大阪',
         ]);
 
         Artisan::call(SyncHrDetailPrimaryFromAffiliationCommand::class, [
             '--dry-run' => true,
         ]);
 
-        $detail = $user->fresh()->hrDetail;
-        $this->assertSame('旧部署', $detail?->department_primary);
-        $this->assertNull($detail?->section_primary);
+        $affiliation->refresh();
+        $this->assertSame('営業部', $affiliation->department);
+        $this->assertSame('営業1課', $affiliation->section);
     }
 
     public function test_command_skips_user_without_current_affiliation(): void
@@ -76,37 +84,58 @@ class SyncHrDetailPrimaryFromAffiliationTest extends TestCase
 
         EmployeeHrDetail::create([
             'user_id' => $user->id,
-            'department_primary' => '手入力部署',
+            'department_primary' => '人事部',
         ]);
 
         Artisan::call(SyncHrDetailPrimaryFromAffiliationCommand::class);
 
-        $this->assertSame('手入力部署', $user->fresh()->hrDetail?->department_primary);
+        $this->assertDatabaseCount('affiliation_histories', 0);
     }
 
-    public function test_command_syncs_food_sales_team_into_section_primary(): void
+    public function test_command_does_not_modify_past_affiliation_history(): void
     {
         $user = User::factory()->create();
 
-        AffiliationHistory::create([
+        $pastAffiliation = AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2020-01-01',
+            'end_date' => '2023-12-31',
+            'enrollment_status' => AffiliationHistory::STATUS_MOVED,
+            'company' => 'GROWTEC',
+            'location' => '東京',
+            'department' => '過去部署',
+            'section' => '過去課',
+            'position' => '一般',
+        ]);
+
+        $currentAffiliation = AffiliationHistory::create([
             'user_id' => $user->id,
             'start_date' => '2024-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
-            'department' => 'Food Sales部',
-            'section' => '法人チーム',
-            'location' => '大阪',
+            'company' => 'GROWTEC',
+            'location' => '東京',
+            'department' => '旧部署',
+            'section' => '旧課',
+            'position' => '部長',
         ]);
 
         EmployeeHrDetail::create([
             'user_id' => $user->id,
-            'department_primary' => 'Food Sales部',
-            'section_primary' => null,
+            'affiliation_code' => 'CE',
+            'jurisdiction' => '大阪',
+            'department_primary' => '情報システム部',
+            'section_primary' => '情報システム課',
+            'position_primary' => '課長',
         ]);
 
-        Artisan::call(SyncHrDetailPrimaryFromAffiliationCommand::class);
+        AffiliationHrDetailSync::syncAffiliationFromHrDetail($user->fresh());
 
-        $detail = $user->fresh()->hrDetail;
-        $this->assertSame('Food Sales部', $detail?->department_primary);
-        $this->assertSame('法人チーム', $detail?->section_primary);
+        $pastAffiliation->refresh();
+        $currentAffiliation->refresh();
+
+        $this->assertSame('過去部署', $pastAffiliation->department);
+        $this->assertSame('過去課', $pastAffiliation->section);
+        $this->assertSame('情報システム部', $currentAffiliation->department);
+        $this->assertSame('情報システム課', $currentAffiliation->section);
     }
 }

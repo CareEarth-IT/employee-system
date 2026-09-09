@@ -6,7 +6,10 @@
 @endphp
 
 @if (count($tabLinkGroups) > 0)
-    <div class="mt-6 space-y-3 border-t border-slate-200 pt-6" id="dashboard-link-groups">
+    <div @class([
+        'space-y-5',
+        'mt-8 border-t border-slate-200 pt-8' => $hasAnnouncements ?? false,
+    ]) id="dashboard-link-groups">
         @foreach ($tabLinkGroups as $groupIndex => $group)
             @php
                 $groupLinks = $group['links'] ?? [];
@@ -18,7 +21,7 @@
                 <section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
                     <button
                         type="button"
-                        class="dashboard-link-group-toggle flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50"
+                        class="dashboard-link-group-toggle flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-base font-bold text-slate-800 transition-colors hover:bg-slate-50"
                         aria-expanded="false"
                         aria-controls="{{ $groupId }}"
                     >
@@ -27,7 +30,7 @@
                     </button>
                     <ul
                         id="{{ $groupId }}"
-                        class="dashboard-link-group-panel hidden space-y-2 border-t border-slate-100 px-4 py-3 text-sm"
+                        class="dashboard-link-group-panel hidden space-y-3 border-t border-slate-100 px-5 py-4"
                     >
                         @forelse ($groupLinks as $link)
                             <li>
@@ -39,7 +42,7 @@
                     </ul>
                 </section>
             @else
-                <ul class="space-y-2 text-sm">
+                <ul class="space-y-3">
                     @foreach ($groupLinks as $link)
                         <li>
                             @include('dashboard.partials.tab-link-item', ['link' => $link])

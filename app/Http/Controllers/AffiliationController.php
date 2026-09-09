@@ -6,9 +6,9 @@ use App\Http\Controllers\Concerns\AssertsProfileAccess;
 use App\Http\Requests\AffiliationStoreRequest;
 use App\Http\Requests\AffiliationUpdateRequest;
 use App\Models\AffiliationHistory;
-use App\Models\EmployeeHrDetail;
 use App\Models\User;
 use App\Services\DriveStaffSyncService;
+use App\Support\AffiliationHrDetailSync;
 use App\Support\UserRouteHelper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -24,7 +24,7 @@ class AffiliationController extends Controller
     public function create(?User $user = null): View|RedirectResponse
     {
         $target = $user ?? auth()->user();
-        $this->assertCanEditProfile($target);
+        $this->assertCanManageAffiliation($target);
         $target->load('profile');
 
         return view('affiliation.create', [
@@ -35,7 +35,7 @@ class AffiliationController extends Controller
     public function store(AffiliationStoreRequest $request, ?User $user = null): RedirectResponse
     {
         $target = $user ?? auth()->user();
-        $this->assertCanEditProfile($target);
+        $this->assertCanManageAffiliation($target);
 
         $this->syncEmployeeId($request, $target);
         $affiliation = $target->affiliationHistories()->create([
@@ -47,8 +47,11 @@ class AffiliationController extends Controller
             $target->closeOtherEnrolledAffiliations($affiliation);
         }
 
+        if ($affiliation->isCurrent() && auth()->user()->canEditCurrentAffiliationOrg()) {
+            AffiliationHrDetailSync::syncHrDetailFromAffiliation($target->fresh(), $affiliation->fresh());
+        }
+
         $target->syncRoleFromAffiliation();
-        EmployeeHrDetail::syncPrimaryOrgFromAffiliation($target->fresh(), $affiliation);
         $this->driveStaffSync->syncUser($target->fresh());
 
         $message = '所属部署を登録しました。';
@@ -64,7 +67,7 @@ class AffiliationController extends Controller
 
     public function edit(AffiliationHistory $affiliation): View|RedirectResponse
     {
-        $this->assertCanEditProfile($affiliation->user);
+        $this->assertCanManageAffiliation($affiliation->user);
         $affiliation->user->load('profile');
 
         return view('affiliation.edit', [
@@ -75,7 +78,7 @@ class AffiliationController extends Controller
 
     public function update(AffiliationUpdateRequest $request, AffiliationHistory $affiliation): RedirectResponse
     {
-        $this->assertCanEditProfile($affiliation->user);
+        $this->assertCanManageAffiliation($affiliation->user);
 
         $this->syncEmployeeId($request, $affiliation->user);
         $affiliation->update([
@@ -87,8 +90,11 @@ class AffiliationController extends Controller
             $affiliation->user->closeOtherEnrolledAffiliations($affiliation);
         }
 
+        if ($affiliation->isCurrent() && auth()->user()->canEditCurrentAffiliationOrg()) {
+            AffiliationHrDetailSync::syncHrDetailFromAffiliation($affiliation->user->fresh(), $affiliation->fresh());
+        }
+
         $affiliation->user->syncRoleFromAffiliation();
-        EmployeeHrDetail::syncPrimaryOrgFromAffiliation($affiliation->user->fresh(), $affiliation->fresh());
         $this->driveStaffSync->syncUser($affiliation->user->fresh());
 
         return $this->redirectToProfileEdit($affiliation->user, '所属部署を更新しました。');
@@ -97,7 +103,7 @@ class AffiliationController extends Controller
     public function destroy(AffiliationHistory $affiliation): RedirectResponse
     {
         $user = $affiliation->user;
-        $this->assertCanEditProfile($user);
+        $this->assertCanManageAffiliation($user);
 
         $affiliation->delete();
         $user->syncRoleFromAffiliation();

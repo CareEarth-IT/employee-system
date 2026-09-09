@@ -85,7 +85,7 @@ class RegistrySectionOptions
         'GR-M_福岡',
         'Food Sales部',
         'Food GA部',
-        'Food Logistics部',
+        'Food Logistic部',
         'Food Retail部',
         'GR-M2課_名古屋',
         '営業課_福岡',

@@ -4,12 +4,12 @@
 
 @section('content')
 <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-    <h1 class="text-xl font-bold">社員新規登録</h1>
-    <a href="{{ route('employees.index') }}" class="text-sm text-blue-600 hover:underline">社員一覧へ戻る</a>
+    <h1 class="text-2xl font-bold">社員新規登録</h1>
+    <a href="{{ route('employees.index') }}" class="text-base text-blue-600 hover:underline">社員一覧へ戻る</a>
 </div>
 
 @if ($errors->any())
-    <div class="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm">
+    <div class="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-base text-red-800">
         入力内容を確認してください。
     </div>
 @endif

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Support\RegistryDepartmentOptions;
 use App\Support\RegistryOrgAssignment;
 use App\Support\RegistryOrgFormState;
+use App\Support\RegistrySectionByAssignment;
 use Illuminate\Validation\Rule;
 
 trait ValidatesAffiliationOrgFields
@@ -30,6 +31,7 @@ trait ValidatesAffiliationOrgFields
         ?string $currentDepartment = null,
         ?string $currentSection = null,
         ?string $currentTeam = null,
+        bool $splitSectionTeam = true,
     ): array {
         $departmentCurrent = (string) ($this->input('department') ?: $currentDepartment ?: '');
         $sectionCurrent = (string) ($this->input('section') ?: $currentSection ?: '');
@@ -42,13 +44,23 @@ trait ValidatesAffiliationOrgFields
             'section' => [
                 'nullable',
                 'string',
-                Rule::in(RegistryOrgFormState::combinedSectionOptions(
-                    $departmentCurrent,
-                    (string) $this->input('location', ''),
-                    $sectionCurrent !== '' ? $sectionCurrent : null,
-                )),
+                Rule::in($splitSectionTeam
+                    ? RegistrySectionByAssignment::forSelect(
+                        $departmentCurrent,
+                        (string) $this->input('location', ''),
+                        $sectionCurrent !== '' ? $sectionCurrent : null,
+                    )
+                    : RegistryOrgFormState::combinedSectionOptions(
+                        $departmentCurrent,
+                        (string) $this->input('location', ''),
+                        $sectionCurrent !== '' ? $sectionCurrent : null,
+                    )),
             ],
-            'team' => ['nullable'],
+            'team' => $splitSectionTeam ? [
+                'nullable',
+                'string',
+                Rule::in($this->allowedAffiliationTeamValues($currentTeam)),
+            ] : ['nullable'],
         ];
     }
 
@@ -118,7 +130,8 @@ trait ValidatesAffiliationOrgFields
             'company.in' => '所属会社を正しく選択してください。',
             'location.in' => '管轄を正しく選択してください。',
             'department.in' => '部を正しく選択してください。',
-            'section.in' => '課/チームを正しく選択してください。',
+            'section.in' => '課を正しく選択してください。',
+            'team.in' => 'チームを正しく選択してください。',
         ];
     }
 }

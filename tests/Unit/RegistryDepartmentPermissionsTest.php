@@ -87,7 +87,8 @@ class RegistryDepartmentPermissionsTest extends TestCase
                 'password_confirmation' => 'password123',
                 'employee_id' => '10992',
                 'company' => 'CareEarth',
-                'department' => 'Food Sales部',
+                'department' => '食品事業部',
+                'section' => 'Food Sales部',
                 'location' => '大阪',
                 'employment_type' => '正社員',
             ])
@@ -95,9 +96,10 @@ class RegistryDepartmentPermissionsTest extends TestCase
 
         $created = User::query()->where('email', 'permission_taro@careearth.info')->firstOrFail();
 
-        $this->assertSame('Food Sales部', $created->currentAffiliation()?->department);
+        $this->assertSame('食品事業部', $created->currentAffiliation()?->department);
         $this->assertTrue(DashboardTab::canViewTab($created, 'food'));
-        $this->assertSame('Food Sales部', $created->hrDetail?->department_primary);
+        $this->assertSame('食品事業部', $created->hrDetail?->department_primary);
+        $this->assertSame('Food Sales部', $created->hrDetail?->section_primary);
     }
 
     public static function dashboardTabProvider(): array
@@ -109,6 +111,7 @@ class RegistryDepartmentPermissionsTest extends TestCase
             '不動産事業部' => ['real-estate'],
             '通信事業部' => ['telecom'],
             '特定技能事業部' => ['specified-skills'],
+            '食品事業部' => ['food'],
             'Food Sales部' => ['food'],
             'Food Retail部' => ['food'],
             'Food Logistic部' => ['food'],

@@ -270,6 +270,22 @@ class User extends Authenticatable
 
     public function currentAffiliation(): ?AffiliationHistory
     {
+        if ($this->relationLoaded('affiliationHistories')) {
+            $today = now()->toDateString();
+
+            return $this->affiliationHistories
+                ->filter(function (AffiliationHistory $history) use ($today): bool {
+                    if ($history->enrollment_status !== AffiliationHistory::STATUS_ENROLLED) {
+                        return false;
+                    }
+
+                    return $history->end_date === null
+                        || $history->end_date->toDateString() >= $today;
+                })
+                ->sortByDesc(fn (AffiliationHistory $history) => $history->start_date?->toDateString() ?? '')
+                ->first();
+        }
+
         return $this->affiliationHistories()
             ->currentlyActive()
             ->orderByDesc('start_date')
@@ -384,6 +400,87 @@ class User extends Authenticatable
         }
 
         return self::AFFILIATION_CODE_TO_COMPANY[$code] ?? null;
+    }
+
+    public static function mapCompanyToAffiliationCode(?string $company): ?string
+    {
+        $company = trim((string) $company);
+
+        if ($company === '') {
+            return null;
+        }
+
+        foreach (self::AFFILIATION_CODE_TO_COMPANY as $code => $name) {
+            if ($name === $company) {
+                return $code;
+            }
+        }
+
+        return null;
+    }
+
+    public static function affiliationDisplayName(?string $codeOrName): ?string
+    {
+        $value = trim((string) $codeOrName);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $fromCode = self::mapAffiliationCodeToCompany($value);
+
+        if ($fromCode !== null) {
+            return $fromCode;
+        }
+
+        if (in_array($value, self::COMPANY_NAMES, true)) {
+            return $value;
+        }
+
+        return $value;
+    }
+
+    public static function resolveAffiliationCodeForStorage(?string $input): ?string
+    {
+        $input = trim((string) $input);
+
+        if ($input === '') {
+            return null;
+        }
+
+        $fromCompany = self::mapCompanyToAffiliationCode($input);
+
+        if ($fromCompany !== null) {
+            return $fromCompany;
+        }
+
+        $canonical = self::canonicalAffiliationCode($input);
+
+        if ($canonical !== null && array_key_exists($canonical, self::AFFILIATION_CODE_TO_COMPANY)) {
+            return $canonical;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, string> 正式会社名 => 正式会社名
+     */
+    public static function companyAffiliationSelectOptions(?string $currentCodeOrName = null): array
+    {
+        $options = [];
+
+        foreach (self::AFFILIATION_CODE_TO_COMPANY as $companyName) {
+            $options[$companyName] = $companyName;
+        }
+
+        $displayName = self::affiliationDisplayName($currentCodeOrName);
+
+        if ($displayName !== null && $displayName !== '' && ! array_key_exists($displayName, $options)) {
+            $options[$displayName] = $displayName;
+        }
+
+        return $options;
     }
 
     /** 社員一覧などで表示する所属会社 */
@@ -566,10 +663,12 @@ class User extends Authenticatable
         $this->forceFill(['role' => self::ROLE_EMPLOYEE])->save();
     }
 
-    /** 現在の所属の部・課・期間を編集できるか（人事部・情報システム部） */
+    /** 現在の所属の部・課/チーム・期間を編集できるか（情報システム部・人事課・総務課） */
     public function canEditCurrentAffiliationOrg(): bool
     {
-        return $this->isHrDepartment() || $this->isInformationSystems();
+        return $this->isInformationSystems()
+            || $this->isHrSection()
+            || $this->isGeneralAffairs();
     }
 
     /** 情報システム部かどうか */
@@ -785,14 +884,87 @@ class User extends Authenticatable
         return $department && str_contains($department, self::REAL_ESTATE_DEPARTMENT_KEYWORD);
     }
 
-    /** プロフィール編集: 本人、人事部、役員、または情報システム部 */
-    public function canEditProfile(User $target): bool
+    /** @var list<string> 本人が編集できるプロフィール項目（話せる言語・自己紹介・写真はプロフィール非表示のため空） */
+    public const SELF_PROFILE_EDITABLE_FIELDS = [];
+
+    /** @var list<string> プロフィール画面に表示する個人項目（写真のみ） */
+    public const PERSONAL_PROFILE_FIELDS = [
+        'photo',
+    ];
+
+    /** @var list<string> 人事課・総務課・情シス等が他社員向けに編集できるプロフィール項目 */
+    public const FULL_PROFILE_EDITABLE_FIELDS = [
+        'english_name',
+        'name_kana',
+        'abbreviated_name',
+        'joined_at',
+        'nationality',
+        'photo',
+    ];
+
+    /** 他社員のプロフィール・詳細情報をフル編集できるか（人事課・総務課・情シス・人事部・役員） */
+    public function canFullyEditProfile(User $target): bool
     {
         if ($this->id === $target->id) {
+            return false;
+        }
+
+        return $this->isInformationSystems()
+            || $this->isHrSection()
+            || $this->isGeneralAffairs()
+            || $this->isExecutive()
+            || $this->isHrDepartment();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function editableProfileFieldNames(User $target): array
+    {
+        if ($this->canFullyEditProfile($target)) {
+            return self::FULL_PROFILE_EDITABLE_FIELDS;
+        }
+
+        if ($this->id === $target->id) {
+            return self::SELF_PROFILE_EDITABLE_FIELDS;
+        }
+
+        return [];
+    }
+
+    public function canEditProfileField(User $target, string $field): bool
+    {
+        return in_array($field, $this->editableProfileFieldNames($target), true);
+    }
+
+    /** 写真をプロフィールに表示できるか（人事課・総務課・情シス等が他社員を閲覧するときのみ） */
+    public function canViewPersonalProfileSections(User $target): bool
+    {
+        return $this->canFullyEditProfile($target);
+    }
+
+    /** プロフィール編集画面へのアクセス（項目ごとの編集可否は editableProfileFieldNames で判定） */
+    public function canEditProfile(User $target): bool
+    {
+        return $this->editableProfileFieldNames($target) !== [];
+    }
+
+    /** 所属部署の登録・編集（情報システム部・人事課・総務課。在籍中の所属がある一般社員本人は不可） */
+    public function canManageAffiliation(User $target): bool
+    {
+        if ($this->canEditCurrentAffiliationOrg()) {
             return true;
         }
 
-        return $this->isHr() || $this->isExecutive() || $this->isInformationSystems();
+        if ($this->id === $target->id) {
+            $current = $target->relationLoaded('affiliationHistories')
+                ? $target->currentAffiliation()
+                : $target->fresh(['affiliationHistories'])?->currentAffiliation();
+
+            return $current === null || ! $current->isEnrolled();
+        }
+
+        return false;
     }
 
     /** 社員ID・社用メールの編集: 情報システム部のみ（全社員対象） */

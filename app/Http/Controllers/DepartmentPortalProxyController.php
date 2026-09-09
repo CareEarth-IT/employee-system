@@ -110,9 +110,23 @@ class DepartmentPortalProxyController extends Controller
 
         if (
             $tabKey === 'real-estate'
+            && $this->realEstateHandler->shouldRefreshPortalSession($request, $upstream, $portalPath, $internalBase)
+        ) {
+            return $this->realEstateHandler->refreshPortalSessionAndProxy(
+                $request,
+                $user,
+                $targetUrl,
+                $internalBase,
+                $portalPath,
+            );
+        }
+
+        if (
+            $tabKey === 'real-estate'
             && $request->isMethod('GET')
             && $upstream->status() === 404
             && $this->realEstateHandler->shouldRetrySso($request, $tabKey, $targetPath)
+            && ! $this->realEstateHandler->hasPortalSessionCookie($request, $portalPath)
         ) {
             return $this->realEstateHandler->proxyWithEstablishedSession(
                 $request,
@@ -123,6 +137,12 @@ class DepartmentPortalProxyController extends Controller
             );
         }
 
-        return $this->responseRewriter->toProxiedResponse($upstream, $request, $internalBase, $portalPath);
+        $response = $this->responseRewriter->toProxiedResponse($upstream, $request, $internalBase, $portalPath);
+
+        if ($tabKey === 'real-estate') {
+            return $this->realEstateHandler->finalizeProxiedResponse($request, $upstream, $response, $portalPath);
+        }
+
+        return $response;
     }
 }

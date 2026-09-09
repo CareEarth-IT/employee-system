@@ -6,6 +6,7 @@ use App\Models\EmployeeHrDetail;
 use App\Models\User;
 use App\Support\EmployeeHrDetailAccess;
 use App\Support\CompanyPhone;
+use App\Support\DateInput;
 use App\Support\HrDetailOrgFormState;
 use App\Support\NationalityOptions;
 use App\Support\RegistrySectionByAssignment;
@@ -42,6 +43,14 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
             ]);
         }
 
+        foreach (['joined_at', 'resigned_at', 'last_working_day', 'birth_date'] as $field) {
+            if ($this->exists($field)) {
+                $this->merge([
+                    $field => DateInput::normalize($this->input($field)),
+                ]);
+            }
+        }
+
         foreach (['section_primary', 'section_secondary', 'team_primary', 'team_secondary'] as $field) {
             if ($this->has($field) && trim((string) $this->input($field)) === '') {
                 $this->merge([$field => null]);
@@ -67,6 +76,25 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function validated($key = null, $default = null): mixed
+    {
+        $validated = parent::validated($key, $default);
+
+        if ($key !== null || ! is_array($validated) || ! array_key_exists('affiliation_code', $validated)) {
+            return $validated;
+        }
+
+        $rawAffiliation = $validated['affiliation_code'];
+        $validated['affiliation_code'] = $rawAffiliation === '' || $rawAffiliation === null
+            ? null
+            : (User::resolveAffiliationCodeForStorage((string) $rawAffiliation) ?? $rawAffiliation);
+
+        return $validated;
     }
 
     /**
@@ -109,20 +137,54 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
         return [
             'name_kana_fullwidth' => ['nullable', 'string', 'max:255'],
             'name_kana_halfwidth' => ['nullable', 'string', 'max:255'],
-            'affiliation_code' => ['nullable', 'string', Rule::in(User::affiliationCodeOptions($hrDetail?->affiliation_code))],
+            'affiliation_code' => ['nullable', 'string', Rule::in(array_keys(User::companyAffiliationSelectOptions($hrDetail?->affiliation_code)))],
             'employment_type' => ['nullable', 'string', Rule::in(User::employmentTypeOptions($hrDetail?->employment_type))],
             'employment_status' => ['nullable', 'string', Rule::in(User::employmentStatusOptions($hrDetail?->employment_status))],
+            'joined_at' => ['nullable', 'date'],
             'resigned_at' => ['nullable', 'date'],
             'last_working_day' => ['nullable', 'date'],
-            'department_primary' => ['nullable', 'string', Rule::in(User::registryDepartmentOptions($this->input('department_primary') ?: $hrDetail?->department_primary))],
+            'department_primary' => [
+                'nullable',
+                'string',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $department = trim((string) $value);
+
+                    if ($department === '') {
+                        return;
+                    }
+
+                    if (! in_array($department, User::registryDepartmentOptions($this->input('department_primary') ?: $hrDetail?->department_primary), true)) {
+                        $fail('部署を正しく選択してください。');
+                    }
+                },
+            ],
             'section_primary' => [
                 'nullable',
                 'string',
-                Rule::in(RegistrySectionByAssignment::forSelect(
-                    (string) $this->input('department_primary', $hrDetail?->department_primary),
-                    (string) $this->input('jurisdiction', $hrDetail?->jurisdiction),
-                    (string) ($this->input('section_primary') ?: $primaryOrg['section']),
-                )),
+                function (string $attribute, mixed $value, \Closure $fail) use ($hrDetail, $primaryOrg): void {
+                    $section = trim((string) $value);
+                    $department = trim((string) $this->input('department_primary', $hrDetail?->department_primary ?? ''));
+
+                    if ($section === '') {
+                        return;
+                    }
+
+                    if (RegistrySectionByAssignment::isStandaloneSection($section) && $department !== '') {
+                        $fail('庶務課は部署を選択しない場合のみ指定できます。');
+
+                        return;
+                    }
+
+                    $allowed = RegistrySectionByAssignment::forSelect(
+                        $department,
+                        (string) $this->input('jurisdiction', $hrDetail?->jurisdiction),
+                        (string) ($this->input('section_primary') ?: $primaryOrg['section']),
+                    );
+
+                    if (! in_array($section, $allowed, true)) {
+                        $fail('課を正しく選択してください。');
+                    }
+                },
             ],
             'team_primary' => [
                 'nullable',
@@ -133,15 +195,48 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
                 )),
             ],
             'position_primary' => ['nullable', 'string', Rule::in(User::registryPositionOptions($hrDetail?->position_primary))],
-            'department_secondary' => ['nullable', 'string', Rule::in(User::registryDepartmentOptions($this->input('department_secondary') ?: $hrDetail?->department_secondary))],
+            'department_secondary' => [
+                'nullable',
+                'string',
+                function (string $attribute, mixed $value, \Closure $fail) use ($hrDetail): void {
+                    $department = trim((string) $value);
+
+                    if ($department === '') {
+                        return;
+                    }
+
+                    if (! in_array($department, User::registryDepartmentOptions($this->input('department_secondary') ?: $hrDetail?->department_secondary), true)) {
+                        $fail('部署を正しく選択してください。');
+                    }
+                },
+            ],
             'section_secondary' => [
                 'nullable',
                 'string',
-                Rule::in(RegistrySectionByAssignment::forSelect(
-                    (string) $this->input('department_secondary', $hrDetail?->department_secondary),
-                    (string) $this->input('jurisdiction', $hrDetail?->jurisdiction),
-                    (string) ($this->input('section_secondary') ?: $secondaryOrg['section']),
-                )),
+                function (string $attribute, mixed $value, \Closure $fail) use ($hrDetail, $secondaryOrg): void {
+                    $section = trim((string) $value);
+                    $department = trim((string) $this->input('department_secondary', $hrDetail?->department_secondary ?? ''));
+
+                    if ($section === '') {
+                        return;
+                    }
+
+                    if (RegistrySectionByAssignment::isStandaloneSection($section) && $department !== '') {
+                        $fail('庶務課は部署を選択しない場合のみ指定できます。');
+
+                        return;
+                    }
+
+                    $allowed = RegistrySectionByAssignment::forSelect(
+                        $department,
+                        (string) $this->input('jurisdiction', $hrDetail?->jurisdiction),
+                        (string) ($this->input('section_secondary') ?: $secondaryOrg['section']),
+                    );
+
+                    if (! in_array($section, $allowed, true)) {
+                        $fail('課を正しく選択してください。');
+                    }
+                },
             ],
             'team_secondary' => [
                 'nullable',

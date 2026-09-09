@@ -2,12 +2,35 @@
 
 namespace Tests\Unit;
 
+use App\Support\RegistryDepartmentOptions;
 use App\Support\RegistryTeamByAssignment;
 use PHPUnit\Framework\TestCase;
 
 class RegistryTeamByAssignmentTest extends TestCase
 {
-    public function test_food_sales_teams_do_not_require_section(): void
+    public function test_food_department_teams_require_section(): void
+    {
+        $this->assertSame(
+            ['法人チーム', 'ECチーム'],
+            RegistryTeamByAssignment::optionsFor(RegistryDepartmentOptions::FOOD_DEPARTMENT, '', 'Food Sales部'),
+        );
+        $this->assertTrue(RegistryTeamByAssignment::isSectionTeamOnly(
+            RegistryDepartmentOptions::FOOD_DEPARTMENT,
+            'Food Sales部',
+        ));
+        $this->assertTrue(RegistryTeamByAssignment::shouldShowField(
+            RegistryDepartmentOptions::FOOD_DEPARTMENT,
+            '',
+            'Food Sales部',
+        ));
+        $this->assertFalse(RegistryTeamByAssignment::shouldShowField(
+            RegistryDepartmentOptions::FOOD_DEPARTMENT,
+            '',
+            'Food Retail部',
+        ));
+    }
+
+    public function test_legacy_food_sales_teams_do_not_require_section(): void
     {
         $this->assertSame(
             ['法人チーム', 'ECチーム'],
@@ -22,6 +45,10 @@ class RegistryTeamByAssignmentTest extends TestCase
 
     public function test_food_logistic_teams(): void
     {
+        $this->assertSame(
+            ['運送チーム', '出荷チーム'],
+            RegistryTeamByAssignment::optionsFor(RegistryDepartmentOptions::FOOD_DEPARTMENT, '大阪', 'Food Logistic部'),
+        );
         $this->assertSame(
             ['運送チーム', '出荷チーム'],
             RegistryTeamByAssignment::optionsFor('Food Logistic部', '大阪', ''),
@@ -72,6 +99,10 @@ class RegistryTeamByAssignmentTest extends TestCase
         $this->assertSame(
             ['section' => null, 'team' => '法人チーム'],
             RegistryTeamByAssignment::splitStoredAssignment('法人チーム'),
+        );
+        $this->assertSame(
+            ['section' => 'Food Sales部', 'team' => '法人チーム'],
+            RegistryTeamByAssignment::splitStoredAssignment('Food Sales部,法人チーム'),
         );
     }
 }

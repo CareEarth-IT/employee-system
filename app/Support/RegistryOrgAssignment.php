@@ -100,11 +100,15 @@ class RegistryOrgAssignment
         $sectionValue = $section !== '' ? $section : null;
         $teamValue = $team !== '' ? $team : null;
 
+        if (RegistryTeamByAssignment::isSectionTeamOnly($department, $section)) {
+            return [$sectionValue, $teamValue, self::combine($sectionValue, $teamValue) ?? $sectionValue];
+        }
+
         if (RegistryTeamByAssignment::isDepartmentTeamOnly($department)) {
             return [$sectionValue, $teamValue, $teamValue];
         }
 
-        return [$sectionValue, $teamValue, $sectionValue];
+        return [$sectionValue, $teamValue, self::combine($sectionValue, $teamValue) ?? $sectionValue];
     }
 
     /**
@@ -125,16 +129,20 @@ class RegistryOrgAssignment
             $location !== '' ? $location : null,
         );
 
-        [, , $sectionPrimary] = self::resolveForStorage(
-            $department,
-            $location,
-            $split['section'],
-            $split['team'],
+        [$sectionStored, $teamStored] = array_slice(
+            self::resolveForStorage(
+                $department,
+                $location,
+                $split['section'],
+                $split['team'],
+            ),
+            0,
+            2,
         );
 
         return [
             'department_primary' => $department !== '' ? $department : null,
-            'section_primary' => $sectionPrimary,
+            'section_primary' => self::combine($sectionStored, $teamStored) ?? $sectionStored,
         ];
     }
 }

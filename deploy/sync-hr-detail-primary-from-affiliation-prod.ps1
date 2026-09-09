@@ -1,5 +1,5 @@
-# Sync HR detail department_primary / section_primary from current enrolled affiliation via Cloud Run Job.
-# Does NOT change affiliation, position, employment status, or other HR detail fields.
+# Sync current enrolled affiliation org fields FROM HR detail (詳細情報が正) via Cloud Run Job.
+# Does NOT change employee_hr_details, past affiliation history, or other employee data.
 #
 # Usage:
 #   deploy\sync-hr-detail-primary-from-affiliation-prod.cmd --dry-run
@@ -33,8 +33,8 @@ Set-Location $Root
 Write-Host "Image   : $Image"
 Write-Host "Job     : $JobName"
 Write-Host ""
-Write-Host "WARNING: Updates HR detail department_primary / section_primary only."
-Write-Host "         Current affiliation department/section are the source of truth."
+Write-Host "WARNING: Updates current enrolled affiliation org fields only (company/location/department/section/position)."
+Write-Host "         HR detail is the source of truth. Past affiliation history rows are NOT modified."
 Write-Host ""
 
 if ((Invoke-Gcloud config set project $ProjectId) -ne 0) {
@@ -162,5 +162,5 @@ if ($DryRun) {
     Write-Host "dry-run completed. Production DB was not changed."
 } else {
     Write-Host ""
-    Write-Host "Production HR detail primary org sync completed."
+    Write-Host "Production current-affiliation org sync from HR detail completed."
 }

@@ -42,12 +42,19 @@
             const teamMap = JSON.parse(teamMapElement.textContent || '{}');
             const initialSection = @json($selectedSection ?? '');
             const initialTeam = @json($selectedTeam ?? '');
+            const departmentRequiredDefault = @json($departmentRequired ?? false);
+            const departmentRequiredMark = departmentSelect.closest('div')?.querySelector('label span.text-red-600');
             let teamParentSelection = '';
 
+            const isStandaloneSection = (section) => standaloneSections.includes(section);
+
             const sectionOptionsFor = (department, location) => {
+                if (!department) {
+                    return standaloneSections;
+                }
                 const rules = sectionMap[department];
                 if (!rules) {
-                    return standaloneSections;
+                    return [];
                 }
                 if (rules['*']) {
                     return rules['*'];
@@ -81,6 +88,9 @@
             };
 
             const teamOptionsFor = (department, location, section) => {
+                if (teamMap.sectionTeams?.[section]) {
+                    return teamMap.sectionTeams[section];
+                }
                 if (teamMap.departmentTeams[department]) {
                     return teamMap.departmentTeams[department];
                 }
@@ -137,7 +147,8 @@
                 if (!team || topLevel.includes(team)) {
                     return topLevel;
                 }
-                const valid = teamMap.departmentTeams[department]
+                const valid = teamMap.sectionTeams?.[section]
+                    ?? teamMap.departmentTeams[department]
                     ?? flattenGrTeamRules(grTeamRules(location, section));
                 if (valid.includes(team)) {
                     return [...topLevel, team];
@@ -190,6 +201,22 @@
                 const required = departmentSelect.value === grDepartment && !sectionSelect.disabled;
                 sectionRequiredMark?.classList.toggle('hidden', !required);
                 sectionSelect.toggleAttribute('required', required);
+            };
+
+            const updateDepartmentRequiredUi = () => {
+                const required = departmentRequiredDefault && !isStandaloneSection(sectionSelect.value);
+                departmentRequiredMark?.classList.toggle('hidden', !required);
+                departmentSelect.toggleAttribute('required', required);
+            };
+
+            const syncStandaloneSectionExclusion = () => {
+                if (isStandaloneSection(sectionSelect.value) && departmentSelect.value !== '') {
+                    departmentSelect.value = '';
+                }
+                if (departmentSelect.value !== '' && isStandaloneSection(sectionSelect.value)) {
+                    sectionSelect.value = '';
+                }
+                updateDepartmentRequiredUi();
             };
 
             const fillSelect = (select, options, selectedValue) => {
@@ -304,6 +331,7 @@
 
             departmentSelect.addEventListener('change', () => {
                 teamParentSelection = '';
+                syncStandaloneSectionExclusion();
                 refreshOrgSelects();
             });
             locationSelect.addEventListener('change', () => {
@@ -312,6 +340,10 @@
             });
             sectionSelect.addEventListener('change', () => {
                 teamParentSelection = '';
+                if (isStandaloneSection(sectionSelect.value)) {
+                    departmentSelect.value = '';
+                }
+                updateDepartmentRequiredUi();
                 if (splitSectionTeam) {
                     rebuildTeamOptions('');
                 }
@@ -335,6 +367,7 @@
 
             refreshOrgSelects();
             updateSectionRequiredUi();
+            updateDepartmentRequiredUi();
         });
     </script>
 @endpush

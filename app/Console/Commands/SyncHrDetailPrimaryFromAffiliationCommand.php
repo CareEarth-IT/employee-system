@@ -11,7 +11,7 @@ class SyncHrDetailPrimaryFromAffiliationCommand extends Command
     protected $signature = 'employee:sync-hr-detail-primary-from-affiliation
         {--dry-run : 更新せず内容だけ表示}';
 
-    protected $description = '在籍中の所属部署（部・課/チーム）から、詳細情報の部署①・課/チーム①を一括反映する';
+    protected $description = '詳細情報を正として、在籍中の所属部署1件だけに組織項目を一括反映する（過去の所属履歴は変更しない）';
 
     public function handle(): int
     {
@@ -52,21 +52,21 @@ class SyncHrDetailPrimaryFromAffiliationCommand extends Command
                         continue;
                     }
 
-                    EmployeeHrDetail::syncPrimaryOrgFromAffiliation($user, $affiliation);
+                    EmployeeHrDetail::syncPrimaryOrgFromAffiliation($user);
                     $results[] = $this->resultRow($user, $plan, '更新');
                 }
             });
 
         if ($results !== []) {
             $this->table(
-                ['メール', '氏名', '部署①', '課/チーム①', '結果'],
+                ['メール', '氏名', '所属会社', '管轄', '部', '課/チーム', '役職', '結果'],
                 $results,
             );
         }
 
         $updated = count(array_filter(
             $results,
-            fn (array $result) => in_array($result[4], ['更新', '更新予定'], true),
+            fn (array $result) => in_array($result[7], ['更新', '更新予定'], true),
         ));
 
         $this->newLine();
@@ -77,7 +77,7 @@ class SyncHrDetailPrimaryFromAffiliationCommand extends Command
             $unchanged,
             $skippedNoAffiliation,
         ));
-        $this->line('  所属部署・詳細情報の他項目（役職・状況など）は変更していません。');
+        $this->line('  詳細情報を正として、在籍中の所属部署1件のみ更新します。過去の所属履歴は変更しません。');
 
         return self::SUCCESS;
     }
@@ -85,8 +85,8 @@ class SyncHrDetailPrimaryFromAffiliationCommand extends Command
     /**
      * @param  array{
      *     changed: bool,
-     *     current: array{department_primary: ?string, section_primary: ?string},
-     *     target: array{department_primary: ?string, section_primary: ?string},
+     *     current: array<string, ?string>,
+     *     target: array<string, ?string>,
      * }  $plan
      * @return list<string>
      */
@@ -96,12 +96,24 @@ class SyncHrDetailPrimaryFromAffiliationCommand extends Command
             $user->email,
             $user->displayName(),
             $this->displayChange(
-                $plan['current']['department_primary'],
-                $plan['target']['department_primary'],
+                $plan['current']['company'],
+                $plan['target']['company'],
             ),
             $this->displayChange(
-                $plan['current']['section_primary'],
-                $plan['target']['section_primary'],
+                $plan['current']['location'],
+                $plan['target']['location'],
+            ),
+            $this->displayChange(
+                $plan['current']['department'],
+                $plan['target']['department'],
+            ),
+            $this->displayChange(
+                $plan['current']['section'],
+                $plan['target']['section'],
+            ),
+            $this->displayChange(
+                $plan['current']['position'],
+                $plan['target']['position'],
             ),
             $status,
         ];

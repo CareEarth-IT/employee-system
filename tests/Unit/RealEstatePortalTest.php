@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\AffiliationHistory;
 use App\Models\User;
+use App\Services\DepartmentPortalProxy\RealEstatePortalProxyHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -94,7 +95,7 @@ class RealEstatePortalTest extends TestCase
         $user = $this->userInDepartment('不動産部');
 
         $this->actingAs($user)
-            ->withHeader('Cookie', 'real_estate_portal_session=abc123')
+            ->withSession($this->portalSession())
             ->get('/realestate-portal/applications/create')
             ->assertOk();
 
@@ -120,7 +121,7 @@ class RealEstatePortalTest extends TestCase
         $user = $this->userInDepartment('不動産部');
 
         $this->actingAs($user)
-            ->withHeader('Cookie', 'real_estate_portal_session=abc123; laravel-session=emp; XSRF-TOKEN=portal-xsrf')
+            ->withSession($this->portalSession())
             ->get('/realestate-portal/home')
             ->assertOk();
 
@@ -148,8 +149,8 @@ class RealEstatePortalTest extends TestCase
         $user = $this->userInDepartment('不動産部');
 
         $this->actingAs($user)
+            ->withSession($this->portalSession())
             ->withHeader('X-CSRF-TOKEN', 'csrf-token-value')
-            ->withHeader('Cookie', 'real_estate_portal_session=abc123; XSRF-TOKEN=portal-xsrf')
             ->put('/realestate-portal/users/1', [
                 '_token' => 'csrf-token-value',
                 'name' => '更新テスト',
@@ -184,7 +185,7 @@ class RealEstatePortalTest extends TestCase
         $user = $this->userInDepartment('不動産部');
 
         $this->actingAs($user)
-            ->withHeader('Cookie', 'real_estate_portal_session=abc123')
+            ->withSession($this->portalSession())
             ->get('/realestate-portal/admin/applications/create')
             ->assertOk()
             ->assertSee('action="/realestate-portal/admin/applications"', false);
@@ -205,7 +206,7 @@ class RealEstatePortalTest extends TestCase
         $user = $this->userInDepartment('不動産部');
 
         $this->actingAs($user)
-            ->withHeader('Cookie', 'real_estate_portal_session=abc123; XSRF-TOKEN=portal-xsrf')
+            ->withSession($this->portalSession())
             ->post('/realestate-portal/admin/applications', [
                 '_token' => 'csrf-token-value',
                 'contractor' => 'テスト契約者',
@@ -216,6 +217,57 @@ class RealEstatePortalTest extends TestCase
             return $request->method() === 'POST'
                 && $request->url() === 'https://real-estate.example.test/admin/applications'
                 && ($request->data()['_token'] ?? null) === 'csrf-token-value';
+        });
+    }
+
+    public function test_proxy_forwards_multipart_post_body_to_upstream(): void
+    {
+        config([
+            'department_portals.real-estate.internal_url' => 'https://real-estate.example.test',
+            'department_portals.real-estate.proxy_secret' => 'portal-shared-secret',
+            'department_portals.real-estate.use_identity_token' => false,
+        ]);
+
+        Http::fake([
+            'https://real-estate.example.test/properties' => Http::response('', 302),
+        ]);
+
+        $user = $this->userInDepartment('不動産部');
+        $boundary = '----TestBoundary';
+        $body = "--{$boundary}\r\n"
+            ."Content-Disposition: form-data; name=\"_token\"\r\n\r\n"
+            ."csrf-token-value\r\n"
+            ."--{$boundary}\r\n"
+            ."Content-Disposition: form-data; name=\"buyer_name\"\r\n\r\n"
+            ."テスト購入者\r\n"
+            ."--{$boundary}--\r\n";
+
+        $this->actingAs($user)
+            ->withSession($this->portalSession())
+            ->call(
+                'POST',
+                '/realestate-portal/properties',
+                [],
+                [],
+                [],
+                [
+                    'CONTENT_TYPE' => "multipart/form-data; boundary={$boundary}",
+                    'HTTP_ACCEPT' => 'text/html,application/xhtml+xml',
+                ],
+                $body,
+            )
+            ->assertStatus(302);
+
+        Http::assertSent(function ($request) use ($boundary) {
+            $contentType = $request->header('Content-Type')[0] ?? '';
+
+            return $request->method() === 'POST'
+                && $request->url() === 'https://real-estate.example.test/properties'
+                && str_contains($contentType, 'multipart/form-data')
+                && str_contains($contentType, $boundary)
+                && str_contains($request->body(), 'name="_token"')
+                && str_contains($request->body(), 'csrf-token-value')
+                && str_contains($request->body(), 'テスト購入者');
         });
     }
 
@@ -236,7 +288,7 @@ class RealEstatePortalTest extends TestCase
         $user = $this->userInDepartment('不動産部');
 
         $this->actingAs($user)
-            ->withHeader('Cookie', 'real_estate_portal_session=abc123; XSRF-TOKEN=portal-xsrf')
+            ->withSession($this->portalSession())
             ->post('/realestate-portal/logout', ['_token' => 'csrf-token-value'])
             ->assertRedirect(route('dashboard', ['tab' => 'real-estate']));
 
@@ -294,7 +346,72 @@ class RealEstatePortalTest extends TestCase
         Http::assertSent(fn ($request) => str_contains($request->url(), '/auth/portal/callback?code=abc'));
     }
 
-    public function test_proxy_retries_inline_sso_after_upstream_404_with_stale_cookie(): void
+    public function test_proxy_reuses_employee_session_on_follow_up_request_without_sso(): void
+    {
+        config([
+            'department_portals.real-estate.internal_url' => 'https://real-estate.example.test',
+            'department_portals.real-estate.proxy_secret' => 'portal-shared-secret',
+            'department_portals.real-estate.use_identity_token' => false,
+        ]);
+
+        Http::fake([
+            'https://real-estate.example.test/internal/portal/sso/handoff' => Http::response([
+                'success' => true,
+                'redirect_url' => 'https://real-estate.example.test/auth/portal/callback?code=abc',
+            ], 200),
+            'https://real-estate.example.test/auth/portal/callback?code=abc' => Http::response('', 302, [
+                'Set-Cookie' => 'real_estate_portal_session=new-session; path=/realestate-portal; httponly; secure',
+                'Location' => 'https://real-estate.example.test/home',
+            ]),
+            'https://real-estate.example.test/home' => Http::response('<html>home</html>', 200, ['Content-Type' => 'text/html']),
+            'https://real-estate.example.test/admin/applications' => Http::response('<html>list</html>', 200, ['Content-Type' => 'text/html']),
+        ]);
+
+        $user = $this->userInDepartment('不動産部');
+
+        $this->actingAs($user)
+            ->get('/realestate-portal/home')
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->get('/realestate-portal/admin/applications')
+            ->assertOk()
+            ->assertSee('list', false);
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://real-estate.example.test/admin/applications'
+            && str_contains((string) ($request->header('Cookie')[0] ?? ''), 'real_estate_portal_session=new-session'));
+
+        $callbackRequests = collect(Http::recorded())
+            ->filter(fn (array $pair) => str_contains($pair[0]->url(), '/auth/portal/callback?code=abc'))
+            ->count();
+
+        $this->assertSame(1, $callbackRequests);
+    }
+
+    public function test_proxy_does_not_retry_sso_on_404_when_session_cookie_present(): void
+    {
+        config([
+            'department_portals.real-estate.internal_url' => 'https://real-estate.example.test',
+            'department_portals.real-estate.proxy_secret' => 'portal-shared-secret',
+            'department_portals.real-estate.use_identity_token' => false,
+        ]);
+
+        Http::fake([
+            'https://real-estate.example.test/home' => Http::response('not found', 404),
+        ]);
+
+        $user = $this->userInDepartment('不動産部');
+
+        $this->actingAs($user)
+            ->withSession($this->portalSession(['real_estate_portal_session' => 'stale-session']))
+            ->get('/realestate-portal/home')
+            ->assertStatus(404);
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://real-estate.example.test/home');
+        Http::assertSentCount(1);
+    }
+
+    public function test_proxy_refreshes_stale_portal_session_on_redirect_loop(): void
     {
         config([
             'department_portals.real-estate.internal_url' => 'https://real-estate.example.test',
@@ -304,7 +421,7 @@ class RealEstatePortalTest extends TestCase
 
         Http::fake([
             'https://real-estate.example.test/home' => Http::sequence()
-                ->push('not found', 404)
+                ->push('', 302, ['Location' => '/home'])
                 ->push('<html>home</html>', 200, ['Content-Type' => 'text/html']),
             'https://real-estate.example.test/internal/portal/sso/handoff' => Http::response([
                 'success' => true,
@@ -319,13 +436,57 @@ class RealEstatePortalTest extends TestCase
         $user = $this->userInDepartment('不動産部');
 
         $response = $this->actingAs($user)
-            ->withHeader('Cookie', 'real_estate_portal_session=stale-session')
+            ->withSession($this->portalSession(['real_estate_portal_session' => 'stale-session']))
             ->get('/realestate-portal/home');
 
         $response->assertOk();
         $response->assertSee('home', false);
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/auth/portal/callback?code=abc'));
+    }
+
+    public function test_proxy_refreshes_portal_session_on_401(): void
+    {
+        config([
+            'department_portals.real-estate.internal_url' => 'https://real-estate.example.test',
+            'department_portals.real-estate.proxy_secret' => 'portal-shared-secret',
+            'department_portals.real-estate.use_identity_token' => false,
+        ]);
+
+        Http::fake([
+            'https://real-estate.example.test/admin/applications' => Http::sequence()
+                ->push('Portal session required.', 401, ['X-Portal-Session-Required' => '1'])
+                ->push('<html>list</html>', 200, ['Content-Type' => 'text/html']),
+            'https://real-estate.example.test/internal/portal/sso/handoff' => Http::response([
+                'success' => true,
+                'redirect_url' => 'https://real-estate.example.test/auth/portal/callback?code=abc',
+            ], 200),
+            'https://real-estate.example.test/auth/portal/callback?code=abc' => Http::response('', 302, [
+                'Set-Cookie' => 'real_estate_portal_session=fresh-session; path=/realestate-portal; httponly; secure',
+                'Location' => 'https://real-estate.example.test/home',
+            ]),
+        ]);
+
+        $user = $this->userInDepartment('不動産部');
+
+        $response = $this->actingAs($user)
+            ->withSession($this->portalSession(['real_estate_portal_session' => 'stale-session']))
+            ->get('/realestate-portal/admin/applications');
+
+        $response->assertOk();
+        $response->assertSee('list', false);
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/auth/portal/callback?code=abc'));
+    }
+
+    private function portalSession(array $overrides = []): array
+    {
+        return [
+            RealEstatePortalProxyHandler::PORTAL_SESSION_COOKIE_KEY => array_merge([
+                'real_estate_portal_session' => 'abc123',
+                'XSRF-TOKEN' => 'portal-xsrf',
+            ], $overrides),
+        ];
     }
 
     private function userInDepartment(string $department, string $section = '営業課'): User

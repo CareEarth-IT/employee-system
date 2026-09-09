@@ -101,7 +101,10 @@ class SyncAffiliationOrgFromRosterCommand extends Command
                 ]);
                 $user->closeOtherEnrolledAffiliations($affiliation);
                 $user->syncRoleFromAffiliation();
-                EmployeeHrDetail::syncPrimaryOrgFromAffiliation($user->fresh(), $affiliation);
+                EmployeeHrDetail::query()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    \App\Support\AffiliationHrDetailSync::hrDetailAttributesFromAffiliation($affiliation),
+                );
                 $results[] = $this->resultRow($row, $user, $affiliation, $updates, '新規所属');
 
                 continue;
@@ -115,7 +118,10 @@ class SyncAffiliationOrgFromRosterCommand extends Command
 
             $affiliation->update($updates);
             $user->syncRoleFromAffiliation();
-            EmployeeHrDetail::syncPrimaryOrgFromAffiliation($user->fresh(), $affiliation->fresh());
+            EmployeeHrDetail::query()->updateOrCreate(
+                ['user_id' => $user->id],
+                \App\Support\AffiliationHrDetailSync::hrDetailAttributesFromAffiliation($affiliation->fresh()),
+            );
             $results[] = $this->resultRow($row, $user, $affiliation->fresh(), $updates, '更新');
         }
 

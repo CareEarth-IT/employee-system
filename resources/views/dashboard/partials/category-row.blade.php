@@ -15,31 +15,31 @@
             >
                 <span class="block leading-none tracking-tighter" aria-hidden="true">⋮⋮</span>
             </button>
-            <p class="text-sm font-medium text-slate-700" data-category-title>カテゴリ {{ is_numeric($index) ? ((int) $index + 1) : '' }}</p>
+            <p class="text-base font-medium text-slate-700" data-category-title>カテゴリ {{ is_numeric($index) ? ((int) $index + 1) : '' }}</p>
         </div>
-        <button type="button" data-remove-category-row class="text-xs text-red-700 hover:underline">削除</button>
+        <button type="button" data-remove-category-row class="text-sm text-red-700 hover:underline">削除</button>
     </div>
 
     <input type="hidden" name="categories[{{ $index }}][sort_order]" value="{{ $category['sort_order'] ?? ((is_numeric($index) ? (int) $index + 1 : 1) * 10) }}">
 
     <div class="grid gap-4 sm:grid-cols-2">
         <div>
-            <label class="mb-1 block text-sm">表示名</label>
+            <label class="mb-1 block text-base text-slate-800">表示名</label>
             <input
                 type="text"
                 name="categories[{{ $index }}][label]"
                 value="{{ old("categories.$index.label", $categoryLabel) }}"
-                class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                class="w-full rounded border border-slate-300 px-3 py-2 text-base"
                 required
             >
         </div>
         <div>
-            <label class="mb-1 block text-sm">キー（英数字・変更時はリンク再設定）</label>
+            <label class="mb-1 block text-base text-slate-800">キー（英数字・変更時はリンク再設定）</label>
             <input
                 type="text"
                 name="categories[{{ $index }}][category_key]"
                 value="{{ old("categories.$index.category_key", $categoryKey) }}"
-                class="w-full rounded border border-slate-300 px-3 py-2 text-sm font-mono"
+                class="w-full rounded border border-slate-300 px-3 py-2 text-base font-mono"
                 pattern="[a-z0-9_-]+"
                 required
             >

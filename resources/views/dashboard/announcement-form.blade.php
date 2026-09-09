@@ -6,7 +6,7 @@
 <div class="mx-auto max-w-[1000px]">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 class="text-xl font-bold">{{ $content->exists ? 'お知らせ編集' : 'お知らせ作成' }}</h1>
-        <a href="{{ route('dashboard', ['tab' => $tab]) }}" class="text-sm text-blue-600 hover:underline">Top Page へ戻る</a>
+        <a href="{{ route('dashboard', ['tab' => $tab]) }}" class="text-base text-blue-600 hover:underline">Top Page へ戻る</a>
     </div>
 
     <form method="POST" action="{{ $action }}" class="rounded-lg border border-slate-300 bg-white p-6">

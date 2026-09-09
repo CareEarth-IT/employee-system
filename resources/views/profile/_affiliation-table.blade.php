@@ -6,17 +6,17 @@
 <div class="mt-8 bg-white border border-slate-300 rounded-lg p-6">
     @if ($editable ?? false)
         <div class="flex items-center justify-between mb-4">
-            <h2 class="font-bold">所属部署</h2>
-            <a href="{{ UserRouteHelper::route($user, 'affiliations.create', 'users.affiliations.create') }}" class="rounded bg-slate-700 text-white px-4 py-2 text-sm hover:bg-slate-800">
+            <h2 class="text-lg font-bold">所属部署</h2>
+            <a href="{{ UserRouteHelper::route($user, 'affiliations.create', 'users.affiliations.create') }}" class="rounded bg-slate-700 px-4 py-2 text-base text-white hover:bg-slate-800">
                 登録はこちら
             </a>
         </div>
     @else
-        <h2 class="font-bold mb-4">所属部署</h2>
+        <h2 class="mb-4 text-lg font-bold">所属部署</h2>
     @endif
 
     <div class="overflow-x-auto">
-        <table class="w-full text-sm border-collapse">
+        <table class="w-full border-collapse text-base">
             <thead>
                 <tr class="border-b border-slate-200 text-left text-slate-500">
                     @if ($editable ?? false)
@@ -48,7 +48,7 @@
                             </td>
                         @endif
                         <td class="py-2 pr-4">
-                            {{ $history->start_date->format('Y-m-d') }}
+                            {{ $history->start_date?->format('Y-m-d') ?? '—' }}
                             〜
                             {{ $history->end_date?->format('Y-m-d') ?? '現在' }}
                         </td>

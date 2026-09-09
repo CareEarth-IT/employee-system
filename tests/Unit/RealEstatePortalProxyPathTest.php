@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\AffiliationHistory;
 use App\Models\User;
+use App\Services\DepartmentPortalProxy\RealEstatePortalProxyHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -36,7 +37,11 @@ class RealEstatePortalProxyPathTest extends TestCase
         $user = $this->userInDepartment('不動産部');
 
         $this->actingAs($user)
-            ->withHeader('Cookie', 'real_estate_portal_session=test-session')
+            ->withSession([
+                RealEstatePortalProxyHandler::PORTAL_SESSION_COOKIE_KEY => [
+                    'real_estate_portal_session' => 'test-session',
+                ],
+            ])
             ->get('/realestate-portal/realestate-portal')
             ->assertOk();
 

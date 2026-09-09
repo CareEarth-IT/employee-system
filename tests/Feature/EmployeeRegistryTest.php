@@ -21,8 +21,7 @@ class EmployeeRegistryTest extends TestCase
             ->get(route('employees.index'))
             ->assertOk()
             ->assertSee('新規登録', false)
-            ->assertSee(route('employees.create'), false)
-            ->assertSee('情報システム部・人事部人事課のみ', false);
+            ->assertSee(route('employees.create'), false);
     }
 
     public function test_hr_section_user_sees_registry_links(): void
@@ -91,6 +90,28 @@ class EmployeeRegistryTest extends TestCase
 
         $this->assertSame('正社員', $created->hrDetail?->employment_type);
         $this->assertSame('在籍', $created->hrDetail?->employment_status);
+        $this->assertSame('CE', $created->hrDetail?->affiliation_code);
+    }
+
+    public function test_registry_user_sets_affiliation_code_from_company_on_create(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'name' => 'グロ テック',
+                'email' => 'growtec_registry@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10997',
+                'company' => 'GROWTEC',
+            ]))
+            ->assertRedirect(route('employees.create'));
+
+        $created = User::query()->where('email', 'growtec_registry@careearth.info')->firstOrFail();
+
+        $this->assertSame('GROWTEC', $created->currentAffiliation()?->company);
+        $this->assertSame('GT', $created->hrDetail?->affiliation_code);
     }
 
     public function test_registry_user_can_create_employee_with_section(): void
@@ -169,7 +190,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10978',
-                'department' => '情報システム部',
+                'department' => '',
                 'section' => '庶務課',
             ]))
             ->assertRedirect(route('employees.create'));
@@ -182,7 +203,24 @@ class EmployeeRegistryTest extends TestCase
         $this->assertSame('庶務課', $created->hrDetail?->section_primary);
     }
 
-    public function test_registry_user_can_create_food_logistic_employee_without_section(): void
+    public function test_store_rejects_administrative_affairs_section_when_department_is_selected(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'name' => '庶務 花子',
+                'email' => 'invalid_admin_affairs@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10979',
+                'department' => '情報システム部',
+                'section' => '庶務課',
+            ]))
+            ->assertSessionHasErrors(['section']);
+    }
+
+    public function test_registry_user_can_create_food_logistic_employee_without_team(): void
     {
         $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
 
@@ -193,13 +231,15 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10977',
-                'department' => 'Food Logistic部',
+                'department' => '食品事業部',
+                'section' => 'Food Logistic部',
             ]))
             ->assertRedirect(route('employees.create'));
 
         $created = User::query()->where('email', 'logistics_taro@careearth.info')->firstOrFail();
 
-        $this->assertNull($created->currentAffiliation()?->section);
+        $this->assertSame('食品事業部', $created->currentAffiliation()?->department);
+        $this->assertSame('Food Logistic部', $created->currentAffiliation()?->section);
     }
 
     public function test_registry_user_can_create_sales_employee_with_osaka_section(): void
@@ -253,16 +293,17 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10972',
-                'department' => 'Food Sales部',
+                'department' => '食品事業部',
+                'section' => 'Food Sales部',
                 'team' => '法人チーム',
             ]))
             ->assertRedirect(route('employees.create'));
 
         $created = User::query()->where('email', 'food_sales_taro@careearth.info')->firstOrFail();
 
-        $this->assertSame('法人チーム', $created->currentAffiliation()?->section);
-        $this->assertSame('Food Sales部', $created->hrDetail?->department_primary);
-        $this->assertSame('法人チーム', $created->hrDetail?->section_primary);
+        $this->assertSame('Food Sales部,法人チーム', $created->currentAffiliation()?->section);
+        $this->assertSame('食品事業部', $created->hrDetail?->department_primary);
+        $this->assertSame('Food Sales部,法人チーム', $created->hrDetail?->section_primary);
     }
 
     public function test_registry_user_can_create_gr_employee_with_nested_team(): void
@@ -289,7 +330,62 @@ class EmployeeRegistryTest extends TestCase
             'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
             $created->currentAffiliation()?->section,
         );
-        $this->assertSame('GR-O_大阪', $created->hrDetail?->section_primary);
+        $this->assertSame(
+            'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
+            $created->hrDetail?->section_primary,
+        );
+    }
+
+    public function test_registry_user_can_update_gr_employee_with_nested_team(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $employee = User::factory()->create([
+            'email' => 'gr_existing@careearth.info',
+            'employee_id' => '10972',
+            'last_name' => 'GR',
+            'first_name' => '既存',
+            'name' => 'GR 既存',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $employee->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+            'department' => 'GR部（グローバル部）',
+            'location' => '大阪',
+            'section' => 'GR-C_大阪,GR-総務課_大阪',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $employee->id,
+            'employment_type' => '正社員',
+            'employment_status' => '在籍',
+            'department_primary' => 'GR部（グローバル部）',
+            'section_primary' => 'GR-C_大阪',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('employees.update', $employee), $this->registryPayload([
+                'name' => 'GR 既存',
+                'email' => 'gr_existing@careearth.info',
+                'employee_id' => '10972',
+                'department' => 'GR部（グローバル部）',
+                'location' => '大阪',
+                'section' => 'GR-O部',
+                'team' => '固定現場チーム',
+            ]))
+            ->assertRedirect(route('employees.edit', $employee));
+
+        $employee->refresh();
+
+        $this->assertSame(
+            'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
+            $employee->currentAffiliation()?->section,
+        );
+        $this->assertSame(
+            'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
+            $employee->hrDetail?->section_primary,
+        );
     }
 
     public function test_store_requires_section_for_gr_department(): void
@@ -320,7 +416,8 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10970',
-                'department' => 'Food Sales部',
+                'department' => '食品事業部',
+                'section' => 'Food Sales部',
                 'team' => '出荷チーム',
             ]))
             ->assertSessionHasErrors(['team']);
@@ -338,7 +435,8 @@ class EmployeeRegistryTest extends TestCase
                 'password_confirmation' => 'password123',
                 'employee_id' => '10976',
                 'company' => 'Care EarthVietnam',
-                'department' => 'Food Sales部',
+                'department' => '食品事業部',
+                'section' => 'Food Retail部',
                 'location' => 'ベトナム',
             ]))
             ->assertRedirect(route('employees.create'));
@@ -577,7 +675,7 @@ class EmployeeRegistryTest extends TestCase
             ->assertOk()
             ->assertSee('name="department"', false)
             ->assertSee('M&A戦略推進部')
-            ->assertSee('Food Sales部', false)
+            ->assertSee('食品事業部', false)
             ->assertSee('GR部（グローバル部）', false)
             ->assertSee('美容事業部', false)
             ->assertSee('不動産事業部', false)

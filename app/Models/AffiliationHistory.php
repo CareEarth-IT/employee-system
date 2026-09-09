@@ -84,4 +84,12 @@ class AffiliationHistory extends Model
             'end_date' => $endDate ?? now()->toDateString(),
         ]);
     }
+
+    public function closeAsResigned(string $endDate): void
+    {
+        $this->update([
+            'enrollment_status' => self::STATUS_RESIGNED,
+            'end_date' => $endDate,
+        ]);
+    }
 }

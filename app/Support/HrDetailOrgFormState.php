@@ -22,7 +22,10 @@ class HrDetailOrgFormState
         );
 
         return [
-            'department' => (string) old($departmentField, $detail->{$departmentField} ?? ''),
+            'department' => RegistryDepartmentOptions::registryFormDepartment(
+                (string) old($departmentField, $detail->{$departmentField} ?? ''),
+                (string) old($sectionField, $split['section'] ?? ''),
+            ),
             'location' => (string) old('jurisdiction', $detail->jurisdiction ?? ''),
             'section' => (string) old($sectionField, $split['section'] ?? ''),
             'team' => (string) old($teamField, $split['team'] ?? ''),
@@ -46,14 +49,23 @@ class HrDetailOrgFormState
                 continue;
             }
 
-            [, , $sectionPrimary] = RegistryOrgAssignment::resolveForStorage(
-                (string) ($input[$departmentField] ?? ''),
-                (string) ($input['jurisdiction'] ?? ''),
-                (string) ($input[$sectionField] ?? ''),
-                (string) ($input[$teamField] ?? ''),
+            [$sectionStored, $teamStored] = array_slice(
+                RegistryOrgAssignment::resolveForStorage(
+                    (string) ($input[$departmentField] ?? ''),
+                    (string) ($input['jurisdiction'] ?? ''),
+                    (string) ($input[$sectionField] ?? ''),
+                    (string) ($input[$teamField] ?? ''),
+                ),
+                0,
+                2,
             );
 
-            $input[$sectionField] = $sectionPrimary !== '' && $sectionPrimary !== null ? $sectionPrimary : null;
+            $input[$departmentField] = RegistryDepartmentOptions::hrDetailDepartment(
+                (string) ($input[$departmentField] ?? ''),
+                (string) ($input[$sectionField] ?? ''),
+            );
+            $input[$sectionField] = RegistryOrgAssignment::combine($sectionStored, $teamStored)
+                ?? ($sectionStored !== '' && $sectionStored !== null ? $sectionStored : null);
             unset($input[$teamField]);
         }
 

@@ -29,10 +29,21 @@
             const grDepartment = @json(RegistryGrAssignment::DEPARTMENT);
             const teamParentSelections = {};
 
+            const isStandaloneSection = (section) => standaloneSections.includes(section);
+
+            const sectionRequiresLocation = (department) => {
+                const rules = sectionMap[department];
+
+                return Boolean(rules && !rules['*']);
+            };
+
             const sectionOptionsFor = (department, location) => {
+                if (!department) {
+                    return standaloneSections;
+                }
                 const rules = sectionMap[department];
                 if (!rules) {
-                    return standaloneSections;
+                    return [];
                 }
                 if (rules['*']) {
                     return rules['*'];
@@ -40,6 +51,7 @@
                 if (!location || !rules[location]) {
                     return [];
                 }
+
                 return rules[location];
             };
 
@@ -66,6 +78,9 @@
             };
 
             const teamOptionsFor = (department, location, section) => {
+                if (teamMap.sectionTeams?.[section]) {
+                    return teamMap.sectionTeams[section];
+                }
                 if (teamMap.departmentTeams[department]) {
                     return teamMap.departmentTeams[department];
                 }
@@ -122,12 +137,41 @@
                 if (!team || topLevel.includes(team)) {
                     return topLevel;
                 }
-                const valid = teamMap.departmentTeams[department]
+                const valid = teamMap.sectionTeams?.[section]
+                    ?? teamMap.departmentTeams[department]
                     ?? flattenGrTeamRules(grTeamRules(location, section));
                 if (valid.includes(team)) {
                     return [...topLevel, team];
                 }
+
                 return topLevel;
+            };
+
+            const resolveTeamOptions = (department, location, section, preferredTeam, block, useInitialValues) => {
+                let options = teamOptionsFor(department, location, section);
+                let selectedValue = preferredTeam || '';
+
+                if (!selectedValue && useInitialValues && block.initialTeam !== '') {
+                    options = resolveInitialTeamOptions(department, location, section, block.initialTeam);
+                    selectedValue = block.initialTeam;
+                }
+
+                const parentSelection = teamParentSelections[block.suffix] ?? '';
+
+                if (parentSelection !== '' && teamChildOptionsFor(department, location, section, parentSelection).length > 0) {
+                    options = teamChildOptionsFor(department, location, section, parentSelection);
+                    if (!options.includes(selectedValue)) {
+                        selectedValue = '';
+                    }
+                } else if (parentSelection !== '') {
+                    teamParentSelections[block.suffix] = '';
+                }
+
+                if (selectedValue !== '' && !options.includes(selectedValue)) {
+                    selectedValue = '';
+                }
+
+                return { options, selectedValue };
             };
 
             const setHint = (element, message, visible = true) => {
@@ -168,20 +212,32 @@
                     return null;
                 }
 
+                let useInitialValues = true;
+
                 const rebuildSectionOptions = () => {
                     const department = departmentSelect.value;
                     const location = locationSelect.value;
                     let options = sectionOptionsFor(department, location);
-                    const previous = sectionSelect.value;
-                    let keep = previous !== '' && options.includes(previous)
-                        ? previous
-                        : (block.initialSection !== '' && options.includes(block.initialSection) ? block.initialSection : '');
+                    let keep = sectionSelect.value;
 
-                    if (keep === '' && block.initialSection !== '' && !options.includes(block.initialSection)) {
-                        options = [...options, block.initialSection];
+                    if (useInitialValues && keep === '' && block.initialSection !== '') {
                         keep = block.initialSection;
-                    } else if (keep !== '' && !options.includes(keep)) {
-                        options = [...options, keep];
+                    }
+
+                    if (sectionRequiresLocation(department) && !location) {
+                        fillSelect(sectionSelect, [], '');
+                        sectionSelect.disabled = true;
+                        setHint(sectionHint, '管轄を選択してください', true);
+
+                        return;
+                    }
+
+                    if (keep !== '' && !options.includes(keep)) {
+                        if (useInitialValues && keep === block.initialSection) {
+                            options = [...options, keep];
+                        } else {
+                            keep = '';
+                        }
                     }
 
                     fillSelect(sectionSelect, options, keep);
@@ -201,31 +257,14 @@
                     const department = departmentSelect.value;
                     const location = locationSelect.value;
                     const section = sectionSelect.value;
-                    let options = teamOptionsFor(department, location, section);
-                    let selectedValue = preferredTeam || teamSelect.value;
-
-                    if (!selectedValue && block.initialTeam !== '') {
-                        options = resolveInitialTeamOptions(department, location, section, block.initialTeam);
-                        selectedValue = block.initialTeam;
-                    }
-
-                    const parentSelection = teamParentSelections[block.suffix] ?? '';
-
-                    if (parentSelection !== '' && teamChildOptionsFor(department, location, section, parentSelection).length > 0) {
-                        options = teamChildOptionsFor(department, location, section, parentSelection);
-                        if (!options.includes(selectedValue)) {
-                            selectedValue = '';
-                        }
-                    } else if (parentSelection !== '') {
-                        teamParentSelections[block.suffix] = '';
-                    }
-
-                    if (selectedValue !== '' && !options.includes(selectedValue)) {
-                        options = [...options, selectedValue];
-                    } else if (block.initialTeam !== '' && !options.includes(block.initialTeam)) {
-                        options = [...options, block.initialTeam];
-                        selectedValue = selectedValue || block.initialTeam;
-                    }
+                    const { options, selectedValue } = resolveTeamOptions(
+                        department,
+                        location,
+                        section,
+                        preferredTeam,
+                        block,
+                        useInitialValues,
+                    );
 
                     const visible = options.length > 0;
                     teamField?.classList.toggle('hidden', !visible);
@@ -249,12 +288,23 @@
                     rebuildTeamOptions();
                 };
 
-                departmentSelect.addEventListener('change', () => {
+                const resetOrgSelections = () => {
+                    useInitialValues = false;
                     teamParentSelections[block.suffix] = '';
+                    sectionSelect.value = '';
+                    teamSelect.value = '';
+                };
+
+                departmentSelect.addEventListener('change', () => {
+                    resetOrgSelections();
                     refreshOrgSelects();
                 });
                 sectionSelect.addEventListener('change', () => {
+                    useInitialValues = false;
                     teamParentSelections[block.suffix] = '';
+                    if (isStandaloneSection(sectionSelect.value)) {
+                        departmentSelect.value = '';
+                    }
                     rebuildTeamOptions('');
                 });
                 teamSelect.addEventListener('change', () => {
@@ -278,14 +328,16 @@
                 );
 
                 refreshOrgSelects();
+                useInitialValues = false;
 
-                return { sectionSelect, teamSelect, refreshOrgSelects };
+                return { sectionSelect, teamSelect, refreshOrgSelects, resetOrgSelections };
             };
 
             const initialized = blocks.map(initBlock).filter(Boolean);
 
             locationSelect.addEventListener('change', () => {
                 initialized.forEach((block) => {
+                    block.resetOrgSelections();
                     block.refreshOrgSelects();
                 });
             });

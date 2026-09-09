@@ -237,7 +237,7 @@ $envVars = @{
     PORTAL_REFERRER_HOSTS = "employee.careearth.net"
     EMPLOYEE_PORTAL_PROXY_SECRET = $ProxySecret
     EMPLOYEE_PORTAL_API_URL = $employeePortalApiUrl
-    EMPLOYEE_PORTAL_LOGIN_URL = ""
+    EMPLOYEE_PORTAL_LOGIN_URL = "https://employee.careearth.net/realestate-portal/home"
     LOCAL_LOGIN_FALLBACK_ENABLED = "false"
     EMPLOYEE_PORTAL_SSO_ENABLED = "true"
 }

@@ -65,6 +65,7 @@ class EmployeeRegistryService
                 $data['location'],
                 $affiliationSection,
             );
+            $affiliationCode = User::mapCompanyToAffiliationCode($data['company']);
 
             $user = User::create([
                 'employee_id' => $data['employee_id'],
@@ -87,6 +88,7 @@ class EmployeeRegistryService
                 'user_id' => $user->id,
                 'employment_type' => $data['employment_type'],
                 'employment_status' => $data['employment_status'] ?? '在籍',
+                'affiliation_code' => $affiliationCode,
                 'department_primary' => $hrOrgPrimary['department_primary'],
                 'section_primary' => $hrOrgPrimary['section_primary'],
                 ...$this->hrDetailAttributes($data),
@@ -163,6 +165,7 @@ class EmployeeRegistryService
                 $data['location'],
                 $affiliationSection,
             );
+            $affiliationCode = User::mapCompanyToAffiliationCode($data['company']);
 
             $user->fill([
                 'employee_id' => $data['employee_id'],
@@ -193,6 +196,7 @@ class EmployeeRegistryService
                 [
                     'employment_type' => $data['employment_type'],
                     'employment_status' => $data['employment_status'] ?? $user->hrDetail?->employment_status ?: '在籍',
+                    'affiliation_code' => $affiliationCode ?? $user->hrDetail?->affiliation_code,
                     'department_primary' => $hrOrgPrimary['department_primary'],
                     'section_primary' => $hrOrgPrimary['section_primary'],
                     ...$this->hrDetailAttributes($data, $user->hrDetail),

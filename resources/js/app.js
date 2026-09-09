@@ -1,4 +1,5 @@
 import './bootstrap';
+import './date-field';
 import './profile-inline-edit';
 
 document.addEventListener('submit', (event) => {

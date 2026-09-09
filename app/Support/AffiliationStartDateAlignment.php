@@ -30,7 +30,7 @@ class AffiliationStartDateAlignment
                 continue;
             }
 
-            $current = $affiliation->start_date->toDateString();
+            $current = $affiliation->start_date?->toDateString() ?? '';
 
             $affiliation->update(['start_date' => $joinedAt]);
 
@@ -50,7 +50,11 @@ class AffiliationStartDateAlignment
         int $affiliationCount,
         bool $isEarliest = false,
     ): bool {
-        $start = $affiliation->start_date->toDateString();
+        $start = $affiliation->start_date?->toDateString();
+
+        if ($start === null) {
+            return $affiliationCount === 1;
+        }
 
         if ($start === $joinedAt) {
             return false;

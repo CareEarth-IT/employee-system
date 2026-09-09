@@ -4,8 +4,10 @@ namespace App\Http\Requests\Concerns;
 
 use App\Models\EmployeeHrDetail;
 use App\Models\User;
+use App\Support\DateInput;
 use App\Support\EmployeeIdRules;
 use App\Support\NationalityOptions;
+use App\Support\RegistryDepartmentOptions;
 use App\Support\RegistryGrAssignment;
 use App\Support\RegistryOrgFormState;
 use App\Support\RegistrySectionByAssignment;
@@ -28,11 +30,11 @@ trait ValidatesEmployeeRegistryFields
             'employee_id' => preg_replace('/\D/', '', (string) $this->input('employee_id', '')) ?? '',
             'name_kana' => $nullable($this->input('name_kana', '')),
             'english_name' => $nullable($this->input('english_name', '')),
-            'birth_date' => $nullable($this->input('birth_date', '')),
+            'birth_date' => DateInput::normalize($nullable($this->input('birth_date', ''))),
             'nationality' => NationalityOptions::toDisplayName($nullable($this->input('nationality', ''))),
             'gender' => $nullable($this->input('gender', '')),
             'remarks' => $nullable($this->input('remarks', '')),
-            'joined_at' => $nullable($this->input('joined_at', '')),
+            'joined_at' => DateInput::normalize($nullable($this->input('joined_at', ''))),
             'employment_status' => trim((string) $this->input('employment_status', '在籍')),
         ]);
     }
@@ -69,24 +71,74 @@ trait ValidatesEmployeeRegistryFields
                 Rule::unique('users', 'email')->ignore($uniqueIgnoreUserId),
             ],
             'employee_id' => $employeeIdRules,
-            'department' => ['required', 'string', Rule::in(User::registryDepartmentOptions($currentDepartment))],
+            'department' => [
+                Rule::requiredIf(fn (): bool => ! RegistrySectionByAssignment::isStandaloneSection(
+                    (string) $this->input('section', ''),
+                )),
+                'nullable',
+                'string',
+                function (string $attribute, mixed $value, \Closure $fail) use ($currentDepartment): void {
+                    $department = trim((string) $value);
+                    $section = trim((string) $this->input('section', ''));
+
+                    if (RegistrySectionByAssignment::isStandaloneSection($section) && $department !== '') {
+                        $fail('庶務課を選択する場合は部署を選択しないでください。');
+
+                        return;
+                    }
+
+                    if ($department === '') {
+                        return;
+                    }
+
+                    if (! in_array($department, User::registryDepartmentOptions($currentDepartment), true)) {
+                        $fail('部署を正しく選択してください。');
+                    }
+                },
+            ],
             'company' => ['required', 'string', Rule::in(User::companyOptions($currentCompany))],
             'section' => [
                 Rule::requiredIf(fn (): bool => $requireSectionForGrDepartment
                     && (string) $this->input('department', '') === RegistryGrAssignment::DEPARTMENT),
                 'nullable',
                 'string',
-                Rule::in($splitSectionTeam
-                    ? RegistrySectionByAssignment::forSelect(
-                        (string) $this->input('department', ''),
-                        (string) $this->input('location', ''),
-                        $currentSection,
-                    )
-                    : RegistryOrgFormState::combinedSectionOptions(
-                        (string) $this->input('department', ''),
-                        (string) $this->input('location', ''),
-                        $currentSection,
-                    )),
+                function (string $attribute, mixed $value, \Closure $fail) use (
+                    $splitSectionTeam,
+                    $currentSection,
+                ): void {
+                    $section = trim((string) $value);
+                    $department = trim((string) $this->input('department', ''));
+
+                    if ($section === '') {
+                        if ($department === RegistryDepartmentOptions::FOOD_DEPARTMENT) {
+                            $fail('課を選択してください。');
+                        }
+
+                        return;
+                    }
+
+                    if (RegistrySectionByAssignment::isStandaloneSection($section) && $department !== '') {
+                        $fail('庶務課は部署を選択しない場合のみ指定できます。');
+
+                        return;
+                    }
+
+                    $allowed = $splitSectionTeam
+                        ? RegistrySectionByAssignment::forSelect(
+                            $department,
+                            (string) $this->input('location', ''),
+                            $currentSection,
+                        )
+                        : RegistryOrgFormState::combinedSectionOptions(
+                            $department,
+                            (string) $this->input('location', ''),
+                            $currentSection,
+                        );
+
+                    if (! in_array($section, $allowed, true)) {
+                        $fail('課を正しく選択してください。');
+                    }
+                },
             ],
             'team' => $splitSectionTeam ? [
                 'nullable',

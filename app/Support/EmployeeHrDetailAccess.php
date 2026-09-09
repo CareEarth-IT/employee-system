@@ -52,11 +52,12 @@ class EmployeeHrDetailAccess
         return self::permissions($viewer, $target)['canSave'];
     }
 
-    /** 基本情報〜備考: 情シス・人事部・役員が編集 */
+    /** 基本情報〜備考: 情シス・人事部・経理部総務課・役員が編集 */
     public static function canEditCore(User $viewer, User $target): bool
     {
         return $viewer->isInformationSystems()
             || $viewer->isHrDepartment()
+            || $viewer->isGeneralAffairs()
             || $viewer->isExecutive();
     }
 
@@ -136,7 +137,8 @@ class EmployeeHrDetailAccess
         return $viewer->isExecutive()
             || $viewer->isHrDepartment()
             || $viewer->isHrSection()
-            || $viewer->isInformationSystems();
+            || $viewer->isInformationSystems()
+            || $viewer->isGeneralAffairs();
     }
 
     /** IT・デバイス一覧（Top Page「情シスデバイス用」） */
@@ -207,6 +209,27 @@ class EmployeeHrDetailAccess
         return self::orderExportColumns(
             array_values(array_unique($metaColumns)),
             array_values(array_unique($detailFields)),
+        );
+    }
+
+    /**
+     * 一括 CSV 出力用。全対象者を走査せず閲覧者の権限から列を決める。
+     *
+     * @return list<string>
+     */
+    public static function exportColumnNamesForBulk(User $viewer): array
+    {
+        $other = new User(['id' => 0]);
+
+        return self::orderExportColumns(
+            array_values(array_unique([
+                ...self::viewableMetaColumns($viewer, $other),
+                ...self::viewableMetaColumns($viewer, $viewer),
+            ])),
+            array_values(array_unique([
+                ...self::viewableFieldNames($viewer, $other),
+                ...self::viewableFieldNames($viewer, $viewer),
+            ])),
         );
     }
 

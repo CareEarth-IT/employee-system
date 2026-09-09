@@ -11,15 +11,25 @@
     $updateUrl = UserRouteHelper::route($user, 'profile.update', 'users.profile.update');
     $canViewHrDetail = EmployeeHrDetailAccess::canViewPage(auth()->user(), $user);
     $canEditIdentity = auth()->user()->canEditEmployeeIdentity($user);
+    $editableProfileFields = $editableProfileFields ?? auth()->user()->editableProfileFieldNames($user);
+    $canEditField = fn (string $field): bool => in_array($field, $editableProfileFields, true);
+    $canFullyEditProfile = auth()->user()->canFullyEditProfile($user);
+    $showPersonalProfileSections = auth()->user()->canViewPersonalProfileSections($user);
 @endphp
 
 <div class="mb-4 flex items-center justify-between">
     <div>
         <h1 class="text-xl font-bold">プロフィール</h1>
         <p class="mt-1 text-sm text-slate-500">
-            個人プロフィールは本人・人事部・役員のみ編集可能です。それ以外の方は閲覧のみとなります。
+            @if ($canFullyEditProfile)
+                人事課・総務課・情シス・人事部・役員はプロフィール全体を編集できます。
+            @elseif (auth()->id() === $user->id)
+                本人はプロフィール項目の編集はできません。閲覧のみです。
+            @else
+                閲覧のみです。
+            @endif
             @if ($canEdit)
-                <span class="block mt-1">各項目をダブルクリックしても編集できます。</span>
+                <span class="block mt-1">編集可能な項目はダブルクリックでも編集できます。</span>
             @endif
             @if ($canEditIdentity)
                 <span class="block mt-1">社員ID・メールアドレスは情報システム部のみ編集できます。</span>
@@ -40,7 +50,10 @@
     'identityUpdateUrl' => $updateUrl,
 ])
 
-<div class="grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 mb-8 min-w-0">
+<div class="@class([
+    'grid gap-6 mb-8 min-w-0',
+    'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' => $showPersonalProfileSections,
+])">
     <div
         class="min-w-0 overflow-hidden bg-white border border-slate-300 rounded-lg p-6 space-y-4"
         @if ($canEdit)
@@ -54,19 +67,19 @@
                 'field' => 'english_name',
                 'label' => 'Eng: Name',
                 'value' => $profile?->english_name ?? '',
-                'editable' => $canEdit,
+                'editable' => $canEditField('english_name'),
             ])
             @include('profile.partials.inline-field', [
                 'field' => 'name_kana',
                 'label' => '名前',
                 'value' => $profile?->name_kana ?? '',
-                'editable' => $canEdit,
+                'editable' => $canEditField('name_kana'),
             ])
             @include('profile.partials.inline-field', [
                 'field' => 'abbreviated_name',
                 'label' => '略氏名',
                 'value' => $profile?->abbreviated_name ?? '',
-                'editable' => $canEdit,
+                'editable' => $canEditField('abbreviated_name'),
             ])
             @include('profile.partials.inline-field', [
                 'field' => 'joined_at',
@@ -74,7 +87,7 @@
                 'type' => 'date',
                 'value' => $profile?->joined_at?->format('Y-m-d') ?? '',
                 'display' => $profile?->joined_at?->format('Y/m/d') ?? '—',
-                'editable' => $canEdit,
+                'editable' => $canEditField('joined_at'),
             ])
             @include('profile.partials.inline-field', [
                 'field' => 'nationality',
@@ -82,7 +95,7 @@
                 'type' => 'select',
                 'options' => NationalityOptions::names(),
                 'value' => NationalityOptions::toDisplayName($profile?->nationality) ?? ($profile?->nationality ?? ''),
-                'editable' => $canEdit,
+                'editable' => $canEditField('nationality'),
             ])
             <div>
                 <p class="text-sm mb-1">状況</p>
@@ -94,25 +107,9 @@
             </div>
         </div>
 
-        @include('profile.partials.inline-field', [
-            'field' => 'languages',
-            'label' => '話せる言語',
-            'type' => 'textarea',
-            'value' => $profile?->languages ?? '',
-            'editable' => $canEdit,
-            'minHeight' => 'min-h-[80px] text-content-contained',
-        ])
-
-        @include('profile.partials.inline-field', [
-            'field' => 'self_introduction',
-            'label' => '自己紹介文',
-            'type' => 'textarea',
-            'value' => $profile?->self_introduction ?? '',
-            'editable' => $canEdit,
-            'minHeight' => 'min-h-[120px] text-content-contained',
-        ])
     </div>
 
+    @if ($showPersonalProfileSections)
     <div class="min-w-0 bg-white border border-slate-300 rounded-lg p-6 self-start">
         <h2 class="font-bold mb-4">写真登録</h2>
         @if ($profile?->photo_path)
@@ -127,9 +124,13 @@
         @endif
         <p class="text-xs text-slate-500">横幅500px以内・3ヶ月以内の写真</p>
     </div>
+    @endif
 </div>
 
-@include('profile._affiliation-table', ['user' => $user])
+@include('profile._affiliation-table', [
+    'user' => $user,
+    'editable' => auth()->user()->canManageAffiliation($user),
+])
 
 @if ($canViewHrDetail)
 <div class="mt-6 bg-white border border-slate-300 rounded-lg p-6">

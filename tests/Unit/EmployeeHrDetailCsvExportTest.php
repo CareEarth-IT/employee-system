@@ -100,6 +100,31 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $this->assertStringNotContainsString('大阪府大阪市', $csv);
     }
 
+    public function test_exporter_outputs_gr_department_as_jurisdiction_plus_global_business_department(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '人事課');
+
+        $user = User::factory()->create([
+            'employee_id' => '10175',
+            'email' => 'gr@example.com',
+        ]);
+
+        EmployeeHrDetail::create([
+            'user_id' => $user->id,
+            'jurisdiction' => '東京',
+            'department_primary' => \App\Support\RegistryGrAssignment::DEPARTMENT,
+        ]);
+
+        $user->load(['profile', 'hrDetail', 'affiliationHistories']);
+
+        ob_start();
+        app(EmployeeHrDetailCsvExporter::class)->stream(collect([$user]), $viewer);
+        $csv = (string) ob_get_clean();
+
+        $this->assertStringContainsString('東京グローバル事業部', $csv);
+        $this->assertStringNotContainsString('GR部（グローバル部）', $csv);
+    }
+
     public function test_exporter_outputs_viewable_values_for_hr_section(): void
     {
         $viewer = $this->userInAffiliation('人事部', '人事課');
@@ -177,6 +202,148 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $this->assertStringContainsString('text/csv', (string) $response->headers->get('content-type'));
     }
 
+    public function test_export_all_route_returns_csv_for_general_affairs(): void
+    {
+        $viewer = $this->userInAffiliation('経理部', '総務課');
+
+        $response = $this->actingAs($viewer)->get(route('hr-details.export'));
+
+        $response->assertOk();
+        $response->assertHeader('content-disposition');
+        $this->assertStringContainsString('text/csv', (string) $response->headers->get('content-type'));
+    }
+
+    public function test_export_all_without_search_exports_all_statuses_when_all_tab_selected(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '総務課');
+
+        $active = $this->createListedEmployee('CSV', '在籍', '12001', '在籍');
+        $onLeave = $this->createListedEmployee('CSV', '休職', '12002', '休職');
+        $resigned = $this->createListedEmployee('CSV', '退職', '12003', '退職');
+
+        $response = $this->actingAs($viewer)->get(route('hr-details.export', ['status' => '全体']));
+
+        $response->assertOk();
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString($active->employee_id, $csv);
+        $this->assertStringContainsString($onLeave->employee_id, $csv);
+        $this->assertStringContainsString($resigned->employee_id, $csv);
+    }
+
+    public function test_export_all_without_search_respects_status_tab(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '総務課');
+
+        $active = $this->createListedEmployee('CSV', '在籍', '12011', '在籍');
+        $resigned = $this->createListedEmployee('CSV', '退職', '12012', '退職');
+
+        $response = $this->actingAs($viewer)->get(route('hr-details.export', ['status' => '在籍']));
+
+        $response->assertOk();
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString($active->employee_id, $csv);
+        $this->assertStringNotContainsString($resigned->employee_id, $csv);
+    }
+
+    public function test_export_all_without_search_defaults_to_active_status_tab(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '総務課');
+
+        $active = $this->createListedEmployee('CSV', '在籍', '12013', '在籍');
+        $resigned = $this->createListedEmployee('CSV', '退職', '12014', '退職');
+
+        $response = $this->actingAs($viewer)->get(route('hr-details.export'));
+
+        $response->assertOk();
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString($active->employee_id, $csv);
+        $this->assertStringNotContainsString($resigned->employee_id, $csv);
+    }
+
+    public function test_export_all_with_company_filter_exports_matching_employees_only(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '総務課');
+
+        $careEarth = $this->createListedEmployee('CE', '太郎', '12021', '在籍', 'CareEarth');
+        $growtec = $this->createListedEmployee('GT', '花子', '12022', '在籍', 'GROWTEC');
+
+        $response = $this->actingAs($viewer)->get(route('hr-details.export', [
+            'filters' => [
+                ['field' => 'company', 'op' => 'eq', 'value' => 'CareEarth'],
+            ],
+        ]));
+
+        $response->assertOk();
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString($careEarth->employee_id, $csv);
+        $this->assertStringNotContainsString($growtec->employee_id, $csv);
+    }
+
+    public function test_export_all_with_keyword_exports_matching_employees_only(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '総務課');
+
+        $matched = User::factory()->create([
+            'last_name' => 'キーワード',
+            'first_name' => '一致',
+            'employee_id' => '12031',
+            'email' => 'keyword-match@careearth.info',
+        ]);
+        $this->markEmploymentStatus($matched);
+
+        $other = User::factory()->create([
+            'last_name' => '別',
+            'first_name' => '社員',
+            'employee_id' => '12032',
+            'email' => 'other@careearth.info',
+        ]);
+        $this->markEmploymentStatus($other);
+
+        $response = $this->actingAs($viewer)->get(route('hr-details.export', [
+            'keyword' => 'keyword-match',
+        ]));
+
+        $response->assertOk();
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString($matched->employee_id, $csv);
+        $this->assertStringNotContainsString($other->employee_id, $csv);
+    }
+
+    public function test_export_all_with_search_does_not_limit_to_active_status_tab(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '総務課');
+
+        $active = $this->createListedEmployee('検索', '在籍', '12041', '在籍', 'CareEarth');
+        $resigned = $this->createListedEmployee('検索', '退職', '12042', '退職', 'CareEarth');
+
+        $response = $this->actingAs($viewer)->get(route('hr-details.export', [
+            'filters' => [
+                ['field' => 'company', 'op' => 'eq', 'value' => 'CareEarth'],
+            ],
+        ]));
+
+        $response->assertOk();
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString($active->employee_id, $csv);
+        $this->assertStringContainsString($resigned->employee_id, $csv);
+    }
+
+    public function test_general_affairs_viewer_gets_core_columns_only_for_other_employee(): void
+    {
+        $viewer = $this->userInAffiliation('経理部', '総務課');
+        $target = User::factory()->create();
+
+        $columns = EmployeeHrDetailAccess::exportColumnNames($viewer, [$target]);
+
+        $this->assertEqualsCanonicalizing(
+            array_values(array_unique(array_merge(
+                EmployeeHrDetailFieldLabels::META_CORE,
+                EmployeeHrDetailFieldGroups::CORE,
+            ))),
+            $columns,
+        );
+    }
+
     /**
      * @return list<string>
      */
@@ -204,5 +371,42 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         ]);
 
         return $user->fresh();
+    }
+
+    private function createListedEmployee(
+        string $lastName,
+        string $firstName,
+        string $employeeId,
+        string $employmentStatus,
+        string $company = 'CareEarth',
+    ): User {
+        $user = User::factory()->create([
+            'last_name' => $lastName,
+            'first_name' => $firstName,
+            'employee_id' => $employeeId,
+        ]);
+
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => $company,
+            'location' => '大阪',
+        ]);
+
+        EmployeeHrDetail::create([
+            'user_id' => $user->id,
+            'employment_status' => $employmentStatus,
+        ]);
+
+        return $user->fresh();
+    }
+
+    private function markEmploymentStatus(User $user, string $status = '在籍'): void
+    {
+        EmployeeHrDetail::create([
+            'user_id' => $user->id,
+            'employment_status' => $status,
+        ]);
     }
 }

@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="mx-auto max-w-[1000px]">
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 class="text-xl font-bold">Top Page</h1>
         <div class="flex flex-wrap items-center gap-4 text-sm">
             @if ($canEditActiveTab)
@@ -20,43 +20,40 @@
             @foreach ($tabs as $tab)
                 <a
                     href="{{ route('dashboard', ['tab' => $tab['key']]) }}"
-                    class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {{ $activeTab === $tab['key'] ? 'border-blue-600 bg-white text-blue-700' : 'border-transparent text-slate-600 hover:bg-white hover:text-slate-800' }}"
+                    class="border-b-2 px-5 py-4 text-base font-bold transition-colors {{ $activeTab === $tab['key'] ? 'border-blue-600 bg-white text-blue-700' : 'border-transparent text-slate-600 hover:bg-white hover:text-slate-800' }}"
                 >
                     {{ $tab['label'] }}
                 </a>
             @endforeach
         </nav>
 
-        <div class="min-h-[12rem] px-6 py-6">
+        <div class="px-6 py-6">
             @if (! $canViewActiveTabContent)
                 <p class="text-sm text-slate-500">在籍部署が一致しないため、{{ $activeTabLabel }} のお知らせは表示できません。</p>
-            @else
-                @if ($contents->isNotEmpty())
-                    <div class="dashboard-content space-y-6 text-sm leading-relaxed text-slate-800">
-                        @foreach ($contents as $content)
-                            <div class="dashboard-content-block">
-                                <div>{!! $content->resolvedHtml() !!}</div>
-                                @if ($canEditActiveTab)
-                                    <p class="mt-2">
-                                        <a
-                                            href="{{ route('dashboard.announcements.edit', ['dashboardContent' => $content, 'tab' => $activeTab]) }}"
-                                            class="text-xs text-blue-600 hover:underline"
-                                        >
-                                            編集
-                                        </a>
-                                    </p>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <p class="text-sm text-slate-500">{{ $activeTabLabel }} のお知らせはまだ登録されていません。</p>
-                @endif
+            @elseif ($contents->isNotEmpty())
+                <div class="dashboard-content space-y-6 text-sm leading-relaxed text-slate-800">
+                    @foreach ($contents as $content)
+                        <div class="dashboard-content-block">
+                            <div>{!! $content->resolvedHtml() !!}</div>
+                            @if ($canEditActiveTab)
+                                <p class="mt-2">
+                                    <a
+                                        href="{{ route('dashboard.announcements.edit', ['dashboardContent' => $content, 'tab' => $activeTab]) }}"
+                                        class="text-xs text-blue-600 hover:underline"
+                                    >
+                                        編集
+                                    </a>
+                                </p>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
             @endif
 
             @include('dashboard.partials.tab-links', [
                 'tabLinks' => $tabLinks,
                 'tabLinkGroups' => $tabLinkGroups ?? [],
+                'hasAnnouncements' => $canViewActiveTabContent && $contents->isNotEmpty(),
             ])
         </div>
     </div>

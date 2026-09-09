@@ -63,18 +63,6 @@
                 </div>
             </div>
 
-            <div class="min-w-0 overflow-hidden">
-                <label for="languages" class="block text-sm mb-1">話せる言語</label>
-                <textarea id="languages" name="languages" rows="4" wrap="soft" class="textarea-contained rounded border border-slate-300 px-3 py-2">{{ old('languages', $profile?->languages) }}</textarea>
-                @include('partials.field-error', ['field' => 'languages'])
-            </div>
-
-            <div class="min-w-0 overflow-hidden">
-                <label for="self_introduction" class="block text-sm mb-1">自己紹介文</label>
-                <textarea id="self_introduction" name="self_introduction" rows="6" wrap="soft" class="textarea-contained rounded border border-slate-300 px-3 py-2">{{ old('self_introduction', $profile?->self_introduction) }}</textarea>
-                @include('partials.field-error', ['field' => 'self_introduction'])
-            </div>
-
             <button type="submit" class="rounded bg-blue-600 text-white px-8 py-2 font-medium hover:bg-blue-700">
                 SAVE
             </button>
@@ -92,7 +80,10 @@
     </div>
 </form>
 
-@include('profile._affiliation-table', ['user' => $user, 'editable' => true])
+@include('profile._affiliation-table', [
+    'user' => $user,
+    'editable' => auth()->user()->canManageAffiliation($user),
+])
 
 @php
     use App\Support\EmployeeHrDetailAccess;

@@ -44,17 +44,20 @@ class EmployeeHrDetailAccessTest extends TestCase
         $this->assertTrue(EmployeeHrDetailAccess::canEditCore($viewer, $target));
     }
 
-    public function test_general_affairs_can_view_core_but_not_edit(): void
+    public function test_general_affairs_can_view_and_edit_core_but_not_procedures(): void
     {
         $viewer = $this->userInAffiliation('経理部', '総務課');
         $target = User::factory()->create();
 
         $this->assertTrue(EmployeeHrDetailAccess::canViewCore($viewer, $target));
         $this->assertTrue(EmployeeHrDetailAccess::canViewPage($viewer, $target));
-        $this->assertFalse(EmployeeHrDetailAccess::canEditCore($viewer, $target));
+        $this->assertTrue(EmployeeHrDetailAccess::canExportCsv($viewer));
+        $this->assertTrue(EmployeeHrDetailAccess::canEditCore($viewer, $target));
+        $this->assertTrue(EmployeeHrDetailAccess::canUpdateAny($viewer, $target));
+        $this->assertTrue($viewer->canManageAffiliation($target));
+        $this->assertTrue($viewer->canEditProfile($target));
         $this->assertFalse(EmployeeHrDetailAccess::canEditProcedures($viewer, $target));
         $this->assertFalse(EmployeeHrDetailAccess::canViewProcedures($viewer, $target));
-        $this->assertFalse(EmployeeHrDetailAccess::canUpdateAny($viewer, $target));
     }
 
     public function test_employee_can_view_but_not_edit_own_procedures(): void
@@ -87,6 +90,17 @@ class EmployeeHrDetailAccessTest extends TestCase
         $this->assertFalse(EmployeeHrDetailAccess::canEditItSelfDevice($viewer, $other));
         $this->assertFalse(EmployeeHrDetailAccess::canUpdateAny($viewer, $other));
         $this->assertSame([], EmployeeHrDetailAccess::editableFieldNames($viewer, $other));
+    }
+
+    public function test_export_column_names_for_bulk_matches_union_of_targets(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '総務課');
+        $other = User::factory()->create();
+
+        $this->assertEqualsCanonicalizing(
+            EmployeeHrDetailAccess::exportColumnNames($viewer, [$viewer, $other]),
+            EmployeeHrDetailAccess::exportColumnNamesForBulk($viewer),
+        );
     }
 
     private function userInAffiliation(string $department, ?string $section = null): User

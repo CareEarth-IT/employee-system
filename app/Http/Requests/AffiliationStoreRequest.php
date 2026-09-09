@@ -7,6 +7,7 @@ use App\Models\AffiliationHistory;
 use App\Models\User;
 use App\Support\EmployeeIdRules;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class AffiliationStoreRequest extends FormRequest
 {
@@ -29,6 +30,10 @@ class AffiliationStoreRequest extends FormRequest
 
         if ($isCurrent) {
             $this->merge(['end_date' => null]);
+        }
+
+        if (trim((string) $this->input('start_date', '')) === '') {
+            $this->merge(['start_date' => null]);
         }
 
         $this->mergeAffiliationOrgInputForValidation();
@@ -59,8 +64,16 @@ class AffiliationStoreRequest extends FormRequest
         return [
             'employee_id' => EmployeeIdRules::rules(required: false, uniqueIgnoreUserId: $targetId),
             'enrollment_status' => ['required', 'string', 'in:'.implode(',', AffiliationHistory::ENROLLMENT_STATUSES)],
-            'start_date' => ['required', 'date'],
-            'end_date' => ['nullable', "required_unless:enrollment_status,{$enrolled}", 'date', 'after_or_equal:start_date'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => [
+                'nullable',
+                "required_unless:enrollment_status,{$enrolled}",
+                'date',
+                Rule::when(
+                    fn (): bool => filled($this->input('start_date')),
+                    'after_or_equal:start_date',
+                ),
+            ],
             ...$this->affiliationOrgFieldRules($currentDepartment, $currentOrg['section'], $currentOrg['team']),
             'position' => ['nullable', 'string', 'max:255'],
             'job_description' => ['nullable', 'string', 'max:5000'],
@@ -76,7 +89,6 @@ class AffiliationStoreRequest extends FormRequest
         return [
             'end_date.required_unless' => '在籍中以外の場合は終了日を入力してください。',
             'enrollment_status.required' => '在籍状況を選択してください。',
-            'start_date.required' => '開始日を入力してください。',
             'start_date.date' => '開始日は正しい日付形式で入力してください。',
             'end_date.date' => '終了日は正しい日付形式で入力してください。',
             'end_date.after_or_equal' => '終了日は開始日以降の日付を指定してください。',

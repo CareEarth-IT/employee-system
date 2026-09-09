@@ -43,7 +43,7 @@ if (!is_array($attachments)) {
 }
 
 if (is_onboarding_doc_type($type) && count($attachments) === 0) {
-    json_response(['error' => '入社書類提出の場合は、添付が1件以上必要です'], 400);
+    json_response(['error' => '入社・退社手続きの場合は、添付が1件以上必要です'], 400);
 }
 
 if (count($attachments) > 10) {

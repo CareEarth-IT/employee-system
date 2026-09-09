@@ -27,6 +27,7 @@
         'values' => $formValues,
         'showPasswordRequired' => false,
         'submitLabel' => '更新',
+        'splitSectionTeam' => true,
     ])
 </form>
 @endsection

@@ -10,10 +10,10 @@
 
 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
-        <h1 class="text-xl font-bold">{{ $access['canSave'] ? '詳細情報' : '詳細情報（閲覧）' }}</h1>
-        <p class="text-sm text-slate-600 mt-1">{{ $user->displayName() }} さん</p>
+        <h1 class="text-2xl font-bold">{{ $access['canSave'] ? '詳細情報' : '詳細情報（閲覧）' }}</h1>
+        <p class="mt-1 text-base text-slate-600">{{ $user->displayName() }} さん</p>
     </div>
-    <div class="flex flex-wrap gap-4 text-sm">
+    <div class="flex flex-wrap gap-4 text-base">
         @if (EmployeeHrDetailAccess::canExportCsvForTarget(auth()->user(), $user))
             <a href="{{ UserRouteHelper::route($user, 'profile.hr-detail.export', 'users.profile.hr-detail.export') }}" class="text-blue-600 hover:underline">CSV出力</a>
         @endif
@@ -39,7 +39,7 @@
 
     @if ($access['canSave'])
         <div class="pt-4 border-t border-slate-200">
-            <button type="submit" class="rounded bg-blue-600 text-white px-8 py-2 font-medium hover:bg-blue-700">
+            <button type="submit" class="rounded bg-blue-600 px-8 py-2 text-base font-medium text-white hover:bg-blue-700">
                 保存
             </button>
         </div>

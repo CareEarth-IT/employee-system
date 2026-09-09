@@ -1139,6 +1139,13 @@ class EmployeeBulkImporter
             $updates['employment_type'] = $employmentType;
         }
 
+        $employmentStatus = trim((string) ($payload['employment_status'] ?? ''));
+        if ($employmentStatus !== '') {
+            $updates['employment_status'] = $this->normalizeEmploymentStatus($employmentStatus);
+        } elseif (! EmployeeHrDetail::query()->where('user_id', $user->id)->whereNotNull('employment_status')->where('employment_status', '!=', '')->exists()) {
+            $updates['employment_status'] = '在籍';
+        }
+
         $department = trim((string) ($payload['department'] ?? ''));
         if ($department !== '' && $department !== '未設定') {
             $updates['department_primary'] = $department;

@@ -346,6 +346,34 @@ function inquiry_access_for_department_groups(string $type, array $groupIds): st
 }
 
 /**
+ * 分類マトリクスにない旧データなど、担当カテゴリの sheet_key 単位で閲覧・編集可否を判定する。
+ */
+function inquiry_access_for_sheet_category(string $sheetKey, array $groupIds): string
+{
+    if ($groupIds === []) {
+        return 'none';
+    }
+
+    $categoryKey = category_key_for_sheet($sheetKey);
+
+    if ($categoryKey === 'hr' && in_array('hr', $groupIds, true)) {
+        return 'edit';
+    }
+
+    if ($categoryKey === 'is' && in_array('is', $groupIds, true)) {
+        return 'edit';
+    }
+
+    if ($categoryKey === 'finance' && (
+        in_array('keiri_ka', $groupIds, true) || in_array('soumu_ka', $groupIds, true)
+    )) {
+        return 'edit';
+    }
+
+    return 'none';
+}
+
+/**
  * @deprecated 部署グループ化後は inquiry_access_for_department_groups() を利用
  */
 function inquiry_access_for_staff(string $type, string $staffId): string
@@ -373,7 +401,12 @@ function resolve_inquiry_access(array $user, string $sheetKey, string $type): st
         return 'none';
     }
 
-    return inquiry_access_for_department_groups($type, $groupIds);
+    $access = inquiry_access_for_department_groups($type, $groupIds);
+    if ($access !== 'none') {
+        return $access;
+    }
+
+    return inquiry_access_for_sheet_category($sheetKey, $groupIds);
 }
 
 function assert_can_edit_inquiry(array $user, string $sheetKey, string $type): array

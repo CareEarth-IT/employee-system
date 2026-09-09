@@ -54,6 +54,31 @@ class RegistryGrAssignmentTest extends TestCase
         );
     }
 
+    public function test_roster_department_label_uses_jurisdiction_and_global_business_department_for_gr(): void
+    {
+        $this->assertSame(
+            '大阪グローバル事業部',
+            RegistryGrAssignment::rosterDepartmentLabel('大阪', RegistryGrAssignment::DEPARTMENT),
+        );
+        $this->assertSame(
+            '東京グローバル事業部',
+            RegistryGrAssignment::rosterDepartmentLabel('東京', RegistryGrAssignment::DEPARTMENT),
+        );
+    }
+
+    public function test_roster_department_label_keeps_non_gr_and_existing_global_department(): void
+    {
+        $this->assertSame('通信事業部', RegistryGrAssignment::rosterDepartmentLabel('大阪', '通信事業部'));
+        $this->assertSame(
+            '大阪グローバル事業部',
+            RegistryGrAssignment::rosterDepartmentLabel('大阪', '大阪グローバル事業部'),
+        );
+        $this->assertSame(
+            RegistryGrAssignment::DEPARTMENT,
+            RegistryGrAssignment::rosterDepartmentLabel('', RegistryGrAssignment::DEPARTMENT),
+        );
+    }
+
     public function test_resolve_for_storage_converts_registry_form_submission(): void
     {
         [$section, $team, $sectionPrimary] = RegistryOrgAssignment::resolveForStorage(

@@ -23,12 +23,12 @@
 ])
 
 <div id="hr-detail-section-field-{{ $suffix }}">
-    <label for="{{ $sectionField }}" class="block text-sm mb-1">{{ HrDetailOrgFormState::sectionLabel($suffix) }}</label>
+    <label for="{{ $sectionField }}" class="mb-1 block text-base">{{ HrDetailOrgFormState::sectionLabel($suffix) }}</label>
     @if ($readonly)
-        <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">{{ $values['section'] !== '' ? $values['section'] : '—' }}</p>
+        <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $values['section'] !== '' ? $values['section'] : '—' }}</p>
     @else
-        <p id="hr-detail-section-hint-{{ $suffix }}" class="mb-1 text-xs text-slate-500 hidden" aria-hidden="true"></p>
-        <select id="{{ $sectionField }}" name="{{ $sectionField }}" class="w-full rounded border border-slate-300 px-3 py-2 bg-white" @disabled($org['sectionSelectDisabled'])>
+        <p id="hr-detail-section-hint-{{ $suffix }}" class="mb-1 hidden text-sm text-slate-500" aria-hidden="true"></p>
+        <select id="{{ $sectionField }}" name="{{ $sectionField }}" class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-base" @disabled($org['sectionSelectDisabled'])>
             <option value="">選択してください</option>
             @foreach ($org['sectionOptions'] as $sectionOption)
                 <option value="{{ $sectionOption }}" @selected($org['selectedSection'] === $sectionOption)>{{ $sectionOption }}</option>
@@ -39,12 +39,12 @@
 </div>
 
 <div id="hr-detail-team-field-{{ $suffix }}" @class(['hidden' => ! $readonly && ! $org['showTeamField']])>
-    <label for="{{ $teamField }}" class="block text-sm mb-1">{{ HrDetailOrgFormState::teamLabel($suffix) }}</label>
+    <label for="{{ $teamField }}" class="mb-1 block text-base">{{ HrDetailOrgFormState::teamLabel($suffix) }}</label>
     @if ($readonly)
-        <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">{{ $values['team'] !== '' ? $values['team'] : '—' }}</p>
+        <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $values['team'] !== '' ? $values['team'] : '—' }}</p>
     @else
-        <p id="hr-detail-team-hint-{{ $suffix }}" class="mb-1 text-xs text-slate-500 hidden" aria-hidden="true"></p>
-        <select id="{{ $teamField }}" name="{{ $teamField }}" class="w-full rounded border border-slate-300 px-3 py-2 bg-white" @disabled(! $org['showTeamField'] || $org['teamOptions'] === [])>
+        <p id="hr-detail-team-hint-{{ $suffix }}" class="mb-1 hidden text-sm text-slate-500" aria-hidden="true"></p>
+        <select id="{{ $teamField }}" name="{{ $teamField }}" class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-base" @disabled(! $org['showTeamField'] || $org['teamOptions'] === [])>
             <option value="">選択してください</option>
             @foreach ($org['teamOptions'] as $teamOption)
                 <option value="{{ $teamOption }}" @selected($org['selectedTeam'] === $teamOption)>{{ $teamOption }}</option>

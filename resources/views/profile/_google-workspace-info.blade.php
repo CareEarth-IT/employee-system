@@ -5,9 +5,9 @@
         data-csrf="{{ csrf_token() }}"
     @endif
 >
-    <h2 class="font-bold mb-4">Google Workspace 連携情報</h2>
+    <h2 class="mb-4 text-lg font-bold">Google Workspace 連携情報</h2>
     @if ($canEditIdentity ?? false)
-        <p class="mb-4 text-xs text-slate-500">情報システム部のみ編集可能です。社員ID・メールアドレスをダブルクリックで編集できます。</p>
+        <p class="mb-4 text-sm text-slate-500">情報システム部のみ編集可能です。社員ID・メールアドレスをダブルクリックで編集できます。</p>
     @endif
 
     <div class="grid sm:grid-cols-2 gap-4">
@@ -25,12 +25,12 @@
             'editable' => $canEditIdentity ?? false,
         ])
         <div>
-            <label class="block text-sm text-slate-500 mb-1">姓 <span class="text-xs">(自動取得)</span></label>
-            <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2">{{ $user->last_name ?? '—' }}</p>
+            <label class="mb-1 block text-base text-slate-500">姓 <span class="text-sm">(自動取得)</span></label>
+            <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->last_name ?? '—' }}</p>
         </div>
         <div>
-            <label class="block text-sm text-slate-500 mb-1">名 <span class="text-xs">(自動取得)</span></label>
-            <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2">{{ $user->first_name ?? '—' }}</p>
+            <label class="mb-1 block text-base text-slate-500">名 <span class="text-sm">(自動取得)</span></label>
+            <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->first_name ?? '—' }}</p>
         </div>
     </div>
 </div>

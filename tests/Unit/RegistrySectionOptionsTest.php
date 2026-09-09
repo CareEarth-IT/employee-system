@@ -17,7 +17,8 @@ class RegistrySectionOptionsTest extends TestCase
         $this->assertContains('SS課_名古屋', $options);
         $this->assertContains('ベトナム支店', $options);
         $this->assertContains('大阪グローバル事業部', $options);
-        $this->assertNotContains('Food Sales部', $options);
+        $this->assertContains('Food Sales部', $options);
+        $this->assertContains('Food Retail部', $options);
         $this->assertNotContains('出荷チーム', $options);
 
         foreach ($options as $option) {

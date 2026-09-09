@@ -5,11 +5,11 @@
 @section('content')
 <div class="max-w-2xl mx-auto">
     <div class="bg-white border border-slate-300 rounded-lg p-8 text-center space-y-6">
-        <h1 class="text-xl font-bold">申請完了</h1>
+        <h1 class="text-2xl font-bold">申請完了</h1>
 
-        <p class="text-slate-700">承認が出るまでお待ちください。</p>
+        <p class="text-base text-slate-700">承認が出るまでお待ちください。</p>
 
-        <div class="text-left text-sm text-slate-600 space-y-3 border-t border-slate-200 pt-6">
+        <div class="text-left text-base text-slate-600 space-y-3 border-t border-slate-200 pt-6">
             @if ($application->isPurchasedType())
                 <p>
                     <span class="font-medium">購入済申請の場合：</span>
@@ -33,10 +33,10 @@
         </div>
 
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <a href="{{ route('equipment-purchases.index') }}" class="rounded bg-blue-600 text-white px-8 py-2 font-medium hover:bg-blue-700">
+            <a href="{{ route('equipment-purchases.index') }}" class="rounded bg-blue-600 text-white px-8 py-2 text-base font-medium hover:bg-blue-700">
                 備品購入トップへ
             </a>
-            <a href="{{ route('dashboard') }}" class="rounded border border-slate-300 px-6 py-2 text-sm hover:bg-slate-50">
+            <a href="{{ route('dashboard') }}" class="rounded border border-slate-300 px-6 py-2 text-base hover:bg-slate-50">
                 Top Page へ
             </a>
         </div>

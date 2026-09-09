@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\User;
 use App\Support\EmployeeIdRules;
+use App\Support\DateInput;
 use App\Support\NationalityOptions;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -23,8 +24,9 @@ class ProfileUpdateRequest extends FormRequest
             return false;
         }
 
+        $allowedProfileFields = $viewer->editableProfileFieldNames($target);
         $touchesIdentity = $this->exists('email') || $this->exists('employee_id');
-        $touchesProfile = collect([
+        $profileFields = [
             'english_name',
             'name_kana',
             'abbreviated_name',
@@ -33,17 +35,23 @@ class ProfileUpdateRequest extends FormRequest
             'languages',
             'self_introduction',
             'photo',
-        ])->contains(fn (string $key): bool => $this->exists($key));
+        ];
+        $touchedProfileFields = collect($profileFields)
+            ->filter(fn (string $key): bool => $this->exists($key) || ($key === 'photo' && $this->hasFile('photo')))
+            ->values()
+            ->all();
 
         if ($touchesIdentity && ! $viewer->canEditEmployeeIdentity($target)) {
             return false;
         }
 
-        if ($touchesProfile && ! $viewer->canEditProfile($target)) {
-            return false;
+        foreach ($touchedProfileFields as $field) {
+            if (! in_array($field, $allowedProfileFields, true)) {
+                return false;
+            }
         }
 
-        if (! $touchesIdentity && ! $touchesProfile) {
+        if ($touchedProfileFields === [] && ! $touchesIdentity) {
             return $viewer->canEditProfile($target);
         }
 
@@ -55,6 +63,12 @@ class ProfileUpdateRequest extends FormRequest
         if ($this->exists('nationality')) {
             $this->merge([
                 'nationality' => NationalityOptions::toDisplayName($this->input('nationality')),
+            ]);
+        }
+
+        if ($this->exists('joined_at')) {
+            $this->merge([
+                'joined_at' => DateInput::normalize($this->input('joined_at')),
             ]);
         }
     }

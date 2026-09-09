@@ -1,7 +1,7 @@
 @if ($link->isFormPostKind() && $link->resolvedActionUrl())
     <form method="POST" action="{{ $link->resolvedActionUrl() }}" class="inline">
         @csrf
-        <button type="submit" class="text-blue-600 hover:underline">
+        <button type="submit" class="text-base text-blue-600 hover:underline">
             {{ $link->label }}
         </button>
     </form>
@@ -9,14 +9,14 @@
     <button
         type="button"
         id="{{ $link->modal_target }}"
-        class="text-blue-600 hover:underline"
+        class="text-base text-blue-600 hover:underline"
         aria-haspopup="dialog"
         aria-controls="attendance-modal"
     >
         {{ $link->label }}
     </button>
 @elseif ($link->url)
-    <a href="{{ $link->url }}" class="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">{{ $link->label }}</a>
+    <a href="{{ $link->url }}" class="text-base text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">{{ $link->label }}</a>
 @else
-    <span class="text-slate-600">{{ $link->label }}</span>
+    <span class="text-base text-slate-600">{{ $link->label }}</span>
 @endif

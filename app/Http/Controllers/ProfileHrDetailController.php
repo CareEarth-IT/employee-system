@@ -7,11 +7,16 @@ use App\Models\EmployeeHrDetail;
 use App\Models\User;
 use App\Services\DriveStaffSyncService;
 use App\Services\EmployeeHrDetailCsvExporter;
+use App\Support\AffiliationHrDetailSync;
+use App\Support\AffiliationResignationSync;
+use App\Support\AffiliationStartDateAlignment;
 use App\Support\EmployeeHrDetailAccess;
+use App\Support\EmployeeIndexQuery;
 use App\Support\EmployeeHrDetailFieldGroups;
 use App\Support\HrDetailOrgFormState;
 use App\Support\UserRouteHelper;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -65,6 +70,15 @@ class ProfileHrDetailController extends Controller
         ]);
         $hrDetail->update(collect($validated)->only($hrDetailFields)->all());
 
+        if (array_intersect(AffiliationHrDetailSync::HR_ORG_FIELDS, $hrDetailFields) !== []) {
+            AffiliationHrDetailSync::syncAffiliationFromHrDetail($target->fresh(), $hrDetail->fresh());
+        }
+
+        if (in_array('resigned_at', $hrDetailFields, true)) {
+            AffiliationResignationSync::syncFromHrDetail($target->fresh(), $hrDetail->fresh());
+            $hrDetail->refresh();
+        }
+
         if (EmployeeHrDetailAccess::canEditCore($viewer, $target)) {
             $this->syncProfileFromHrDetail($target, $hrDetail, collect($validated)->only($profileFields)->all());
         }
@@ -76,19 +90,15 @@ class ProfileHrDetailController extends Controller
             ->with('success', '詳細情報を保存しました。');
     }
 
-    public function exportAll(): StreamedResponse
+    public function exportAll(Request $request): StreamedResponse
     {
         $viewer = auth()->user();
         $this->authorizeExport($viewer);
 
-        $users = User::query()
-            ->with(['profile', 'hrDetail'])
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get();
+        $users = EmployeeIndexQuery::forExport($request);
 
         return response()->streamDownload(
-            fn () => $this->csvExporter->stream($users, $viewer),
+            fn () => $this->csvExporter->streamQuery($users, $viewer),
             $this->csvExporter->filename(),
             ['Content-Type' => 'text/csv; charset=UTF-8'],
         );
@@ -103,7 +113,7 @@ class ProfileHrDetailController extends Controller
             abort(403, 'この社員の詳細情報を出力する権限がありません。');
         }
 
-        $target->load(['profile', 'hrDetail']);
+        $target->load(['profile', 'hrDetail', 'affiliationHistories']);
 
         return response()->streamDownload(
             fn () => $this->csvExporter->stream(collect([$target]), $viewer),
@@ -124,10 +134,25 @@ class ProfileHrDetailController extends Controller
      */
     private function syncProfileFromHrDetail(User $user, EmployeeHrDetail $hrDetail, array $profileFields = []): void
     {
-        $attributes = array_filter(
-            $profileFields,
-            fn ($value) => $value !== null && $value !== '',
-        );
+        if ($profileFields === []) {
+            return;
+        }
+
+        /** @var list<string> */
+        $nullableFields = ['joined_at', 'nationality'];
+        $attributes = [];
+
+        foreach ($profileFields as $field => $value) {
+            if (in_array($field, $nullableFields, true)) {
+                $attributes[$field] = ($value === null || $value === '') ? null : $value;
+
+                continue;
+            }
+
+            if ($value !== null && $value !== '') {
+                $attributes[$field] = $value;
+            }
+        }
 
         if ($hrDetail->name_kana_fullwidth) {
             $attributes['name_kana'] = $hrDetail->name_kana_fullwidth;
@@ -138,10 +163,17 @@ class ProfileHrDetailController extends Controller
         }
 
         $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
+        $previousJoinedAt = $profile->joined_at?->toDateString();
         $profile->update([
             ...$attributes,
             'import_locked' => true,
         ]);
+
+        if (array_key_exists('joined_at', $attributes)
+            && $profile->fresh()->joined_at?->toDateString() !== $previousJoinedAt) {
+            $user->load('affiliationHistories');
+            AffiliationStartDateAlignment::syncForUser($user);
+        }
 
         if (isset($attributes['name_kana'])) {
             $user->update([
