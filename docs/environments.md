@@ -58,8 +58,7 @@
 
 ## 環境変数の参照元
 
-- テンプレート: `.env.example`
-- 本番反映: `deploy/deploy-common.ps1` の `Get-CloudRunEnvVars` および各 deploy スクリプト
+- 参照: `deploy/deploy-common.ps1` の `Get-CloudRunEnvVars` および各 deploy スクリプト
 
 ## ローカルでポータルを試す
 

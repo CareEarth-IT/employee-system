@@ -15,8 +15,8 @@
 
 ## ローカル開発（XAMPP）
 
-1. `.env.example` を `.env` にコピーし `php artisan key:generate`
-2. SQLite または MySQL を設定（`.env.example` 参照）
+1. `.env` を用意し `php artisan key:generate`
+2. SQLite または MySQL を設定（`docs/environments.md` 参照）
 3. `php artisan migrate --seed`（必要に応じて）
 4. `http://employee.local/login` でログイン（`deploy/setup-employee-local-host.cmd` で hosts 設定可）
 
