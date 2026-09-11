@@ -20,6 +20,18 @@ class AffiliationPositionSync
         return $position !== '' && in_array($position, self::INVALID_POSITION_LABELS, true);
     }
 
+    /** 保存・表示用に役職を正規化する（空・一般・雇用形態ラベルは null） */
+    public static function normalizeStoredPosition(?string $position): ?string
+    {
+        $position = trim((string) $position);
+
+        if ($position === '' || self::isInvalidPositionLabel($position)) {
+            return null;
+        }
+
+        return $position;
+    }
+
     public static function resolveCorrectedPosition(User $user): ?string
     {
         $fromHr = trim((string) ($user->hrDetail?->position_primary ?? ''));

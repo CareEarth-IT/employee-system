@@ -93,12 +93,21 @@ class RegistrySectionByAssignmentTest extends TestCase
         $this->assertFalse(RegistrySectionByAssignment::hasRules('情報システム部'));
     }
 
-    public function test_empty_department_returns_standalone_sections(): void
+    public function test_empty_department_returns_no_sections(): void
+    {
+        $this->assertSame(
+            [],
+            RegistrySectionByAssignment::optionsFor('', '大阪'),
+        );
+    }
+
+    public function test_management_headquarters_department_has_administrative_affairs_section(): void
     {
         $this->assertSame(
             ['庶務課'],
-            RegistrySectionByAssignment::optionsFor('', '大阪'),
+            RegistrySectionByAssignment::optionsFor('管理本部', '大阪'),
         );
+        $this->assertTrue(RegistrySectionByAssignment::hasRules('管理本部'));
     }
 
     public function test_for_select_appends_legacy_section(): void

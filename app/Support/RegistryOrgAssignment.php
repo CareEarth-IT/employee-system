@@ -112,27 +112,52 @@ class RegistryOrgAssignment
     }
 
     /**
-     * @return array{department_primary: ?string, section_primary: ?string}
+     * 部署・管轄・課/チームの保存値を正規化する。
+     *
+     * @return array{0: ?string, 1: ?string, 2: ?string}
      */
-    public static function hrDetailPrimaryFromAffiliation(
+    public static function normalizePrimaryOrgStorage(
         ?string $department,
-        ?string $location,
-        ?string $combinedSection,
+        ?string $jurisdiction,
+        ?string $sectionPrimary,
     ): array {
-        $department = trim((string) $department);
-        $location = trim((string) $location);
-        $combinedSection = trim((string) $combinedSection);
+        [$department, $jurisdiction] = RegistryGrAssignment::normalizeOrgStorage(
+            $department,
+            $jurisdiction,
+            $sectionPrimary,
+        );
 
-        $split = RegistryTeamByAssignment::splitStoredAssignment(
-            $combinedSection !== '' ? $combinedSection : null,
-            $department !== '' ? $department : null,
-            $location !== '' ? $location : null,
+        $department = trim((string) $department);
+        $jurisdiction = trim((string) $jurisdiction);
+        $sectionPrimary = trim((string) $sectionPrimary);
+
+        if ($department === '' || $department !== RegistryGrAssignment::DEPARTMENT || str_contains($department, ',')) {
+            return [
+                $department !== '' ? $department : null,
+                $jurisdiction !== '' ? $jurisdiction : null,
+                $sectionPrimary !== '' ? $sectionPrimary : null,
+            ];
+        }
+
+        if ($jurisdiction === '' && $sectionPrimary !== '') {
+            foreach (['大阪', '東京', '名古屋', '福岡'] as $location) {
+                if (str_contains($sectionPrimary, $location) || preg_match('/_'.$location.'(?:$|,)/u', $sectionPrimary) === 1) {
+                    $jurisdiction = $location;
+                    break;
+                }
+            }
+        }
+
+        $split = self::splitForRegistryForm(
+            $sectionPrimary !== '' ? $sectionPrimary : null,
+            $department,
+            $jurisdiction !== '' ? $jurisdiction : null,
         );
 
         [$sectionStored, $teamStored] = array_slice(
             self::resolveForStorage(
                 $department,
-                $location,
+                $jurisdiction,
                 $split['section'],
                 $split['team'],
             ),
@@ -141,8 +166,55 @@ class RegistryOrgAssignment
         );
 
         return [
-            'department_primary' => $department !== '' ? $department : null,
-            'section_primary' => self::combine($sectionStored, $teamStored) ?? $sectionStored,
+            $department,
+            $jurisdiction !== '' ? $jurisdiction : null,
+            self::preserveSectionWhenNormalizationFails($sectionPrimary, $sectionStored, $teamStored),
+        ];
+    }
+
+    private static function preserveSectionWhenNormalizationFails(
+        string $originalSectionPrimary,
+        ?string $sectionStored,
+        ?string $teamStored,
+    ): ?string {
+        $normalizedSection = self::combine($sectionStored, $teamStored) ?? $sectionStored;
+
+        if ($originalSectionPrimary === '') {
+            return $normalizedSection;
+        }
+
+        if ($normalizedSection === null || $normalizedSection === '') {
+            return $originalSectionPrimary;
+        }
+
+        $originalParts = count(array_filter(array_map('trim', explode(',', $originalSectionPrimary))));
+        $normalizedParts = count(array_filter(array_map('trim', explode(',', $normalizedSection))));
+
+        if ($originalParts > max(2, $normalizedParts + 1)) {
+            return $originalSectionPrimary;
+        }
+
+        return $normalizedSection;
+    }
+
+    /**
+     * @return array{department_primary: ?string, section_primary: ?string, jurisdiction: ?string}
+     */
+    public static function hrDetailPrimaryFromAffiliation(
+        ?string $department,
+        ?string $location,
+        ?string $combinedSection,
+    ): array {
+        [$departmentPrimary, $jurisdiction, $sectionPrimary] = self::normalizePrimaryOrgStorage(
+            $department,
+            $location,
+            $combinedSection,
+        );
+
+        return [
+            'department_primary' => $departmentPrimary,
+            'section_primary' => $sectionPrimary,
+            'jurisdiction' => $jurisdiction,
         ];
     }
 }

@@ -123,6 +123,8 @@ class RegistryGrAssignment
      */
     public static function rosterDepartmentLabel(?string $jurisdiction, ?string $departmentPrimary): string
     {
+        [$departmentPrimary, $jurisdiction] = self::normalizeOrgStorage($departmentPrimary, $jurisdiction);
+
         $departmentPrimary = trim((string) $departmentPrimary);
         $jurisdiction = trim((string) $jurisdiction);
 
@@ -143,6 +145,108 @@ class RegistryGrAssignment
         }
 
         return $jurisdiction.'グローバル事業部';
+    }
+
+    /**
+     * HR詳細・所属の保存形式を GR 部含め正規化する。
+     *
+     * @return array{0: ?string, 1: ?string}
+     */
+    public static function normalizeOrgStorage(?string $department, ?string $jurisdiction, ?string $section = null): array
+    {
+        $department = trim((string) $department);
+        $jurisdiction = trim((string) $jurisdiction);
+        $section = trim((string) $section);
+
+        if ($department === '') {
+            return [null, $jurisdiction !== '' ? $jurisdiction : null];
+        }
+
+        if (str_contains($department, ',')) {
+            return self::normalizeCommaSeparatedDepartment($department, $jurisdiction, $section);
+        }
+
+        return self::normalizeSingleDepartment($department, $jurisdiction, $section);
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private static function normalizeSingleDepartment(string $department, string $jurisdiction, string $section): array
+    {
+        foreach (self::jurisdictions() as $location) {
+            if ($department === $location.'グローバル事業部') {
+                return [self::DEPARTMENT, $location];
+            }
+
+            if ($department === $location.'-GR部' || $department === $location.'‐GR部') {
+                return [self::DEPARTMENT, $location];
+            }
+        }
+
+        if ($department === self::DEPARTMENT) {
+            $jurisdiction = self::inferJurisdiction($department, $jurisdiction, $section) ?? $jurisdiction;
+
+            return [self::DEPARTMENT, $jurisdiction];
+        }
+
+        return [$department, $jurisdiction];
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private static function normalizeCommaSeparatedDepartment(string $department, string $jurisdiction, string $section): array
+    {
+        $parts = array_values(array_filter(
+            array_map('trim', explode(',', $department)),
+            static fn (string $part): bool => $part !== '',
+        ));
+
+        $normalizedParts = [];
+        $inferredJurisdiction = $jurisdiction;
+
+        foreach ($parts as $part) {
+            [$normalizedPart, $partJurisdiction] = self::normalizeSingleDepartment($part, $inferredJurisdiction, $section);
+            $normalizedParts[] = $normalizedPart;
+
+            if ($inferredJurisdiction === '' && $partJurisdiction !== '') {
+                $inferredJurisdiction = $partJurisdiction;
+            }
+        }
+
+        return [implode(',', $normalizedParts), $inferredJurisdiction];
+    }
+
+    private static function inferJurisdiction(string $department, string $jurisdiction, string $section): ?string
+    {
+        if ($jurisdiction !== '') {
+            return $jurisdiction;
+        }
+
+        foreach (self::jurisdictions() as $location) {
+            if (str_contains($department, $location) || str_contains($section, $location)) {
+                return $location;
+            }
+        }
+
+        if (preg_match('/_(大阪|東京|名古屋|福岡)(?:$|,)/u', $section, $matches) === 1) {
+            return $matches[1];
+        }
+
+        if (preg_match('/_(大阪|東京|名古屋|福岡)$/u', $section, $matches) === 1) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function jurisdictions(): array
+    {
+        return ['大阪', '東京', '名古屋', '福岡'];
     }
 
     /**
@@ -284,6 +388,47 @@ class RegistryGrAssignment
     }
 
     /**
+     * 保存済みの GR 課・チーム値（旧形式含む）をフォーム用の課・チームへ分解する。
+     *
+     * @return array{section: ?string, team: ?string}
+     */
+    public static function parseStoredAssignment(?string $location, ?string $combined): array
+    {
+        $combined = trim((string) $combined);
+
+        if ($combined === '') {
+            return ['section' => null, 'team' => null];
+        }
+
+        $location = trim((string) $location);
+
+        if ($location === '') {
+            $location = self::inferLocationFromStoredValue($combined) ?? '';
+        }
+
+        if (str_contains($combined, ',')) {
+            $parts = array_values(array_filter(
+                array_map('trim', explode(',', $combined)),
+                static fn (string $part): bool => $part !== '',
+            ));
+
+            return self::parseStoredAssignmentParts($location, $parts, $combined);
+        }
+
+        $parsed = self::parseStoredPart($location, $combined);
+
+        if ($parsed['team'] !== null && $parsed['section'] === null && $location !== '') {
+            $division = self::divisionFromTeamCanonical($location, $parsed['team']);
+
+            if ($division !== null) {
+                $parsed['section'] = self::canonicalSection($division, $location);
+            }
+        }
+
+        return self::toFormValues($location, $parsed['section'], $parsed['team']);
+    }
+
+    /**
      * @return array{section: ?string, team: ?string}
      */
     public static function toFormValues(?string $location, ?string $canonicalSection, ?string $canonicalTeam): array
@@ -406,5 +551,228 @@ class RegistryGrAssignment
         }
 
         return self::TEAM_RULES[$location][$division] ?? null;
+    }
+
+    /**
+     * @param  list<string>  $parts
+     * @return array{section: ?string, team: ?string}
+     */
+    private static function parseStoredAssignmentParts(string $location, array $parts, string $combined): array
+    {
+        $sectionCanonical = null;
+        $teamCandidates = [];
+        $unknownParts = [];
+
+        foreach ($parts as $part) {
+            if ($location !== '' && self::isCanonicalSection($part, $location)) {
+                $sectionCanonical = $part;
+
+                continue;
+            }
+
+            $parsed = self::parseStoredPart($location, $part);
+
+            if ($parsed['team'] !== null) {
+                $teamCandidates[] = $parsed['team'];
+
+                if ($sectionCanonical === null && $parsed['section'] !== null) {
+                    $sectionCanonical = $parsed['section'];
+                }
+
+                continue;
+            }
+
+            if ($parsed['section'] !== null && $location !== '' && self::isCanonicalSection($parsed['section'], $location)) {
+                $sectionCanonical = $parsed['section'];
+
+                continue;
+            }
+
+            $unknownParts[] = $part;
+        }
+
+        if ($unknownParts !== []) {
+            return ['section' => $combined, 'team' => null];
+        }
+
+        $teamCanonical = self::pickBestTeamCandidate($teamCandidates);
+
+        if ($teamCanonical === null && count(array_unique($teamCandidates)) > 1) {
+            return ['section' => $combined, 'team' => null];
+        }
+
+        if ($sectionCanonical === null && $teamCanonical !== null && $location !== '') {
+            $division = self::divisionFromTeamCanonical($location, $teamCanonical);
+
+            if ($division !== null) {
+                $sectionCanonical = self::canonicalSection($division, $location);
+            }
+        }
+
+        return self::toFormValues($location, $sectionCanonical, $teamCanonical);
+    }
+
+    /**
+     * @param  list<string>  $teams
+     */
+    private static function pickBestTeamCandidate(array $teams): ?string
+    {
+        $teams = array_values(array_unique(array_filter(
+            $teams,
+            static fn (string $team): bool => trim($team) !== '',
+        )));
+
+        if ($teams === []) {
+            return null;
+        }
+
+        if (count($teams) === 1) {
+            return $teams[0];
+        }
+
+        $childTeams = array_values(array_filter(
+            $teams,
+            static fn (string $team): bool => str_contains($team, '固定現場') || str_contains($team, 'エリア担当'),
+        ));
+
+        if (count($childTeams) === 1) {
+            return $childTeams[0];
+        }
+
+        if (count($childTeams) > 1) {
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{section: ?string, team: ?string}
+     */
+    private static function parseStoredPart(string $location, string $part): array
+    {
+        if ($location !== '') {
+            foreach (self::DIVISIONS as $division) {
+                if ($part === self::canonicalSection($division, $location) || $part === $division) {
+                    return [
+                        'section' => self::canonicalSection($division, $location),
+                        'team' => null,
+                    ];
+                }
+            }
+        }
+
+        foreach (self::jurisdictions() as $candidateLocation) {
+            if ($location !== '' && $location !== $candidateLocation) {
+                continue;
+            }
+
+            foreach (self::DIVISIONS as $division) {
+                $rules = self::TEAM_RULES[$candidateLocation][$division] ?? null;
+
+                if ($rules === null) {
+                    continue;
+                }
+
+                foreach ($rules as $label => $rule) {
+                    if (is_string($rule)) {
+                        if (self::storedValuesMatch($part, $rule) || self::storedValuesMatch($part, $label)) {
+                            return [
+                                'section' => self::canonicalSection($division, $candidateLocation),
+                                'team' => $rule,
+                            ];
+                        }
+
+                        continue;
+                    }
+
+                    $parent = $rule['parent'] ?? null;
+
+                    if ($parent !== null && (self::storedValuesMatch($part, $parent) || self::storedValuesMatch($part, $label))) {
+                        return [
+                            'section' => self::canonicalSection($division, $candidateLocation),
+                            'team' => $parent,
+                        ];
+                    }
+
+                    foreach ($rule['children'] ?? [] as $childLabel => $childCanonical) {
+                        if (self::storedValuesMatch($part, $childCanonical) || self::storedValuesMatch($part, $childLabel)) {
+                            return [
+                                'section' => self::canonicalSection($division, $candidateLocation),
+                                'team' => $childCanonical,
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($location !== '' && self::isCanonicalSection($part, $location)) {
+            return ['section' => $part, 'team' => null];
+        }
+
+        return ['section' => $part, 'team' => null];
+    }
+
+    private static function storedValuesMatch(string $stored, string $reference): bool
+    {
+        if ($stored === $reference) {
+            return true;
+        }
+
+        return self::normalizeComparable($stored) === self::normalizeComparable($reference);
+    }
+
+    private static function normalizeComparable(string $value): string
+    {
+        return preg_replace('/\s+/u', '', $value) ?? $value;
+    }
+
+    private static function inferLocationFromStoredValue(string $value): ?string
+    {
+        if (preg_match('/_(大阪|東京|名古屋|福岡)(?:$|,)/u', $value, $matches) === 1) {
+            return $matches[1];
+        }
+
+        foreach (self::jurisdictions() as $location) {
+            if (str_contains($value, $location)) {
+                return $location;
+            }
+        }
+
+        return null;
+    }
+
+    private static function divisionFromTeamCanonical(string $location, string $teamCanonical): ?string
+    {
+        foreach (self::DIVISIONS as $division) {
+            $rules = self::TEAM_RULES[$location][$division] ?? null;
+
+            if ($rules === null) {
+                continue;
+            }
+
+            foreach ($rules as $rule) {
+                if (is_string($rule) && self::storedValuesMatch($teamCanonical, $rule)) {
+                    return $division;
+                }
+
+                if (! is_array($rule)) {
+                    continue;
+                }
+
+                if (isset($rule['parent']) && self::storedValuesMatch($teamCanonical, $rule['parent'])) {
+                    return $division;
+                }
+
+                foreach ($rule['children'] ?? [] as $childCanonical) {
+                    if (self::storedValuesMatch($teamCanonical, $childCanonical)) {
+                        return $division;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 }

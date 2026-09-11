@@ -77,13 +77,8 @@ class EmployeeController extends Controller
 
     private static function hrDetailExportUrl(Request $request): string
     {
-        if (! EmployeeIndexQuery::hasSearchCriteria($request)) {
-            return route('hr-details.export', [
-                'status' => EmployeeIndexQuery::resolveStatus($request),
-            ]);
-        }
-
         $params = array_filter(array_merge(
+            ['status' => EmployeeIndexQuery::resolveStatus($request)],
             EmployeeIndexFilters::toQueryParams(EmployeeIndexFilters::parseFromRequest($request)),
             ['keyword' => trim((string) $request->query('keyword', ''))],
         ), fn ($value) => $value !== '' && $value !== []);

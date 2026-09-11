@@ -7,6 +7,8 @@ use App\Models\EmployeeHrDetail;
 use App\Models\EmployeeProfile;
 use App\Models\User;
 use App\Support\EmployeeIdRules;
+use App\Support\RegistryGrAssignment;
+use App\Support\RegistryOrgAssignment;
 
 class EmployeeBulkImporter
 {
@@ -654,7 +656,7 @@ class EmployeeBulkImporter
 
     private function resolvePosition(string $employeeTitle): string
     {
-        return trim($employeeTitle);
+        return \App\Support\AffiliationPositionSync::normalizeStoredPosition($employeeTitle) ?? '';
     }
 
     private function resolveEmploymentType(string $employeeType): string
@@ -1080,12 +1082,21 @@ class EmployeeBulkImporter
      */
     private function syncHrDetailFromRegistrationImport(User $user, array $payload): void
     {
+        [$departmentPrimary, $jurisdiction, $sectionPrimary] = RegistryOrgAssignment::normalizePrimaryOrgStorage(
+            trim((string) ($payload['department'] ?? '')),
+            trim((string) ($payload['location'] ?? '')),
+            trim((string) ($payload['section'] ?? '')),
+        );
+
         $updates = [
             'employment_type' => trim((string) ($payload['employment_type'] ?? '')) ?: null,
             'employment_status' => trim((string) ($payload['employment_status'] ?? '')) ?: '在籍',
-            'department_primary' => trim((string) ($payload['department'] ?? '')) ?: null,
-            'section_primary' => trim((string) ($payload['section'] ?? '')) ?: null,
-            'position_primary' => trim((string) ($payload['position'] ?? '')) ?: null,
+            'department_primary' => $departmentPrimary,
+            'jurisdiction' => $jurisdiction,
+            'section_primary' => $sectionPrimary,
+            'position_primary' => \App\Support\AffiliationPositionSync::normalizeStoredPosition(
+                trim((string) ($payload['position'] ?? ''))
+            ),
             'phone' => trim((string) ($payload['phone'] ?? '')) ?: null,
         ];
 
@@ -1148,7 +1159,16 @@ class EmployeeBulkImporter
 
         $department = trim((string) ($payload['department'] ?? ''));
         if ($department !== '' && $department !== '未設定') {
-            $updates['department_primary'] = $department;
+            [$departmentPrimary, $jurisdiction] = RegistryGrAssignment::normalizeOrgStorage(
+                $department,
+                trim((string) ($payload['jurisdiction'] ?? '')),
+                trim((string) ($payload['section'] ?? '')),
+            );
+            $updates['department_primary'] = $departmentPrimary;
+
+            if ($jurisdiction !== null) {
+                $updates['jurisdiction'] = $jurisdiction;
+            }
         }
 
         $companyPhone = \App\Support\CompanyPhone::normalize((string) ($payload['phone'] ?? ''));

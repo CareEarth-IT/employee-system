@@ -45,7 +45,7 @@ CSV
         $this->assertSame('CE', $detail->affiliation_code);
         $this->assertSame('管理本部', $detail->department_primary);
         $this->assertSame('庶務課', $detail->section_primary);
-        $this->assertSame('一般', $detail->position_primary);
+        $this->assertNull($detail->position_primary);
         $this->assertSame('在籍', $detail->employment_status);
         $this->assertSame('正社員', $detail->employment_type);
         $this->assertSame('080-1111-2222', $detail->company_phone);

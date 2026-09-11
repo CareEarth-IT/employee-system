@@ -20,6 +20,7 @@ class RegistryDepartmentOptionsTest extends TestCase
             '人事部',
             '食品事業部',
             '管理部',
+            '管理本部',
             '営業部',
             'GR部（グローバル部）',
         ], RegistryDepartmentOptions::options());
@@ -48,6 +49,18 @@ class RegistryDepartmentOptionsTest extends TestCase
         $this->assertSame(
             ['department' => '管理本部', 'section' => null],
             RegistryDepartmentOptions::resolveAffiliation('情報システム部', '庶務課'),
+        );
+        $this->assertSame(
+            ['department' => '管理本部', 'section' => null],
+            RegistryDepartmentOptions::resolveAffiliation('管理本部', '庶務課'),
+        );
+    }
+
+    public function test_management_headquarters_registry_form_department(): void
+    {
+        $this->assertSame(
+            '管理本部',
+            RegistryDepartmentOptions::registryFormDepartment('管理本部', '庶務課'),
         );
     }
 }

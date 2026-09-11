@@ -28,6 +28,10 @@ class EmployeeIndexTest extends TestCase
             ->assertSee('雇用形態', false)
             ->assertSee('アドレス', false)
             ->assertSee('電話番号', false)
+            ->assertSee('管轄', false)
+            ->assertSee('部署', false)
+            ->assertSee('課', false)
+            ->assertSee('役職', false)
             ->assertSee('aria-label="状況タブ"', false)
             ->assertSee('status=%E5%85%A8%E4%BD%93', false)
             ->assertSee('status=%E5%9C%A8%E7%B1%8D', false)
@@ -67,11 +71,131 @@ class EmployeeIndexTest extends TestCase
             ->assertSee('sample_user@careearth.info', false)
             ->assertSee('080-1234-5678', false)
             ->assertSeeInOrder([
+                '社員ID',
                 'Name (ENG)',
                 '名前 / カタカナ',
                 'アドレス',
                 '電話番号',
+                '状況',
+                '所属会社',
+                '管轄',
+                '部署',
+                '課',
+                '役職',
+                '雇用形態',
             ], false);
+    }
+
+    public function test_index_shows_org_columns_from_hr_detail_on_all_status_tabs(): void
+    {
+        $viewer = User::factory()->create();
+
+        $active = User::factory()->create([
+            'last_name' => '在籍',
+            'first_name' => '太郎',
+            'employee_id' => '11020',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $active->id,
+            'employment_status' => '在籍',
+            'jurisdiction' => '大阪',
+            'department_primary' => 'GR部（グローバル部）',
+            'section_primary' => 'GR-O_大阪,GR-O 送迎課_大阪',
+            'position_primary' => '一般',
+        ]);
+
+        $leave = User::factory()->create([
+            'last_name' => '休職',
+            'first_name' => '花子',
+            'employee_id' => '11021',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $leave->id,
+            'employment_status' => '休職',
+            'jurisdiction' => '東京',
+            'department_primary' => '通信事業部',
+            'section_primary' => '事業IT推進課',
+            'position_primary' => '課長',
+        ]);
+
+        $resigned = User::factory()->create([
+            'last_name' => '退職',
+            'first_name' => '次郎',
+            'employee_id' => '11022',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $resigned->id,
+            'employment_status' => '退職',
+            'jurisdiction' => '名古屋',
+            'department_primary' => '食品事業部',
+            'section_primary' => 'Food Sales部',
+            'position_primary' => 'マネージャー',
+        ]);
+
+        foreach (['全体', '在籍', '休職', '退職'] as $status) {
+            $response = $this->actingAs($viewer)
+                ->get(route('employees.index', ['status' => $status]))
+                ->assertOk()
+                ->assertSee('管轄', false)
+                ->assertSee('部署', false)
+                ->assertSee('課', false)
+                ->assertSee('役職', false);
+
+            if ($status === '全体') {
+                $response
+                    ->assertSee('大阪', false)
+                    ->assertSee('GR部（グローバル部）', false)
+                    ->assertSee('GR-O_大阪,GR-O 送迎課_大阪', false)
+                    ->assertSee('東京', false)
+                    ->assertSee('通信事業部', false)
+                    ->assertSee('事業IT推進課', false)
+                    ->assertSee('名古屋', false)
+                    ->assertSee('食品事業部', false)
+                    ->assertSee('Food Sales部', false);
+            }
+
+            if ($status === '在籍') {
+                $response
+                    ->assertSee('大阪', false)
+                    ->assertSee('GR部（グローバル部）', false)
+                    ->assertDontSee('通信事業部', false);
+            }
+
+            if ($status === '休職') {
+                $response
+                    ->assertSee('東京', false)
+                    ->assertSee('通信事業部', false)
+                    ->assertDontSee('GR部（グローバル部）', false);
+            }
+
+            if ($status === '退職') {
+                $response
+                    ->assertSee('名古屋', false)
+                    ->assertSee('食品事業部', false)
+                    ->assertDontSee('GR部（グローバル部）', false);
+            }
+        }
+    }
+
+    public function test_index_shows_dash_when_org_fields_are_empty(): void
+    {
+        $viewer = User::factory()->create();
+
+        $employee = User::factory()->create([
+            'last_name' => '未設定',
+            'first_name' => '太郎',
+            'employee_id' => '11023',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $employee->id,
+            'employment_status' => '在籍',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['status' => '在籍']))
+            ->assertOk()
+            ->assertSee('11023', false)
+            ->assertSee('—', false);
     }
 
     public function test_index_shows_multiple_company_phones_on_separate_lines(): void
@@ -517,8 +641,7 @@ class EmployeeIndexTest extends TestCase
             ->assertSee('在籍', false)
             ->assertSee('正社員', false)
             ->assertDontSee('10002', false)
-            ->assertDontSee('拠点', false)
-            ->assertDontSee('役職', false);
+            ->assertDontSee('拠点', false);
 
         $this->actingAs($viewer)
             ->get(route('employees.index', ['status' => '退職']))

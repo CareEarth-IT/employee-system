@@ -28,6 +28,9 @@ class RegistrySectionByAssignment
             '大阪' => ['業務課', '労務法務課', '情報管理課'],
             '東京' => ['業務課'],
         ],
+        RegistryDepartmentOptions::MANAGEMENT_HEADQUARTERS => [
+            '*' => ['庶務課'],
+        ],
         '営業部' => [
             '大阪' => ['人材育成課', 'SS課', '営業1課', '営業2課', '営業3課', '営業4課', '営業5課'],
             '東京' => ['営業1課', '営業2課', 'SS課'],
@@ -44,9 +47,7 @@ class RegistrySectionByAssignment
     ];
 
     /** @var list<string> 部署に紐づかず課のみで所属する選択肢 */
-    public const STANDALONE_SECTIONS = [
-        '庶務課',
-    ];
+    public const STANDALONE_SECTIONS = [];
 
     /**
      * @return list<string>

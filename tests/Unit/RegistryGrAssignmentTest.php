@@ -92,4 +92,100 @@ class RegistryGrAssignmentTest extends TestCase
         $this->assertSame('GR-O CS課 固定現場チーム_大阪', $team);
         $this->assertSame('GR-O_大阪', $sectionPrimary);
     }
+
+    public function test_normalize_org_storage_converts_legacy_gr_labels(): void
+    {
+        $this->assertSame(
+            [RegistryGrAssignment::DEPARTMENT, '大阪'],
+            RegistryGrAssignment::normalizeOrgStorage('大阪グローバル事業部', ''),
+        );
+        $this->assertSame(
+            [RegistryGrAssignment::DEPARTMENT, '東京'],
+            RegistryGrAssignment::normalizeOrgStorage('東京-GR部', '東京'),
+        );
+        $this->assertSame(
+            [RegistryGrAssignment::DEPARTMENT, '名古屋'],
+            RegistryGrAssignment::normalizeOrgStorage(RegistryGrAssignment::DEPARTMENT, '', 'GR-O送迎課_名古屋'),
+        );
+        $this->assertSame(
+            ['GR部（グローバル部）,役員,食品事業部', '大阪'],
+            RegistryGrAssignment::normalizeOrgStorage('大阪グローバル事業部,役員,食品事業部', ''),
+        );
+    }
+
+    public function test_normalize_primary_org_storage_converts_legacy_gr_section_and_team(): void
+    {
+        $this->assertSame(
+            [
+                RegistryGrAssignment::DEPARTMENT,
+                '名古屋',
+                'GR-O_名古屋,GR-O 送迎課_名古屋',
+            ],
+            RegistryOrgAssignment::normalizePrimaryOrgStorage(
+                RegistryGrAssignment::DEPARTMENT,
+                '',
+                'GR-O送迎課_名古屋',
+            ),
+        );
+
+        $this->assertSame(
+            [
+                RegistryGrAssignment::DEPARTMENT,
+                '大阪',
+                'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
+            ],
+            RegistryOrgAssignment::normalizePrimaryOrgStorage(
+                RegistryGrAssignment::DEPARTMENT,
+                '大阪',
+                'GR-O CS課 固定現場チーム_大阪',
+            ),
+        );
+    }
+
+    public function test_parse_stored_assignment_handles_legacy_team_only_values(): void
+    {
+        $this->assertSame(
+            ['section' => 'GR-O部', 'team' => '送迎課'],
+            RegistryGrAssignment::parseStoredAssignment('名古屋', 'GR-O送迎課_名古屋'),
+        );
+    }
+
+    public function test_parse_stored_assignment_preserves_unrecognized_legacy_values(): void
+    {
+        $legacy = 'GR-マネジメント_名古屋,GR-オペレーション_名古屋';
+
+        $this->assertSame(
+            ['section' => $legacy, 'team' => null],
+            RegistryGrAssignment::parseStoredAssignment('名古屋', $legacy),
+        );
+
+        $this->assertSame(
+            [
+                RegistryGrAssignment::DEPARTMENT,
+                '名古屋',
+                $legacy,
+            ],
+            RegistryOrgAssignment::normalizePrimaryOrgStorage(
+                RegistryGrAssignment::DEPARTMENT,
+                '名古屋',
+                $legacy,
+            ),
+        );
+    }
+
+    public function test_parse_stored_assignment_collapses_redundant_cs_parent(): void
+    {
+        $this->assertSame(
+            [
+                RegistryGrAssignment::DEPARTMENT,
+                '東京',
+                'GR-O_東京,GR-O CS課 固定現場チーム_東京',
+            ],
+            RegistryOrgAssignment::normalizePrimaryOrgStorage(
+                RegistryGrAssignment::DEPARTMENT,
+                '東京',
+                'GR-O_東京,GR-O CS課 固定現場チーム_東京,GR-O CS課_東京',
+            ),
+        );
+    }
 }

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\AffiliationHistory;
 use App\Models\EmployeeHrDetail;
 use App\Models\User;
+use App\Support\AffiliationPositionSync;
 use App\Support\EmployeeRosterCsv;
 use App\Support\RegistryDepartmentOptions;
 use Illuminate\Console\Command;
@@ -208,10 +209,14 @@ class SyncAffiliationOrgFromRosterCommand extends Command
         }
 
         if ($row['position'] !== '') {
-            $currentPosition = trim((string) ($affiliation?->position ?? ''));
+            $position = AffiliationPositionSync::normalizeStoredPosition($row['position']);
 
-            if ($currentPosition !== $row['position']) {
-                $updates['position'] = $row['position'];
+            if ($position !== null) {
+                $currentPosition = trim((string) ($affiliation?->position ?? ''));
+
+                if ($currentPosition !== $position) {
+                    $updates['position'] = $position;
+                }
             }
         }
 

@@ -187,12 +187,12 @@ class RegistryTeamByAssignment
         }
 
         if (! str_contains($combined, ',')) {
-            if (RegistryTeamOptions::isTeam($combined)) {
-                return ['section' => null, 'team' => $combined];
+            if ($department === RegistryGrAssignment::DEPARTMENT) {
+                return RegistryGrAssignment::parseStoredAssignment($location, $combined);
             }
 
-            if ($department === RegistryGrAssignment::DEPARTMENT) {
-                return RegistryGrAssignment::toFormValues($location, $combined, null);
+            if (RegistryTeamOptions::isTeam($combined)) {
+                return ['section' => null, 'team' => $combined];
             }
 
             return ['section' => $combined, 'team' => null];
@@ -201,7 +201,10 @@ class RegistryTeamByAssignment
         [$canonicalSection, $canonicalTeam] = array_map('trim', explode(',', $combined, 2));
 
         if ($department === RegistryGrAssignment::DEPARTMENT) {
-            return RegistryGrAssignment::toFormValues($location, $canonicalSection, $canonicalTeam);
+            return RegistryGrAssignment::parseStoredAssignment(
+                $location,
+                RegistryOrgAssignment::combine($canonicalSection, $canonicalTeam),
+            );
         }
 
         return [

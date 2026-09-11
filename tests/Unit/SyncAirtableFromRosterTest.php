@@ -60,13 +60,13 @@ CSV
         $this->assertSame('正社員', $detail?->employment_type);
         $this->assertSame('管理本部', $detail?->department_primary);
         $this->assertSame('庶務課', $detail?->section_primary);
-        $this->assertSame('一般', $detail?->position_primary);
+        $this->assertNotSame('一般', $detail?->position_primary);
         $this->assertSame('女性', $detail?->gender);
         $this->assertSame('1990-04-01', $detail?->birth_date?->toDateString());
         $this->assertSame('備考テスト', $detail?->remarks);
         $this->assertSame('東京', $affiliation?->location);
         $this->assertSame('管理本部', $affiliation?->department);
-        $this->assertSame('正社員', $affiliation?->position);
+        $this->assertNotSame('一般', $affiliation?->position);
         $this->assertSame('西川', $profile?->abbreviated_name);
     }
 

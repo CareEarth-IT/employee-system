@@ -600,6 +600,38 @@ class User extends Authenticatable
         return '—';
     }
 
+    /** 社員一覧などで表示する管轄 */
+    public function displayJurisdiction(): string
+    {
+        $value = trim((string) ($this->hrDetail?->jurisdiction ?? ''));
+
+        return $value !== '' ? $value : '—';
+    }
+
+    /** 社員一覧などで表示する部署 */
+    public function displayDepartmentPrimary(): string
+    {
+        $value = trim((string) ($this->hrDetail?->department_primary ?? ''));
+
+        return $value !== '' ? $value : '—';
+    }
+
+    /** 社員一覧などで表示する課 */
+    public function displaySectionPrimary(): string
+    {
+        $value = trim((string) ($this->hrDetail?->section_primary ?? ''));
+
+        return $value !== '' ? $value : '—';
+    }
+
+    /** 社員一覧などで表示する役職 */
+    public function displayPositionPrimary(): string
+    {
+        $value = \App\Support\AffiliationPositionSync::normalizeStoredPosition($this->hrDetail?->position_primary);
+
+        return $value !== null ? $value : '—';
+    }
+
     /** 人事部かどうか（users.role が admin、または現在有効な所属「部」に人事を含む） */
     public function isHr(): bool
     {
@@ -973,11 +1005,13 @@ class User extends Authenticatable
         return $this->isInformationSystems();
     }
 
-    /** 社員新規登録・編集画面: 情報システム部、または人事部・人事課 */
+    /** 社員新規登録・編集画面: 情報システム部、人事部・人事課、役員、庶務課 */
     public function canManageEmployeeRegistry(): bool
     {
         return $this->isInformationSystems()
-            || ($this->isHrDepartment() && $this->isHrSection());
+            || ($this->isHrDepartment() && $this->isHrSection())
+            || $this->isExecutive()
+            || $this->isAdministrativeAffairsSection();
     }
 
     /** 人事部による社員新規登録時に既定パスワードを使う（情シスは画面で入力） */

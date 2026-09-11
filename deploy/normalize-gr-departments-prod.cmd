@@ -1,0 +1,3 @@
+@echo off
+echo Normalizing GR department values on production Cloud SQL ...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0normalize-gr-departments-prod.ps1" %*

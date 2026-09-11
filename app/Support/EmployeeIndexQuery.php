@@ -42,16 +42,14 @@ final class EmployeeIndexQuery
                     ->limit(1),
             ]);
 
-        if (self::hasSearchCriteria($request)) {
-            EmployeeIndexFilters::apply($query, EmployeeIndexFilters::parseFromRequest($request));
+        EmployeeIndexFilters::apply($query, EmployeeIndexFilters::parseFromRequest($request));
 
-            $keyword = trim((string) $request->query('keyword', ''));
-            if ($keyword !== '') {
-                EmployeeKeywordSearch::apply($query, $keyword);
-            }
-        } else {
-            EmploymentStatus::applyUserStatusFilter($query, self::resolveStatus($request));
+        $keyword = trim((string) $request->query('keyword', ''));
+        if ($keyword !== '') {
+            EmployeeKeywordSearch::apply($query, $keyword);
         }
+
+        EmploymentStatus::applyUserStatusFilter($query, self::resolveStatus($request));
 
         return $query
             ->orderBy('last_name')

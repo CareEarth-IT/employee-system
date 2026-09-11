@@ -79,12 +79,14 @@ class SyncFromRosterCommand extends Command
 
         foreach (self::STEPS as $index => $commandClass) {
             $step = $index + 1;
-            $commandName = (new $commandClass)->getName();
+            $command = new $commandClass;
+            $commandName = $command->getName();
+            $stepOptions = $this->optionsForStep($command, $options);
 
             $this->info("==> Step {$step}/".count(self::STEPS).": {$commandName}");
             $this->newLine();
 
-            $exitCode = Artisan::call($commandClass, $options);
+            $exitCode = Artisan::call($commandClass, $stepOptions);
             $this->output->write(Artisan::output());
 
             if ($exitCode !== self::SUCCESS) {
@@ -115,5 +117,29 @@ class SyncFromRosterCommand extends Command
         }
 
         return base_path($file);
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    private function optionsForStep(Command $command, array $options): array
+    {
+        $definition = $command->getDefinition();
+        $stepOptions = [];
+
+        if ($definition->hasArgument('file')) {
+            $stepOptions['file'] = $options['file'];
+        }
+
+        if ($definition->hasOption('dry-run') && isset($options['--dry-run'])) {
+            $stepOptions['--dry-run'] = $options['--dry-run'];
+        }
+
+        if ($definition->hasOption('match-email-only') && isset($options['--match-email-only'])) {
+            $stepOptions['--match-email-only'] = $options['--match-email-only'];
+        }
+
+        return $stepOptions;
     }
 }

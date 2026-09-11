@@ -55,16 +55,22 @@ class ExecutivePermissionsTest extends TestCase
         $is = $this->userInAffiliation('情報システム部', 'システム課', '一般');
         $hr = $this->userInAffiliation('人事部', '人事課', '一般');
         $hrGeneral = $this->userInAffiliation('人事部', '総務課', '一般');
+        $executive = $this->userInAffiliation('役員', '役員', '代表');
+        $administrativeAffairs = $this->userInAffiliation('経理部', '庶務課', '一般');
         $other = User::factory()->create();
 
         $this->assertTrue($is->canManageEmployeeRegistry());
         $this->assertTrue($hr->canManageEmployeeRegistry());
         $this->assertFalse($hrGeneral->canManageEmployeeRegistry());
+        $this->assertTrue($executive->canManageEmployeeRegistry());
+        $this->assertTrue($administrativeAffairs->canManageEmployeeRegistry());
         $this->assertFalse($other->canManageEmployeeRegistry());
 
         $this->assertTrue($is->shouldForceProfileEditMode($other));
         $this->assertTrue($hr->shouldForceProfileEditMode($other));
         $this->assertFalse($hrGeneral->shouldForceProfileEditMode($other));
+        $this->assertTrue($executive->shouldForceProfileEditMode($other));
+        $this->assertFalse($administrativeAffairs->shouldForceProfileEditMode($other));
         $this->assertFalse($other->shouldForceProfileEditMode($other));
     }
 

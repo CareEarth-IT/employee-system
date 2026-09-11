@@ -67,6 +67,26 @@ class HrDetailOrgFormState
             $input[$sectionField] = RegistryOrgAssignment::combine($sectionStored, $teamStored)
                 ?? ($sectionStored !== '' && $sectionStored !== null ? $sectionStored : null);
             unset($input[$teamField]);
+
+            if ($suffix === 'primary') {
+                [$normalizedDepartment, $normalizedJurisdiction, $normalizedSection] = RegistryOrgAssignment::normalizePrimaryOrgStorage(
+                    (string) ($input[$departmentField] ?? ''),
+                    (string) ($input['jurisdiction'] ?? ''),
+                    (string) ($input[$sectionField] ?? ''),
+                );
+
+                if ($normalizedDepartment !== null) {
+                    $input[$departmentField] = $normalizedDepartment;
+                }
+
+                if ($normalizedJurisdiction !== null) {
+                    $input['jurisdiction'] = $normalizedJurisdiction;
+                }
+
+                if ($normalizedSection !== null) {
+                    $input[$sectionField] = $normalizedSection;
+                }
+            }
         }
 
         return $input;

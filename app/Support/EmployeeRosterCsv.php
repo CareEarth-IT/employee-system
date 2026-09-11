@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\User;
+use App\Support\AffiliationPositionSync;
 
 class EmployeeRosterCsv
 {
@@ -195,7 +196,9 @@ class EmployeeRosterCsv
             $department = self::normalizeTextField(self::cellValue($data, $indexes['department']));
             $section = self::normalizeTextField(self::cellValue($data, $indexes['section']));
             $location = self::normalizeTextField(self::cellValue($data, $indexes['location']));
-            $position = self::normalizeTextField(self::cellValue($data, $indexes['position']));
+            $position = AffiliationPositionSync::normalizeStoredPosition(
+                self::normalizeTextField(self::cellValue($data, $indexes['position'])),
+            ) ?? '';
             $employmentType = self::normalizeTextField(self::cellValue($data, $indexes['employment_type']));
 
             if (
@@ -414,7 +417,9 @@ class EmployeeRosterCsv
             ) ?? '';
             $departmentPrimary = self::normalizeTextField(self::cellValue($data, $indexes['department_primary']));
             $sectionPrimary = self::normalizeTextField(self::cellValue($data, $indexes['section_primary']));
-            $positionPrimary = self::normalizeTextField(self::cellValue($data, $indexes['position_primary']));
+            $positionPrimary = AffiliationPositionSync::normalizeStoredPosition(
+                self::normalizeTextField(self::cellValue($data, $indexes['position_primary'])),
+            ) ?? '';
 
             if (
                 $affiliationCode === ''

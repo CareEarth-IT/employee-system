@@ -144,7 +144,7 @@ class SyncHrDetailOrgPrimaryFromRosterCommand extends Command
             'section_primary',
             'position_primary',
         ] as $field) {
-            $csvValue = $row[$field];
+            $csvValue = \App\Support\AffiliationPositionSync::normalizeStoredPosition($row[$field]) ?? '';
 
             if ($csvValue === '') {
                 continue;

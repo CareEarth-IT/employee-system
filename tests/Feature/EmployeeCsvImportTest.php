@@ -98,7 +98,7 @@ class EmployeeCsvImportTest extends TestCase
         $this->assertSame('A002', $created->employee_id);
         $this->assertSame('通信部', $created->currentAffiliation()?->department);
         $this->assertSame('事業IT推進課', $created->currentAffiliation()?->section);
-        $this->assertSame('一般', $created->currentAffiliation()?->position);
+        $this->assertNull($created->currentAffiliation()?->position);
         $this->assertSame('在籍', $created->displayEmploymentStatus());
         $this->assertSame('新規', $created->profile?->abbreviated_name);
         $this->assertTrue($created->must_change_password);
@@ -156,7 +156,7 @@ class EmployeeCsvImportTest extends TestCase
         $this->assertSame('営業 太郎', $created->name);
         $this->assertSame('エイギョウ', $created->profile?->abbreviated_name);
         $this->assertSame('営業部', $created->currentAffiliation()?->department);
-        $this->assertSame('一般', $created->currentAffiliation()?->position);
+        $this->assertNull($created->currentAffiliation()?->position);
     }
 
     public function test_csv_import_rejects_invalid_employee_code(): void

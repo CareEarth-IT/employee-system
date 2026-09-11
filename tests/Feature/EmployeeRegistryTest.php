@@ -35,6 +35,34 @@ class EmployeeRegistryTest extends TestCase
             ->assertDontSee('社員追加 CSV', false);
     }
 
+    public function test_executive_user_sees_registry_links(): void
+    {
+        $user = $this->userInAffiliation('役員', '役員');
+
+        $this->actingAs($user)
+            ->get(route('employees.index'))
+            ->assertOk()
+            ->assertSee('新規登録', false);
+
+        $this->actingAs($user)
+            ->get(route('employees.create'))
+            ->assertOk();
+    }
+
+    public function test_administrative_affairs_section_user_sees_registry_links(): void
+    {
+        $user = $this->userInAffiliation('経理部', '庶務課');
+
+        $this->actingAs($user)
+            ->get(route('employees.index'))
+            ->assertOk()
+            ->assertSee('新規登録', false);
+
+        $this->actingAs($user)
+            ->get(route('employees.create'))
+            ->assertOk();
+    }
+
     public function test_hr_department_without_hr_section_cannot_manage_registry(): void
     {
         $user = $this->userInAffiliation('人事部', '総務課');
@@ -88,6 +116,7 @@ class EmployeeRegistryTest extends TestCase
         $this->assertSame('営業部', $affiliation?->department);
         $this->assertSame('大阪', $affiliation?->location);
 
+        $this->assertSame('大阪', $created->hrDetail?->jurisdiction);
         $this->assertSame('正社員', $created->hrDetail?->employment_type);
         $this->assertSame('在籍', $created->hrDetail?->employment_status);
         $this->assertSame('CE', $created->hrDetail?->affiliation_code);
@@ -190,7 +219,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10978',
-                'department' => '',
+                'department' => '管理本部',
                 'section' => '庶務課',
             ]))
             ->assertRedirect(route('employees.create'));
@@ -203,7 +232,7 @@ class EmployeeRegistryTest extends TestCase
         $this->assertSame('庶務課', $created->hrDetail?->section_primary);
     }
 
-    public function test_store_rejects_administrative_affairs_section_when_department_is_selected(): void
+    public function test_store_rejects_administrative_affairs_section_for_other_departments(): void
     {
         $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
 
@@ -218,6 +247,28 @@ class EmployeeRegistryTest extends TestCase
                 'section' => '庶務課',
             ]))
             ->assertSessionHasErrors(['section']);
+    }
+
+    public function test_store_accepts_management_headquarters_with_administrative_affairs_section(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'name' => '管理 太郎',
+                'email' => 'management_hq@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10976',
+                'department' => '管理本部',
+                'section' => '庶務課',
+            ]))
+            ->assertRedirect(route('employees.create'));
+
+        $created = User::query()->where('email', 'management_hq@careearth.info')->firstOrFail();
+
+        $this->assertSame('管理本部', $created->currentAffiliation()?->department);
+        $this->assertSame('庶務課', $created->currentAffiliation()?->section);
     }
 
     public function test_registry_user_can_create_food_logistic_employee_without_team(): void
@@ -675,6 +726,7 @@ class EmployeeRegistryTest extends TestCase
             ->assertOk()
             ->assertSee('name="department"', false)
             ->assertSee('M&A戦略推進部')
+            ->assertSee('管理本部', false)
             ->assertSee('食品事業部', false)
             ->assertSee('GR部（グローバル部）', false)
             ->assertSee('美容事業部', false)

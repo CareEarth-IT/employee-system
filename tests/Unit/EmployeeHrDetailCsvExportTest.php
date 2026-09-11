@@ -309,7 +309,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $this->assertStringNotContainsString($other->employee_id, $csv);
     }
 
-    public function test_export_all_with_search_does_not_limit_to_active_status_tab(): void
+    public function test_export_all_with_search_respects_status_tab(): void
     {
         $viewer = $this->userInAffiliation('人事部', '総務課');
 
@@ -317,6 +317,27 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $resigned = $this->createListedEmployee('検索', '退職', '12042', '退職', 'CareEarth');
 
         $response = $this->actingAs($viewer)->get(route('hr-details.export', [
+            'status' => '在籍',
+            'filters' => [
+                ['field' => 'company', 'op' => 'eq', 'value' => 'CareEarth'],
+            ],
+        ]));
+
+        $response->assertOk();
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString($active->employee_id, $csv);
+        $this->assertStringNotContainsString($resigned->employee_id, $csv);
+    }
+
+    public function test_export_all_with_search_and_all_status_tab_includes_all_statuses(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '総務課');
+
+        $active = $this->createListedEmployee('検索', '在籍', '12043', '在籍', 'CareEarth');
+        $resigned = $this->createListedEmployee('検索', '退職', '12044', '退職', 'CareEarth');
+
+        $response = $this->actingAs($viewer)->get(route('hr-details.export', [
+            'status' => '全体',
             'filters' => [
                 ['field' => 'company', 'op' => 'eq', 'value' => 'CareEarth'],
             ],

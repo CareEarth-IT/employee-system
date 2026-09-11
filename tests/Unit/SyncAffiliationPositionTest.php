@@ -89,6 +89,30 @@ class SyncAffiliationPositionTest extends TestCase
         $this->assertSame('正社員', $affiliation->fresh()->position);
     }
 
+    public function test_command_clears_invalid_position_primary_when_no_valid_replacement(): void
+    {
+        $user = User::factory()->create();
+
+        EmployeeHrDetail::create([
+            'user_id' => $user->id,
+            'employment_type' => '正社員',
+            'position_primary' => '一般',
+        ]);
+
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2024-04-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'location' => '東京',
+            'position' => '課長',
+        ]);
+
+        Artisan::call(SyncAffiliationPositionCommand::class);
+
+        $this->assertNull($user->fresh()->hrDetail?->position_primary);
+        $this->assertSame('課長', $user->fresh()->currentAffiliation()?->position);
+    }
+
     public function test_command_clears_invalid_position_when_hr_detail_has_no_position(): void
     {
         $user = User::factory()->create();

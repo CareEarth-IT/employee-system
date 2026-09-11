@@ -50,6 +50,7 @@ class RegistryOrgAssignmentTest extends TestCase
 
         $this->assertSame('Food Sales部', $primary['department_primary']);
         $this->assertSame('法人チーム', $primary['section_primary']);
+        $this->assertSame('大阪', $primary['jurisdiction']);
     }
 
     public function test_hr_detail_primary_from_food_department_with_section_and_team(): void

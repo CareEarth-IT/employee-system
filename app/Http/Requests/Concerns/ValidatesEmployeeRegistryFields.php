@@ -114,6 +114,10 @@ trait ValidatesEmployeeRegistryFields
                             $fail('課を選択してください。');
                         }
 
+                        if ($department === RegistryDepartmentOptions::MANAGEMENT_HEADQUARTERS) {
+                            $fail('課を選択してください。');
+                        }
+
                         return;
                     }
 

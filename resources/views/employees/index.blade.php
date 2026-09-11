@@ -2,7 +2,7 @@
 
 @section('title', '社員一覧 - CE-Group 社員専用')
 
-@section('mainWidthClass', 'max-w-[96rem]')
+@section('mainWidthClass', 'max-w-[96rem] pb-5')
 
 @section('content')
 @php
@@ -218,27 +218,31 @@
             <span class="text-slate-500">／ 社員ID: {{ $direction === 'desc' ? '降順' : '昇順' }}</span>
         @endif
     </div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-base">
-            <colgroup>
-                <col class="w-[11%]">
-                <col class="w-[13%]">
-                <col class="w-[26%]">
-                <col class="w-[12%]">
-                <col class="w-[8%]">
-                <col class="w-[12%]">
-                <col class="w-[8%]">
-                <col class="w-[10%]">
-            </colgroup>
-            <thead class="bg-slate-50 border-b border-slate-200">
-                <tr class="text-left text-slate-500">
-                    <th class="px-3 py-3">Name (ENG)</th>
-                    <th class="px-3 py-3">名前 / カタカナ</th>
-                    <th class="px-3 py-3">アドレス</th>
-                    <th class="px-3 py-3">電話番号</th>
-                    <th class="px-3 py-3 whitespace-nowrap">状況</th>
-                    <th class="px-3 py-3">所属会社</th>
-                    <th class="px-3 py-3 whitespace-nowrap">
+    @php
+        $employeeListHeaders = [
+            'Name (ENG)',
+            '名前 / カタカナ',
+            'アドレス',
+            '電話番号',
+            '状況',
+            '所属会社',
+            '管轄',
+            '部署',
+            '課',
+            '役職',
+        ];
+        $tableHeadCell = 'px-3 py-3 align-middle text-left font-medium text-slate-600 border-l border-slate-300 first:border-l-0 whitespace-nowrap';
+        $tableBodyCell = 'px-3 py-3 align-top border-l border-slate-300 first:border-l-0 whitespace-nowrap';
+    @endphp
+    <div id="employee-table-panel">
+        <div
+            id="employee-table-scroll"
+            class="overflow-x-auto overflow-y-visible [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        >
+            <table id="employee-table" class="w-max min-w-full border-collapse border border-slate-300 text-base">
+            <thead class="bg-slate-50 border-b border-slate-300">
+                <tr>
+                    <th class="{{ $tableHeadCell }} min-w-[5.5rem]">
                         <a
                             href="{{ $employeeIdSortUrl }}"
                             class="inline-flex items-center gap-1 text-slate-600 hover:text-blue-600"
@@ -257,7 +261,19 @@
                             </span>
                         </a>
                     </th>
-                    <th class="px-3 py-3 whitespace-nowrap">雇用形態</th>
+                    @foreach ($employeeListHeaders as $header)
+                        <th @class([
+                            $tableHeadCell,
+                            'min-w-[8rem]' => in_array($header, ['Name (ENG)', '名前 / カタカナ', '所属会社'], true),
+                            'min-w-[14rem]' => $header === 'アドレス',
+                            'min-w-[9rem]' => $header === '電話番号',
+                            'min-w-[4.5rem]' => in_array($header, ['状況', '管轄'], true),
+                            'min-w-[10rem]' => $header === '部署',
+                            'min-w-[18rem]' => $header === '課',
+                            'min-w-[6rem]' => $header === '役職',
+                        ])>{{ $header }}</th>
+                    @endforeach
+                    <th class="{{ $tableHeadCell }} min-w-[6rem]">雇用形態</th>
                 </tr>
             </thead>
             <tbody>
@@ -268,14 +284,15 @@
                             : route('users.profile.show', $employee);
                         $englishName = $employee->profile?->english_name;
                     @endphp
-                    <tr class="border-b border-slate-100 hover:bg-slate-50">
-                        <td class="px-3 py-3 align-top">
-                            <a href="{{ $profileUrl }}" class="text-blue-600 hover:underline break-words">
+                    <tr class="border-b border-slate-200 hover:bg-slate-50">
+                        <td class="{{ $tableBodyCell }} min-w-[5.5rem]">{{ $employee->employee_id ?? '—' }}</td>
+                        <td class="{{ $tableBodyCell }} min-w-[8rem]">
+                            <a href="{{ $profileUrl }}" class="text-blue-600 hover:underline">
                                 {{ $englishName ?: $employee->displayName() }}
                             </a>
                         </td>
-                        <td class="px-3 py-3 align-top">
-                            <a href="{{ $profileUrl }}" class="text-blue-600 hover:underline break-words">
+                        <td class="{{ $tableBodyCell }} min-w-[8rem]">
+                            <a href="{{ $profileUrl }}" class="text-blue-600 hover:underline">
                                 @if ($employee->profile?->name_kana)
                                     {{ $employee->profile->name_kana }}
                                 @else
@@ -283,26 +300,29 @@
                                 @endif
                             </a>
                         </td>
-                        <td class="px-3 py-3 align-top">
+                        <td class="{{ $tableBodyCell }} min-w-[14rem]">
                             @if ($employee->email)
-                                <a href="mailto:{{ $employee->email }}" class="text-blue-600 hover:underline break-all">
+                                <a href="mailto:{{ $employee->email }}" class="text-blue-600 hover:underline">
                                     {{ $employee->email }}
                                 </a>
                             @else
                                 —
                             @endif
                         </td>
-                        <td class="px-3 py-3 align-top">
+                        <td class="{{ $tableBodyCell }} min-w-[9rem]">
                             @include('partials.company-phones', ['phones' => $employee->hrDetail?->companyPhoneList() ?? []])
                         </td>
-                        <td class="px-3 py-3 align-top whitespace-nowrap">{{ $employee->displayEmploymentStatus() }}</td>
-                        <td class="px-3 py-3 align-top">{{ $employee->displayCompany() }}</td>
-                        <td class="px-3 py-3 align-top whitespace-nowrap">{{ $employee->employee_id ?? '—' }}</td>
-                        <td class="px-3 py-3 align-top whitespace-nowrap">{{ $employee->displayEmploymentType() }}</td>
+                        <td class="{{ $tableBodyCell }} min-w-[4.5rem]">{{ $employee->displayEmploymentStatus() }}</td>
+                        <td class="{{ $tableBodyCell }} min-w-[8rem]">{{ $employee->displayCompany() }}</td>
+                        <td class="{{ $tableBodyCell }} min-w-[4.5rem]">{{ $employee->displayJurisdiction() }}</td>
+                        <td class="{{ $tableBodyCell }} min-w-[10rem]">{{ $employee->displayDepartmentPrimary() }}</td>
+                        <td class="{{ $tableBodyCell }} min-w-[18rem]">{{ $employee->displaySectionPrimary() }}</td>
+                        <td class="{{ $tableBodyCell }} min-w-[6rem]">{{ $employee->displayPositionPrimary() }}</td>
+                        <td class="{{ $tableBodyCell }} min-w-[6rem]">{{ $employee->displayEmploymentType() }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="px-4 py-8 text-center text-slate-400">
+                        <td colspan="12" class="px-4 py-8 text-center text-slate-400">
                             @if ($hasFilters)
                                 検索条件に該当する社員はいません
                             @else
@@ -313,7 +333,16 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
+</div>
+
+<div
+    id="employee-table-hscroll"
+    class="fixed bottom-0 z-30 hidden overflow-x-auto overflow-y-hidden border-t border-slate-300 bg-white/95 py-0.5 shadow-[0_-4px_12px_rgba(15,23,42,0.08)] backdrop-blur-sm"
+    aria-label="社員一覧の横スクロール"
+>
+    <div id="employee-table-hscroll-inner" class="h-px"></div>
 </div>
 @endsection
 
@@ -807,6 +836,80 @@
     }
 
     updateAddButtonState();
+})();
+
+(() => {
+    const panel = document.getElementById('employee-table-panel');
+    const scroll = document.getElementById('employee-table-scroll');
+    const bar = document.getElementById('employee-table-hscroll');
+    const inner = document.getElementById('employee-table-hscroll-inner');
+    const table = document.getElementById('employee-table');
+
+    if (!panel || !scroll || !bar || !inner || !table) {
+        return;
+    }
+
+    let syncing = false;
+
+    const needsHorizontalScroll = () => scroll.scrollWidth > scroll.clientWidth + 1;
+
+    const syncWidth = () => {
+        inner.style.width = `${table.scrollWidth}px`;
+    };
+
+    const syncBarPosition = () => {
+        const rect = panel.getBoundingClientRect();
+        const visible = rect.top < window.innerHeight && rect.bottom > 0;
+
+        if (!visible || !needsHorizontalScroll()) {
+            bar.classList.add('hidden');
+            return;
+        }
+
+        bar.classList.remove('hidden');
+        bar.style.left = `${rect.left}px`;
+        bar.style.width = `${rect.width}px`;
+    };
+
+    const syncScrollFromTable = () => {
+        if (syncing) {
+            return;
+        }
+
+        syncing = true;
+        bar.scrollLeft = scroll.scrollLeft;
+        syncing = false;
+    };
+
+    const syncScrollFromBar = () => {
+        if (syncing) {
+            return;
+        }
+
+        syncing = true;
+        scroll.scrollLeft = bar.scrollLeft;
+        syncing = false;
+    };
+
+    const refresh = () => {
+        syncWidth();
+        syncBarPosition();
+        syncScrollFromTable();
+    };
+
+    refresh();
+
+    scroll.addEventListener('scroll', syncScrollFromTable, { passive: true });
+    bar.addEventListener('scroll', syncScrollFromBar, { passive: true });
+    window.addEventListener('resize', refresh, { passive: true });
+    window.addEventListener('scroll', syncBarPosition, { passive: true });
+
+    if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(refresh);
+        observer.observe(table);
+        observer.observe(panel);
+        observer.observe(scroll);
+    }
 })();
 </script>
 @endpush

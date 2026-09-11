@@ -48,3 +48,8 @@ database/imports/_wp-*.json
 /deploy/*sakura*
 /deploy/check-sakura-relay-job-logs.*
 /deploy/__pycache__/
+
+# 本番社員データの CSV エクスポート（個人情報 — GitHub に載せない）
+/deploy/*-prod.csv
+/deploy/gr-employees*.csv
+/deploy/compare-roster*.csv

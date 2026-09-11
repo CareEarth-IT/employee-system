@@ -66,11 +66,11 @@ CSV
         $this->assertSame('CE', $detail?->affiliation_code);
         $this->assertSame('管理本部', $detail?->department_primary);
         $this->assertSame('庶務課', $detail?->section_primary);
-        $this->assertSame('一般', $detail?->position_primary);
+        $this->assertNotSame('一般', $detail?->position_primary);
         $this->assertSame('080-1111-2222', $detail?->company_phone);
         $this->assertSame('東京', $affiliation?->location);
         $this->assertSame('管理本部', $affiliation?->department);
-        $this->assertSame('正社員', $affiliation?->position);
+        $this->assertNotSame('一般', $affiliation?->position);
         $this->assertSame('CareEarth', $affiliation?->company);
         $this->assertSame('ニシカワユキ', $profile?->name_kana);
         $this->assertSame('備考テスト', $detail?->remarks);

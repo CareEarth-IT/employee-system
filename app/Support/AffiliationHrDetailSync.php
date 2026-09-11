@@ -31,18 +31,24 @@ final class AffiliationHrDetailSync
      */
     public static function hrDetailAttributesFromAffiliation(AffiliationHistory $affiliation): array
     {
-        $orgPrimary = RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
+        [$department, $location] = RegistryGrAssignment::normalizeOrgStorage(
             $affiliation->department,
             $affiliation->location,
             $affiliation->section,
         );
 
+        $orgPrimary = RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
+            $department,
+            $location,
+            $affiliation->section,
+        );
+
         return [
             'affiliation_code' => User::mapCompanyToAffiliationCode($affiliation->company),
-            'jurisdiction' => self::nullableString($affiliation->location),
+            'jurisdiction' => $orgPrimary['jurisdiction'],
             'department_primary' => $orgPrimary['department_primary'],
             'section_primary' => $orgPrimary['section_primary'],
-            'position_primary' => self::nullableString($affiliation->position),
+            'position_primary' => self::nullablePosition($affiliation->position),
         ];
     }
 
@@ -51,16 +57,22 @@ final class AffiliationHrDetailSync
      */
     public static function affiliationAttributesFromHrDetail(EmployeeHrDetail $detail): array
     {
-        $split = RegistryOrgAssignment::splitForRegistryForm(
-            $detail->section_primary,
+        [$departmentPrimary, $jurisdiction] = RegistryGrAssignment::normalizeOrgStorage(
             $detail->department_primary,
             $detail->jurisdiction,
+            $detail->section_primary,
+        );
+
+        $split = RegistryOrgAssignment::splitForRegistryForm(
+            $detail->section_primary,
+            $departmentPrimary,
+            $jurisdiction,
         );
 
         [$sectionStored, $teamStored] = array_slice(
             RegistryOrgAssignment::resolveForStorage(
-                (string) ($detail->department_primary ?? ''),
-                (string) ($detail->jurisdiction ?? ''),
+                (string) $departmentPrimary,
+                (string) $jurisdiction,
                 $split['section'],
                 $split['team'],
             ),
@@ -70,10 +82,10 @@ final class AffiliationHrDetailSync
 
         return [
             'company' => User::mapAffiliationCodeToCompany((string) ($detail->affiliation_code ?? '')),
-            'location' => self::nullableString($detail->jurisdiction),
-            'department' => self::nullableString($detail->department_primary),
+            'location' => self::nullableString($jurisdiction),
+            'department' => self::nullableString($departmentPrimary),
             'section' => RegistryOrgAssignment::combine($sectionStored, $teamStored),
-            'position' => self::nullableString($detail->position_primary),
+            'position' => self::nullablePosition($detail->position_primary),
         ];
     }
 
@@ -174,6 +186,11 @@ final class AffiliationHrDetailSync
         $value = trim((string) $value);
 
         return $value !== '' ? $value : null;
+    }
+
+    private static function nullablePosition(mixed $value): ?string
+    {
+        return AffiliationPositionSync::normalizeStoredPosition(is_string($value) || $value === null ? $value : (string) $value);
     }
 
     private static function normalizeValue(mixed $value): ?string

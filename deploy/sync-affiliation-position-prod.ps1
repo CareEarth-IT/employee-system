@@ -31,8 +31,8 @@ Set-Location $Root
 Write-Host "Image   : $Image"
 Write-Host "Job     : $JobName"
 Write-Host ""
-Write-Host "WARNING: Clears invalid affiliation position labels (正社員, 一般, etc.)."
-Write-Host "         Applies HR detail position_primary when available."
+Write-Host "WARNING: Clears invalid position labels (正社員, 一般, etc.) from affiliation and HR detail."
+Write-Host "         Applies valid HR detail position_primary to affiliation when available."
 Write-Host ""
 
 if ((Invoke-Gcloud config set project $ProjectId) -ne 0) {

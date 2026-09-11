@@ -6,6 +6,8 @@ class RegistryDepartmentOptions
 {
     public const FOOD_DEPARTMENT = '食品事業部';
 
+    public const MANAGEMENT_HEADQUARTERS = '管理本部';
+
     /** @var list<string> 社員登録フォームの所属部署 */
     public const OPTIONS = [
         'M&A戦略推進部',
@@ -18,6 +20,7 @@ class RegistryDepartmentOptions
         '人事部',
         self::FOOD_DEPARTMENT,
         '管理部',
+        self::MANAGEMENT_HEADQUARTERS,
         '営業部',
         'GR部（グローバル部）',
     ];
@@ -58,6 +61,7 @@ class RegistryDepartmentOptions
         'Food Logistic部' => ['department' => 'Food Logistic部', 'section' => null],
         'Food GA部' => ['department' => 'Food GA部', 'section' => null],
         '管理部' => ['department' => '管理部', 'section' => null],
+        self::MANAGEMENT_HEADQUARTERS => ['department' => self::MANAGEMENT_HEADQUARTERS, 'section' => null],
         '営業部' => ['department' => '営業部', 'section' => null],
         'GR部（グローバル部）' => ['department' => 'GR部（グローバル部）', 'section' => null],
     ];
@@ -95,7 +99,7 @@ class RegistryDepartmentOptions
     public static function resolveAffiliation(string $registryDepartment, ?string $section = null): array
     {
         if (trim((string) $section) === '庶務課') {
-            return ['department' => '管理本部', 'section' => null];
+            return ['department' => self::MANAGEMENT_HEADQUARTERS, 'section' => null];
         }
 
         return self::AFFILIATION_MAP[$registryDepartment]
@@ -104,17 +108,23 @@ class RegistryDepartmentOptions
 
     public static function registryFormDepartment(?string $storedDepartment, ?string $storedSection): string
     {
+        $storedDepartment = trim((string) $storedDepartment);
+
+        if ($storedDepartment === self::MANAGEMENT_HEADQUARTERS) {
+            return self::MANAGEMENT_HEADQUARTERS;
+        }
+
         if (RegistrySectionByAssignment::isStandaloneSection($storedSection)) {
             return '';
         }
 
-        return trim((string) $storedDepartment);
+        return $storedDepartment;
     }
 
     public static function hrDetailDepartment(?string $registryDepartment, ?string $section): ?string
     {
         if (RegistrySectionByAssignment::isStandaloneSection($section)) {
-            return '管理本部';
+            return self::MANAGEMENT_HEADQUARTERS;
         }
 
         $registryDepartment = trim((string) $registryDepartment);

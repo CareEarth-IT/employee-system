@@ -42,7 +42,7 @@ CSV
         $this->assertCount(1, $orgRows);
         $this->assertSame('管理本部', $orgRows[0]['department_primary']);
         $this->assertSame('庶務課', $orgRows[0]['section_primary']);
-        $this->assertSame('一般', $orgRows[0]['position_primary']);
+        $this->assertSame('', $orgRows[0]['position_primary']);
         $this->assertSame('', $orgRows[0]['affiliation_code']);
 
         $affiliationOrgRows = EmployeeRosterCsv::readAffiliationOrgRows($path);
