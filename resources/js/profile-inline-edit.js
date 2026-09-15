@@ -277,19 +277,115 @@ async function persistField(element, field, value, updateUrl, csrf) {
     element.textContent = display === '' ? '—' : display;
 
     if (field === 'employee_id' && rawValue !== '') {
-        syncEmployeeUpdateUrl(element, rawValue);
+        syncProfileUrls(rawValue, payload.profile_urls ?? null);
     }
 }
 
-function syncEmployeeUpdateUrl(element, employeeId) {
-    const updateUrl = element.dataset.updateUrl;
+const profileUserPathPattern = /(\/users\/)[^/]+(\/profile)/;
 
-    if (! updateUrl) {
+function syncProfileUrls(employeeId, profileUrls = null) {
+    if (profileUrls) {
+        document.querySelectorAll('[data-update-url]').forEach((element) => {
+            if (profileUrls.update) {
+                element.dataset.updateUrl = profileUrls.update;
+            }
+        });
+
+        document.querySelectorAll('[data-profile-inline-edit]').forEach((root) => {
+            if (profileUrls.update) {
+                root.dataset.updateUrl = profileUrls.update;
+            }
+        });
+
+        if (profileUrls.update) {
+            document.querySelectorAll('form[action*="/profile"]').forEach((form) => {
+                if (form.action.includes('/users/')) {
+                    form.action = profileUrls.update;
+                }
+            });
+        }
+
+        if (profileUrls.show) {
+            document.querySelectorAll('a[href*="/users/"][href*="/profile"]').forEach((link) => {
+                if (link.href.includes('/profile/edit')) {
+                    if (profileUrls.edit) {
+                        link.href = profileUrls.edit;
+                    }
+
+                    return;
+                }
+
+                if (link.href.includes('/profile/hr-detail')) {
+                    if (profileUrls.hr_detail_edit) {
+                        link.href = profileUrls.hr_detail_edit;
+                    }
+
+                    return;
+                }
+
+                link.href = profileUrls.show;
+            });
+        }
+
+        if (profileUrls.destroy) {
+            document.querySelectorAll('form[action*="/users/"][action*="/profile"]').forEach((form) => {
+                if (form.querySelector('input[name="_method"][value="DELETE"]')) {
+                    form.action = profileUrls.destroy;
+                }
+            });
+        }
+
+        if (profileUrls.redirect) {
+            window.history.replaceState(null, '', profileUrls.redirect);
+        }
+
         return;
     }
 
-    element.dataset.updateUrl = updateUrl.replace(
-        /(\/users\/)[^/]+(\/profile)/,
-        `$1${encodeURIComponent(employeeId)}$2`,
-    );
+    const encodedEmployeeId = encodeURIComponent(employeeId);
+
+    document.querySelectorAll('[data-update-url]').forEach((element) => {
+        if (! element.dataset.updateUrl) {
+            return;
+        }
+
+        element.dataset.updateUrl = element.dataset.updateUrl.replace(
+            profileUserPathPattern,
+            `$1${encodedEmployeeId}$2`,
+        );
+    });
+
+    document.querySelectorAll('[data-profile-inline-edit]').forEach((root) => {
+        if (! root.dataset.updateUrl) {
+            return;
+        }
+
+        root.dataset.updateUrl = root.dataset.updateUrl.replace(
+            profileUserPathPattern,
+            `$1${encodedEmployeeId}$2`,
+        );
+    });
+
+    document.querySelectorAll('form[action*="/users/"][action*="/profile"]').forEach((form) => {
+        form.action = form.action.replace(
+            profileUserPathPattern,
+            `$1${encodedEmployeeId}$2`,
+        );
+    });
+
+    document.querySelectorAll('a[href*="/users/"][href*="/profile"]').forEach((link) => {
+        link.href = link.href.replace(
+            profileUserPathPattern,
+            `$1${encodedEmployeeId}$2`,
+        );
+    });
+
+    if (profileUserPathPattern.test(window.location.pathname)) {
+        const nextPath = window.location.pathname.replace(
+            profileUserPathPattern,
+            `$1${encodedEmployeeId}$2`,
+        );
+
+        window.history.replaceState(null, '', `${nextPath}${window.location.search}`);
+    }
 }

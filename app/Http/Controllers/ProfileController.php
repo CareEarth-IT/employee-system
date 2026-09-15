@@ -148,10 +148,16 @@ class ProfileController extends Controller
                 $fields['email'] = $this->inlineTextField($target->email);
             }
 
-            return response()->json([
+            $payload = [
                 'message' => 'プロフィールを保存しました。',
                 'fields' => $fields,
-            ]);
+            ];
+
+            if (array_key_exists('employee_id', $identityData)) {
+                $payload['profile_urls'] = $this->profileUrls($target, $viewer);
+            }
+
+            return response()->json($payload);
         }
 
         return redirect()
@@ -203,6 +209,29 @@ class ProfileController extends Controller
         return [
             'value' => $value,
             'display' => $value === '' ? '—' : $value,
+        ];
+    }
+
+    /**
+     * @return array{show: string, edit: string, update: string, hr_detail_edit: string, destroy: string}
+     */
+    private function profileUrls(User $target, User $viewer): array
+    {
+        $forceEdit = $viewer->shouldForceProfileEditMode($target);
+
+        return [
+            'show' => UserRouteHelper::route($target, 'profile.show', 'users.profile.show'),
+            'edit' => UserRouteHelper::route($target, 'profile.edit', 'users.profile.edit'),
+            'update' => UserRouteHelper::route($target, 'profile.update', 'users.profile.update'),
+            'hr_detail_edit' => UserRouteHelper::route($target, 'profile.hr-detail.edit', 'users.profile.hr-detail.edit'),
+            'destroy' => UserRouteHelper::isSelf($target)
+                ? ''
+                : route('users.profile.destroy', $target),
+            'redirect' => UserRouteHelper::route(
+                $target,
+                $forceEdit ? 'profile.edit' : 'profile.show',
+                $forceEdit ? 'users.profile.edit' : 'users.profile.show',
+            ),
         ];
     }
 }

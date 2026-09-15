@@ -265,11 +265,56 @@ class ProfileInlineEditTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('fields.email.value', 'new@careearth.info')
-            ->assertJsonPath('fields.employee_id.value', '20002');
+            ->assertJsonPath('fields.employee_id.value', '20002')
+            ->assertJsonPath('profile_urls.update', route('users.profile.update', '20002'))
+            ->assertJsonPath('profile_urls.show', route('users.profile.show', '20002'))
+            ->assertJsonPath('profile_urls.edit', route('users.profile.edit', '20002'));
 
         $target->refresh();
         $this->assertSame('new@careearth.info', $target->email);
         $this->assertSame('20002', $target->employee_id);
+    }
+
+    public function test_profile_form_save_works_after_employee_id_is_changed(): void
+    {
+        $viewer = $this->userInDepartment('情報システム部');
+        $target = User::factory()->create([
+            'employee_id' => '10001',
+        ]);
+        EmployeeProfile::create([
+            'user_id' => $target->id,
+            'name_kana' => '変更前',
+        ]);
+
+        $this->actingAs($viewer)->putJson(route('users.profile.update', '10001'), [
+            'employee_id' => '20002',
+        ])->assertOk();
+
+        $this->actingAs($viewer)
+            ->put(route('users.profile.update', '20002'), [
+                'name_kana' => '変更後',
+            ])
+            ->assertRedirect(route('users.profile.edit', '20002'));
+
+        $this->assertSame('変更後', $target->fresh()->profile?->name_kana);
+    }
+
+    public function test_profile_update_with_stale_employee_id_in_url_returns_not_found(): void
+    {
+        $viewer = $this->userInDepartment('情報システム部');
+        $target = User::factory()->create([
+            'employee_id' => '10001',
+        ]);
+
+        $this->actingAs($viewer)->putJson(route('users.profile.update', '10001'), [
+            'employee_id' => '20002',
+        ])->assertOk();
+
+        $this->actingAs($viewer)
+            ->put(route('users.profile.update', '10001'), [
+                'name_kana' => '失敗',
+            ])
+            ->assertNotFound();
     }
 
     public function test_hr_cannot_update_other_employee_identity(): void
