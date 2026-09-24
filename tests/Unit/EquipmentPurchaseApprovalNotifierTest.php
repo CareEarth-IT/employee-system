@@ -66,6 +66,38 @@ class EquipmentPurchaseApprovalNotifierTest extends TestCase
         $this->assertFalse($formerRepresentative->canApproveEquipmentPurchase($application));
     }
 
+    public function test_information_systems_over_30k_goes_to_nakamoto_not_internal_over_30k_approver(): void
+    {
+        Mail::fake();
+
+        $applicant = $this->makeUser('applicant@careearth.info', '情報システム部', '一般');
+        $this->makeUser('mariko_nakamoto@careearth.info', '情報システム部', '一般');
+        $this->makeUser('takuya_nishi@careearth.info', '経理部', '課長代理', '総務課');
+
+        $application = $this->makeEquipmentApplication(
+            $applicant,
+            EquipmentPurchaseApplication::TYPE_INTERNAL_OVER_30K,
+            35000,
+            department: '情報システム部',
+        );
+
+        app(EquipmentPurchaseApprovalNotifier::class)->notifySubmitted($application);
+
+        Mail::assertSent(EquipmentPurchaseApprovalRequested::class, 1);
+        Mail::assertSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) {
+            return $mail->hasTo('mariko_nakamoto@careearth.info');
+        });
+        Mail::assertNotSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) {
+            return $mail->hasTo('takuya_nishi@careearth.info');
+        });
+
+        $nakamoto = User::where('email', 'mariko_nakamoto@careearth.info')->firstOrFail();
+        $nishi = User::where('email', 'takuya_nishi@careearth.info')->firstOrFail();
+
+        $this->assertTrue($nakamoto->canApproveEquipmentPurchase($application));
+        $this->assertFalse($nishi->canApproveEquipmentPurchase($application));
+    }
+
     public function test_global_manager_approver_can_approve_all_superior_applications_without_mail(): void
     {
         Mail::fake();

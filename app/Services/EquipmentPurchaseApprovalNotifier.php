@@ -122,19 +122,18 @@ class EquipmentPurchaseApprovalNotifier
                 $seenEmails,
                 $application->foodDesignatedApproverEmails(),
             );
+        } elseif ($application->belongsToInformationSystemsDepartment()) {
+            // 情シス申請は金額問わず指定承認者のみ（社内3万円以上の西さん宛と二重送信しない）
+            $this->appendConfiguredEmailRecipients(
+                $recipients,
+                $seenEmails,
+                EquipmentPurchaseApplication::informationSystemsApproverEmails(),
+            );
         } elseif ($application->requiresInternalOver30kApprover()) {
             $this->appendConfiguredEmailRecipients(
                 $recipients,
                 $seenEmails,
                 EquipmentPurchaseApplication::internalOver30kApproverEmails(),
-            );
-        }
-
-        if ($application->belongsToInformationSystemsDepartment()) {
-            $this->appendConfiguredEmailRecipients(
-                $recipients,
-                $seenEmails,
-                EquipmentPurchaseApplication::informationSystemsApproverEmails(),
             );
         }
 

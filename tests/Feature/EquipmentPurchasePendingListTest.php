@@ -54,6 +54,28 @@ class EquipmentPurchasePendingListTest extends TestCase
         $response->assertDontSee($internal->product_name, false);
     }
 
+    public function test_information_systems_approver_can_open_over_30k_approve_page_from_mail_link(): void
+    {
+        $nakamoto = $this->makeUser('mariko_nakamoto@careearth.info', '情報システム部', '一般');
+        $nishi = $this->makeUser('takuya_nishi@careearth.info', '経理部', '課長代理', '総務課');
+        $applicant = $this->makeUser('applicant@careearth.info', '情報システム部', '一般');
+
+        $application = $this->makeApplication(
+            $applicant,
+            EquipmentPurchaseApplication::TYPE_INTERNAL_OVER_30K,
+            35000,
+            department: '情報システム部',
+        );
+
+        $this->actingAs($nakamoto)
+            ->get(route('equipment-purchases.approve', $application))
+            ->assertOk();
+
+        $this->actingAs($nishi)
+            ->get(route('equipment-purchases.approve', $application))
+            ->assertForbidden();
+    }
+
     public function test_manager_sees_onsite_over_30k_matched_by_applicant_affiliation(): void
     {
         $manager = $this->makeUser('manager@careearth.info', '大阪営業部', '部長');

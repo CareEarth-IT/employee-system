@@ -372,7 +372,9 @@ trait HasApprovalScopes
 
     public function scopeApprovableByInternalOver30kApprover($query)
     {
-        return $query->where('application_type', self::TYPE_INTERNAL_OVER_30K);
+        // 情報システム部の社内3万円以上は情シス指定承認者（中元）側の対象
+        return $query->where('application_type', self::TYPE_INTERNAL_OVER_30K)
+            ->notBelongingToInformationSystemsDepartment();
     }
 
     /**

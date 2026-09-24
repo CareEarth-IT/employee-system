@@ -1327,12 +1327,13 @@ class User extends Authenticatable
             return true;
         }
 
-        if ($application->requiresInternalOver30kApprover()) {
-            return $this->isDesignatedInternalOver30kApprover();
-        }
-
+        // 情報システム部の申請は金額・申請タイプに関わらず指定承認者（中元）
         if ($application->belongsToInformationSystemsDepartment()) {
             return $this->isDesignatedInformationSystemsApprover();
+        }
+
+        if ($application->requiresInternalOver30kApprover()) {
+            return $this->isDesignatedInternalOver30kApprover();
         }
 
         if (! $application->requiresManagerApproval()) {
@@ -1396,7 +1397,7 @@ class User extends Authenticatable
         return $this->currentAffiliation()?->department;
     }
 
-    /** 部長承認: 経理部・総務課は3万円未満（情報システム部以外）、社内3万円以上は指定承認者、部長・支店長はその他の3万円以上かつ同部署、情報システム部指定承認者は情報システム部の申請すべて。全部署横断アカウントは上長以上を全部署で承認可。食品備品は桃谷店・物流センター・緊急対応の指定承認者 */
+    /** 部長承認: 経理部・総務課は3万円未満（情報システム部以外）、情報システム部は金額問わず指定承認者、社内3万円以上（情シス以外）は指定承認者、部長・支店長はその他の3万円以上かつ同部署。全部署横断アカウントは上長以上を全部署で承認可。食品備品は桃谷店・物流センター・緊急対応の指定承認者 */
     public function canApproveEquipmentPurchase(EquipmentPurchaseApplication $application): bool
     {
         if ($this->isGlobalEquipmentApprover() && $application->requiresSuperiorApproval()) {
@@ -1405,6 +1406,11 @@ class User extends Authenticatable
 
         if ($application->requiresFoodDesignatedApprover()) {
             return $this->isDesignatedFoodApproverFor($application);
+        }
+
+        // 情報システム部の申請は社内3万円以上ルールより優先し、指定承認者（中元）が承認する
+        if ($application->belongsToInformationSystemsDepartment()) {
+            return $this->isDesignatedInformationSystemsApprover();
         }
 
         if ($application->requiresInternalOver30kApprover()) {
