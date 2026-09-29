@@ -34,6 +34,7 @@ class User extends Authenticatable
      */
     public const ATTENDANCE_DEPARTMENTS = [
         '営業',
+        '人材派遣',
         '特定技能',
         '不動産',
         '通信',
@@ -85,6 +86,7 @@ class User extends Authenticatable
      */
     public const DUAL_APPROVAL_TOKYO_DEPARTMENT_KEYWORDS = [
         '営業部',
+        '人材派遣事業部',
         'SS課',
         '管理部',
         'グローバル事業部',

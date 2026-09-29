@@ -18,7 +18,9 @@ trait ValidatesAffiliationOrgFields
         $this->merge([
             'company' => $nullable($this->input('company', '')),
             'location' => $nullable($this->input('location', '')),
-            'department' => $nullable($this->input('department', '')),
+            'department' => (($department = $nullable($this->input('department', ''))) !== null
+                ? RegistryDepartmentOptions::normalizeDepartment($department)
+                : null),
             'section' => $nullable($this->input('section', '')),
             'team' => $nullable($this->input('team', '')),
         ]);

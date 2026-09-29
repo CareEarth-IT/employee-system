@@ -97,7 +97,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10999',
-                'department' => '営業部',
+                'department' => '人材派遣事業部',
             ]));
 
         $response->assertRedirect(route('employees.create'));
@@ -113,7 +113,7 @@ class EmployeeRegistryTest extends TestCase
 
         $affiliation = $created->currentAffiliation();
         $this->assertSame('CareEarth', $affiliation?->company);
-        $this->assertSame('営業部', $affiliation?->department);
+        $this->assertSame('人材派遣事業部', $affiliation?->department);
         $this->assertSame('大阪', $affiliation?->location);
 
         $this->assertSame('大阪', $created->hrDetail?->jurisdiction);
@@ -293,7 +293,7 @@ class EmployeeRegistryTest extends TestCase
         $this->assertSame('Food Logistic部', $created->currentAffiliation()?->section);
     }
 
-    public function test_registry_user_can_create_sales_employee_with_osaka_section(): void
+    public function test_registry_user_can_create_staffing_employee_with_osaka_section(): void
     {
         $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
 
@@ -304,7 +304,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10974',
-                'department' => '営業部',
+                'department' => '人材派遣事業部',
                 'location' => '大阪',
                 'section' => '営業1課',
             ]))
@@ -312,6 +312,7 @@ class EmployeeRegistryTest extends TestCase
 
         $created = User::query()->where('email', 'sales_taro@careearth.info')->firstOrFail();
 
+        $this->assertSame('人材派遣事業部', $created->currentAffiliation()?->department);
         $this->assertSame('営業1課', $created->currentAffiliation()?->section);
     }
 
@@ -326,7 +327,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10973',
-                'department' => '営業部',
+                'department' => '人材派遣事業部',
                 'location' => '東京',
                 'section' => '営業3課',
             ]))
@@ -732,7 +733,8 @@ class EmployeeRegistryTest extends TestCase
             ->assertSee('美容事業部', false)
             ->assertSee('不動産事業部', false)
             ->assertSee('通信事業部', false)
-            ->assertSee('特定技能事業部', false);
+            ->assertSee('特定技能事業部', false)
+            ->assertSee('人材派遣事業部', false);
     }
 
     public function test_create_form_restricts_employee_id_input_to_digits(): void

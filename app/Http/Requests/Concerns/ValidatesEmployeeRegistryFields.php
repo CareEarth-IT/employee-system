@@ -23,7 +23,9 @@ trait ValidatesEmployeeRegistryFields
         $this->merge([
             'name' => trim((string) $this->input('name', '')),
             'email' => strtolower(trim((string) $this->input('email', ''))),
-            'department' => trim((string) $this->input('department', '')),
+            'department' => RegistryDepartmentOptions::normalizeDepartment(
+                trim((string) $this->input('department', '')),
+            ),
             'company' => trim((string) $this->input('company', '')),
             'section' => $nullable($this->input('section', '')),
             'team' => $nullable($this->input('team', '')),

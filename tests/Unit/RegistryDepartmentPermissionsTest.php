@@ -59,7 +59,14 @@ class RegistryDepartmentPermissionsTest extends TestCase
         $this->assertTrue($user->isAccountingDepartment());
     }
 
-    public function test_sales_department_gets_attendance_access(): void
+    public function test_staffing_department_gets_attendance_access(): void
+    {
+        $user = $this->userInRegistryDepartment('人材派遣事業部');
+
+        $this->assertTrue($user->canViewAttendanceSection());
+    }
+
+    public function test_legacy_sales_department_still_gets_attendance_access(): void
     {
         $user = $this->userInRegistryDepartment('営業部');
 
@@ -117,6 +124,7 @@ class RegistryDepartmentPermissionsTest extends TestCase
             'Food Logistic部' => ['food'],
             'Food GA部' => ['food'],
             '経理部' => ['specified-skills', 'real-estate'],
+            '人材派遣事業部' => ['dispatch'],
         ];
 
         $provider = [];

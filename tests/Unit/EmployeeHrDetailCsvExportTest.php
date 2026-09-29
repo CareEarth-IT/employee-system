@@ -230,6 +230,37 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $this->assertStringContainsString($resigned->employee_id, $csv);
     }
 
+    public function test_stream_query_exports_every_row_when_result_exceeds_lazy_chunk_and_ordered_by_name(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '総務課');
+
+        $expectedIds = [];
+        for ($i = 0; $i < 105; $i++) {
+            $employeeId = (string) (13000 + $i);
+            $user = User::factory()->create([
+                'last_name' => sprintf('Z%03d', 104 - $i),
+                'first_name' => 'CSV',
+                'employee_id' => $employeeId,
+            ]);
+            $this->markEmploymentStatus($user);
+            $expectedIds[] = $employeeId;
+        }
+
+        $query = User::query()
+            ->with(['profile', 'hrDetail'])
+            ->whereIn('employee_id', $expectedIds)
+            ->orderBy('last_name')
+            ->orderBy('first_name');
+
+        ob_start();
+        app(EmployeeHrDetailCsvExporter::class)->streamQuery($query, $viewer);
+        $csv = (string) ob_get_clean();
+
+        foreach ($expectedIds as $employeeId) {
+            $this->assertStringContainsString($employeeId, $csv);
+        }
+    }
+
     public function test_export_all_without_search_respects_status_tab(): void
     {
         $viewer = $this->userInAffiliation('人事部', '総務課');

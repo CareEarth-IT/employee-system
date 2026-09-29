@@ -8,6 +8,13 @@ class RegistryDepartmentOptions
 
     public const MANAGEMENT_HEADQUARTERS = '管理本部';
 
+    public const STAFFING_DEPARTMENT = '人材派遣事業部';
+
+    /** @var array<string, string> 旧部署名 → 現行名 */
+    public const LEGACY_DEPARTMENT_ALIASES = [
+        '営業部' => self::STAFFING_DEPARTMENT,
+    ];
+
     /** @var list<string> 社員登録フォームの所属部署 */
     public const OPTIONS = [
         'M&A戦略推進部',
@@ -21,7 +28,7 @@ class RegistryDepartmentOptions
         self::FOOD_DEPARTMENT,
         '管理部',
         self::MANAGEMENT_HEADQUARTERS,
-        '営業部',
+        self::STAFFING_DEPARTMENT,
         'GR部（グローバル部）',
     ];
 
@@ -41,6 +48,7 @@ class RegistryDepartmentOptions
         'Food Retail部' => ['food'],
         'Food Logistic部' => ['food'],
         'Food GA部' => ['food'],
+        self::STAFFING_DEPARTMENT => ['dispatch'],
     ];
 
     /**
@@ -62,7 +70,7 @@ class RegistryDepartmentOptions
         'Food GA部' => ['department' => 'Food GA部', 'section' => null],
         '管理部' => ['department' => '管理部', 'section' => null],
         self::MANAGEMENT_HEADQUARTERS => ['department' => self::MANAGEMENT_HEADQUARTERS, 'section' => null],
-        '営業部' => ['department' => '営業部', 'section' => null],
+        self::STAFFING_DEPARTMENT => ['department' => self::STAFFING_DEPARTMENT, 'section' => null],
         'GR部（グローバル部）' => ['department' => 'GR部（グローバル部）', 'section' => null],
     ];
 
@@ -74,10 +82,18 @@ class RegistryDepartmentOptions
         return self::OPTIONS;
     }
 
+    public static function normalizeDepartment(?string $department): string
+    {
+        $department = trim((string) $department);
+
+        return self::LEGACY_DEPARTMENT_ALIASES[$department] ?? $department;
+    }
+
     public static function isRegistryDepartment(?string $department): bool
     {
-        return $department !== null
-            && $department !== ''
+        $department = self::normalizeDepartment($department);
+
+        return $department !== ''
             && in_array($department, self::OPTIONS, true);
     }
 
@@ -86,6 +102,8 @@ class RegistryDepartmentOptions
      */
     public static function dashboardTabsFor(?string $registryDepartment): array
     {
+        $registryDepartment = self::normalizeDepartment($registryDepartment);
+
         if (! self::isRegistryDepartment($registryDepartment)) {
             return [];
         }
@@ -102,13 +120,15 @@ class RegistryDepartmentOptions
             return ['department' => self::MANAGEMENT_HEADQUARTERS, 'section' => null];
         }
 
+        $registryDepartment = self::normalizeDepartment($registryDepartment);
+
         return self::AFFILIATION_MAP[$registryDepartment]
             ?? ['department' => $registryDepartment, 'section' => null];
     }
 
     public static function registryFormDepartment(?string $storedDepartment, ?string $storedSection): string
     {
-        $storedDepartment = trim((string) $storedDepartment);
+        $storedDepartment = self::normalizeDepartment($storedDepartment);
 
         if ($storedDepartment === self::MANAGEMENT_HEADQUARTERS) {
             return self::MANAGEMENT_HEADQUARTERS;
@@ -127,7 +147,7 @@ class RegistryDepartmentOptions
             return self::MANAGEMENT_HEADQUARTERS;
         }
 
-        $registryDepartment = trim((string) $registryDepartment);
+        $registryDepartment = self::normalizeDepartment($registryDepartment);
 
         return $registryDepartment !== '' ? $registryDepartment : null;
     }
@@ -137,7 +157,9 @@ class RegistryDepartmentOptions
      */
     public static function forSelect(?string $current = null): array
     {
-        if ($current === null || $current === '' || in_array($current, self::OPTIONS, true)) {
+        $current = self::normalizeDepartment($current);
+
+        if ($current === '' || in_array($current, self::OPTIONS, true)) {
             return self::OPTIONS;
         }
 

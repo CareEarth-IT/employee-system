@@ -36,23 +36,28 @@ class RegistrySectionByAssignmentTest extends TestCase
         $this->assertSame([], RegistrySectionByAssignment::optionsFor('管理部', ''));
     }
 
-    public function test_sales_department_sections_depend_on_location(): void
+    public function test_staffing_department_sections_depend_on_location(): void
     {
+        $expectedOsaka = ['人材育成課', 'SS課', '営業1課', '営業2課', '営業3課', '営業4課', '営業5課'];
         $this->assertSame(
-            ['人材育成課', 'SS課', '営業1課', '営業2課', '営業3課', '営業4課', '営業5課'],
+            $expectedOsaka,
+            RegistrySectionByAssignment::optionsFor('人材派遣事業部', '大阪'),
+        );
+        $this->assertSame(
+            $expectedOsaka,
             RegistrySectionByAssignment::optionsFor('営業部', '大阪'),
         );
         $this->assertSame(
             ['営業1課', '営業2課', 'SS課'],
-            RegistrySectionByAssignment::optionsFor('営業部', '東京'),
+            RegistrySectionByAssignment::optionsFor('人材派遣事業部', '東京'),
         );
         $this->assertSame(
             ['営業課_名古屋', 'SS課_名古屋'],
-            RegistrySectionByAssignment::optionsFor('営業部', '名古屋'),
+            RegistrySectionByAssignment::optionsFor('人材派遣事業部', '名古屋'),
         );
         $this->assertSame(
             ['営業課_福岡', 'SS課_福岡'],
-            RegistrySectionByAssignment::optionsFor('営業部', '福岡'),
+            RegistrySectionByAssignment::optionsFor('人材派遣事業部', '福岡'),
         );
     }
 

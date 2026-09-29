@@ -97,7 +97,7 @@ class AffiliationOrgFieldsTest extends TestCase
                 'is_current' => '1',
                 'company' => 'CareEarth',
                 'location' => '大阪',
-                'department' => '営業部',
+                'department' => '人材派遣事業部',
                 'section' => '営業1課',
                 'position' => '一般',
                 'action' => 'save',
@@ -108,7 +108,7 @@ class AffiliationOrgFieldsTest extends TestCase
 
         $this->assertNotNull($affiliation);
         $this->assertNull($affiliation->start_date);
-        $this->assertSame('営業部', $affiliation->department);
+        $this->assertSame('人材派遣事業部', $affiliation->department);
     }
 
     public function test_profile_table_shows_section_and_team_columns(): void

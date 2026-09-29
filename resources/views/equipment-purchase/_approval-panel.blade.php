@@ -20,7 +20,7 @@
 
     @if ($isFirstStage)
         <p class="text-base text-blue-800 bg-blue-100 border border-blue-200 rounded px-3 py-2">
-            東京の対象部門（営業部・SS課・管理部・GR部）の申請です。1次承認（部長）を行ってください。承認後、支店長へ承認依頼が送られます。
+            東京の対象部門（人材派遣事業部・SS課・管理部・GR部）の申請です。1次承認（部長）を行ってください。承認後、支店長へ承認依頼が送られます。
         </p>
     @elseif ($isSecondStage)
         <p class="text-base text-blue-800 bg-blue-100 border border-blue-200 rounded px-3 py-2">

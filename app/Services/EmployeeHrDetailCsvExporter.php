@@ -38,7 +38,9 @@ class EmployeeHrDetailCsvExporter
             $columns,
         ));
 
-        foreach ($query->lazyById(100) as $user) {
+        // lazyById pages with WHERE id > lastId; any leftover ORDER BY (e.g. name)
+        // makes lastId the wrong cursor and permanently skips rows past the first chunk.
+        foreach ($query->reorder()->lazyById(100) as $user) {
             if (connection_aborted()) {
                 break;
             }

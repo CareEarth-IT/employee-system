@@ -31,7 +31,7 @@ class RegistrySectionByAssignment
         RegistryDepartmentOptions::MANAGEMENT_HEADQUARTERS => [
             '*' => ['庶務課'],
         ],
-        '営業部' => [
+        RegistryDepartmentOptions::STAFFING_DEPARTMENT => [
             '大阪' => ['人材育成課', 'SS課', '営業1課', '営業2課', '営業3課', '営業4課', '営業5課'],
             '東京' => ['営業1課', '営業2課', 'SS課'],
             '名古屋' => ['営業課_名古屋', 'SS課_名古屋'],
@@ -67,7 +67,7 @@ class RegistrySectionByAssignment
      */
     public static function optionsFor(?string $department, ?string $location): array
     {
-        $department = trim((string) $department);
+        $department = RegistryDepartmentOptions::normalizeDepartment($department);
         $location = trim((string) $location);
 
         if ($department === '') {
@@ -93,7 +93,7 @@ class RegistrySectionByAssignment
 
     public static function hasRules(?string $department): bool
     {
-        $department = trim((string) $department);
+        $department = RegistryDepartmentOptions::normalizeDepartment($department);
 
         return $department !== '' && isset(self::ASSIGNMENTS[$department]);
     }
@@ -108,11 +108,13 @@ class RegistrySectionByAssignment
 
     public static function requiresLocation(?string $department): bool
     {
+        $department = RegistryDepartmentOptions::normalizeDepartment($department);
+
         if (! self::hasRules($department)) {
             return false;
         }
 
-        return ! isset(self::ASSIGNMENTS[trim((string) $department)]['*']);
+        return ! isset(self::ASSIGNMENTS[$department]['*']);
     }
 
     /**

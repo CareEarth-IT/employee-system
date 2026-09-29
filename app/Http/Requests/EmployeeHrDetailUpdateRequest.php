@@ -56,6 +56,16 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
                 $this->merge([$field => null]);
             }
         }
+
+        foreach (['department_primary', 'department_secondary'] as $field) {
+            if ($this->has($field)) {
+                $this->merge([
+                    $field => \App\Support\RegistryDepartmentOptions::normalizeDepartment(
+                        (string) $this->input($field),
+                    ),
+                ]);
+            }
+        }
     }
 
     /**
