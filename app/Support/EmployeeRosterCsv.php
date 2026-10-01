@@ -350,15 +350,24 @@ class EmployeeRosterCsv
                 continue;
             }
 
-            $email = self::normalizeEmail(self::cellValue($data, $indexes['email']));
-
-            if ($email === null) {
-                continue;
-            }
-
             $employeeId = preg_replace('/\D/', '', self::cellValue($data, $indexes['employee_id'])) ?? '';
 
             if ($employeeId === '') {
+                continue;
+            }
+
+            $employmentStatus = EmploymentStatus::normalize(
+                self::normalizeTextField(self::cellValue($data, $indexes['employment_status'])),
+            );
+            if ($employmentStatus === '' || $employmentStatus === '—') {
+                $employmentStatus = '在籍';
+            }
+
+            $email = self::normalizeEmail(self::cellValue($data, $indexes['email']));
+            $allowMissingEmail = in_array($employmentStatus, ['退職', '辞退'], true);
+
+            // 在籍者は社用アドレス必須。退職・辞退はメールなしでも退職一覧へ載せる。
+            if ($email === null && ! $allowMissingEmail) {
                 continue;
             }
 
@@ -384,13 +393,6 @@ class EmployeeRosterCsv
             $employmentType = self::normalizeTextField(self::cellValue($data, $indexes['employment_type']));
             if ($employmentType === '' || ! in_array($employmentType, User::EMPLOYMENT_TYPE_OPTIONS, true)) {
                 $employmentType = '正社員';
-            }
-
-            $employmentStatus = EmploymentStatus::normalize(
-                self::normalizeTextField(self::cellValue($data, $indexes['employment_status'])),
-            );
-            if ($employmentStatus === '' || $employmentStatus === '—') {
-                $employmentStatus = '在籍';
             }
 
             $rows[] = [

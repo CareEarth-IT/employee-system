@@ -70,6 +70,41 @@ class ImportMissingFromRosterTest extends TestCase
         @unlink($path);
     }
 
+    public function test_imports_resigned_employee_without_company_email(): void
+    {
+        $path = $this->writeRosterCsv([[
+            '名前' => '星名 諒',
+            'Name' => 'Hoshina Ryo',
+            '短縮表示' => '星名',
+            '状況' => '退職',
+            '所属' => 'CE',
+            'ID' => '3',
+            '雇用形態' => '正社員',
+            '管轄' => '大阪',
+            '国籍' => 'JP',
+            '性別' => '男',
+            '社用アドレス' => '―',
+            '入社予定日' => '2023/4/1',
+            '入社日' => '4/1/2023',
+            '退職日' => '3/31/2024',
+        ]]);
+
+        $exit = Artisan::call('employee:import-missing-from-roster', [
+            'file' => $path,
+        ]);
+        $output = Artisan::output();
+
+        $this->assertSame(0, $exit, $output);
+
+        $created = User::query()->where('employee_id', '3')->first();
+        $this->assertNotNull($created, $output);
+        $this->assertNull($created->email);
+        $this->assertSame('退職', $created->hrDetail?->employment_status);
+        $this->assertTrue($created->isListedEmployee());
+
+        @unlink($path);
+    }
+
     public function test_dry_run_does_not_create_users(): void
     {
         $path = $this->writeRosterCsv([[

@@ -16,7 +16,7 @@ class ImportMissingFromRosterCommand extends Command
         {file=database/imports/employee-roster.csv : 社員名簿 CSV のパス}
         {--dry-run : 登録せず内容だけ表示}';
 
-    protected $description = '社員名簿 CSV のうち、ポータル未登録（メール不一致）の社員を新規登録する';
+    protected $description = '社員名簿 CSV のうち、ポータル未登録の社員を新規登録する（退職はメールなし可）';
 
     public function handle(EmployeeRegistryService $registry): int
     {
@@ -44,39 +44,41 @@ class ImportMissingFromRosterCommand extends Command
         $errors = [];
 
         foreach ($rows as $row) {
+            $emailLabel = $row['email'] ?? '—';
+
             if (! EmployeeIdRules::isValid($row['employee_id'])) {
                 $skippedInvalid++;
-                $errors[] = "行 {$row['line']}: 社員IDが不正のためスキップ {$row['email']} ID={$row['employee_id']}";
+                $errors[] = "行 {$row['line']}: 社員IDが不正のためスキップ {$emailLabel} ID={$row['employee_id']}";
 
                 continue;
             }
 
             if ($row['name'] === '') {
                 $skippedInvalid++;
-                $errors[] = "行 {$row['line']}: 氏名が空のためスキップ {$row['email']}";
+                $errors[] = "行 {$row['line']}: 氏名が空のためスキップ {$emailLabel}";
 
                 continue;
             }
 
-            $existing = User::query()->where('email', $row['email'])->first();
+            $existing = $this->findExistingUser($row);
 
             if ($existing) {
                 $skippedExisting++;
-                $results[] = [$row['email'], $row['name'], $row['employee_id'], $row['employment_status'], '既存（変更なし）'];
+                $results[] = [$emailLabel, $row['name'], $row['employee_id'], $row['employment_status'], '既存（変更なし）'];
 
                 continue;
             }
 
             if (User::query()->where('employee_id', $row['employee_id'])->exists()) {
                 $skippedInvalid++;
-                $errors[] = "行 {$row['line']}: 社員ID重複のためスキップ {$row['email']} ID={$row['employee_id']}";
+                $errors[] = "行 {$row['line']}: 社員ID重複のためスキップ {$emailLabel} ID={$row['employee_id']}";
 
                 continue;
             }
 
             if ($dryRun) {
                 $created++;
-                $results[] = [$row['email'], $row['name'], $row['employee_id'], $row['employment_status'], '新規登録予定'];
+                $results[] = [$emailLabel, $row['name'], $row['employee_id'], $row['employment_status'], '新規登録予定'];
 
                 continue;
             }
@@ -84,7 +86,7 @@ class ImportMissingFromRosterCommand extends Command
             try {
                 $this->createFromRow($registry, $row);
                 $created++;
-                $results[] = [$row['email'], $row['name'], $row['employee_id'], $row['employment_status'], '新規登録'];
+                $results[] = [$emailLabel, $row['name'], $row['employee_id'], $row['employment_status'], '新規登録'];
             } catch (ValidationException $e) {
                 $skippedInvalid++;
                 $errors[] = "行 {$row['line']}: ".collect($e->errors())->flatten()->implode(' / ');
@@ -114,10 +116,28 @@ class ImportMissingFromRosterCommand extends Command
             $skippedExisting,
             $skippedInvalid,
         ));
-        $this->line('  社用アドレスがない行、および既に登録済みのメールは対象外です。');
+        $this->line('  退職・辞退は社用アドレスなしでも登録します。在籍者でアドレスがない行は対象外です。');
         $this->line('  既存社員の入社日・状況更新は employee:sync-from-roster を使ってください。');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function findExistingUser(array $row): ?User
+    {
+        $email = $row['email'] ?? null;
+
+        if (is_string($email) && $email !== '') {
+            $byEmail = User::query()->where('email', $email)->first();
+
+            if ($byEmail) {
+                return $byEmail;
+            }
+        }
+
+        return User::query()->where('employee_id', $row['employee_id'])->first();
     }
 
     /**
@@ -127,7 +147,7 @@ class ImportMissingFromRosterCommand extends Command
     {
         $payload = [
             'name' => $row['name'],
-            'email' => $row['email'],
+            'email' => $row['email'] ?: null,
             'password' => User::DEFAULT_REGISTRY_PASSWORD,
             'employee_id' => $row['employee_id'],
             'department' => $row['department'],
@@ -148,7 +168,7 @@ class ImportMissingFromRosterCommand extends Command
 
         $validator = Validator::make($payload, [
             'name' => ['required', 'string'],
-            'email' => ['required', 'email', 'unique:users,email'],
+            'email' => ['nullable', 'email', 'unique:users,email'],
             'employee_id' => EmployeeIdRules::rules(required: true),
             'company' => ['required', 'string'],
             'location' => ['required', 'string'],
