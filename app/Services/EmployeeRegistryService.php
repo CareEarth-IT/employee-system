@@ -6,7 +6,9 @@ use App\Models\AffiliationHistory;
 use App\Models\EmployeeHrDetail;
 use App\Models\EmployeeProfile;
 use App\Models\User;
+use App\Support\AffiliationResignationSync;
 use App\Support\EmployeeIdRules;
+use App\Support\EmploymentStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -34,6 +36,7 @@ class EmployeeRegistryService
      *     abbreviated_name?: string|null,
      *     birth_date?: string|null,
      *     joined_at?: string|null,
+     *     resigned_at?: string|null,
      *     nationality?: string|null,
      *     gender?: string|null,
      *     remarks?: string|null,
@@ -66,6 +69,10 @@ class EmployeeRegistryService
                 $affiliationSection,
             );
             $affiliationCode = User::mapCompanyToAffiliationCode($data['company']);
+            $employmentStatus = EmploymentStatus::normalize($data['employment_status'] ?? '在籍');
+            if ($employmentStatus === '' || $employmentStatus === '—') {
+                $employmentStatus = '在籍';
+            }
 
             $user = User::create([
                 'employee_id' => $data['employee_id'],
@@ -84,15 +91,20 @@ class EmployeeRegistryService
                 ...$this->profileAttributes($data, $displayName),
             ]);
 
+            $hrAttributes = $this->hrDetailAttributes($data);
+            if (! empty($data['resigned_at'])) {
+                $hrAttributes['resigned_at'] = $data['resigned_at'];
+            }
+
             EmployeeHrDetail::create([
                 'user_id' => $user->id,
                 'employment_type' => $data['employment_type'],
-                'employment_status' => $data['employment_status'] ?? '在籍',
+                'employment_status' => $employmentStatus,
                 'affiliation_code' => $affiliationCode,
                 'jurisdiction' => $hrOrgPrimary['jurisdiction'],
                 'department_primary' => $hrOrgPrimary['department_primary'],
                 'section_primary' => $hrOrgPrimary['section_primary'],
-                ...$this->hrDetailAttributes($data),
+                ...$hrAttributes,
             ]);
 
             $joinedAt = $this->joinedAt($data);
@@ -110,10 +122,17 @@ class EmployeeRegistryService
             ]);
 
             $user->closeOtherEnrolledAffiliations($affiliation);
-            $user->syncRoleFromAffiliation();
-            $this->driveStaffSync->syncUser($user->fresh());
 
-            return $user->fresh(['profile', 'hrDetail', 'affiliationHistories']);
+            $fresh = $user->fresh(['profile', 'hrDetail', 'affiliationHistories']);
+            if (! empty($data['resigned_at'])) {
+                AffiliationResignationSync::syncFromHrDetail($fresh);
+                $fresh = $fresh->fresh(['profile', 'hrDetail', 'affiliationHistories']);
+            }
+
+            $fresh->syncRoleFromAffiliation();
+            $this->driveStaffSync->syncUser($fresh);
+
+            return $fresh->fresh(['profile', 'hrDetail', 'affiliationHistories']);
         });
     }
 
@@ -294,8 +313,8 @@ class EmployeeRegistryService
             $attributes['name_kana'] = $data['name_kana'];
         }
 
-        foreach (['english_name', 'nationality'] as $field) {
-            if (array_key_exists($field, $data)) {
+        foreach (['english_name', 'abbreviated_name', 'nationality'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] !== null && $data[$field] !== '') {
                 $attributes[$field] = $data[$field];
             }
         }

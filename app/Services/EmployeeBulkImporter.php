@@ -686,7 +686,7 @@ class EmployeeBulkImporter
             }
         } elseif (! EmployeeIdRules::isValid($requestedId)) {
             throw new \InvalidArgumentException(
-                "{$label} {$requestedId} は5桁の数字で入力してください（行 {$csvLine}）。"
+                "{$label} {$requestedId} は1〜5桁の数字で入力してください（行 {$csvLine}）。"
             );
         }
 

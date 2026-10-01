@@ -123,6 +123,7 @@ class ProfileUpdateRequest extends FormRequest
             'abbreviated_name.max' => '略氏名は10文字以内で入力してください。',
             'employee_id.required' => '社員IDを入力してください。',
             'employee_id.digits' => EmployeeIdRules::FORMAT_MESSAGE,
+            'employee_id.regex' => EmployeeIdRules::FORMAT_MESSAGE,
             'employee_id.unique' => 'この社員IDは既に使用されています。',
             'email.required' => 'メールアドレスを入力してください。',
             'email.email' => 'メールアドレスの形式が正しくありません。',

@@ -93,6 +93,7 @@ class AffiliationStoreRequest extends FormRequest
             'end_date.date' => '終了日は正しい日付形式で入力してください。',
             'end_date.after_or_equal' => '終了日は開始日以降の日付を指定してください。',
             'employee_id.digits' => EmployeeIdRules::FORMAT_MESSAGE,
+            'employee_id.regex' => EmployeeIdRules::FORMAT_MESSAGE,
             'employee_id.unique' => 'この社員IDは既に使用されています。',
             ...$this->affiliationOrgFieldMessages(),
         ];

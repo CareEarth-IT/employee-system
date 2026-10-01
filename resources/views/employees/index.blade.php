@@ -568,7 +568,7 @@
             input.inputMode = 'numeric';
             input.maxLength = 5;
             input.pattern = '\\d{5}';
-            input.placeholder = '5桁の数字';
+            input.placeholder = '1〜5桁の数字';
             input.addEventListener('input', () => {
                 input.value = input.value.replace(/\D/g, '').slice(0, 5);
             });

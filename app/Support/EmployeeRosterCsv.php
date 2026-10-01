@@ -304,6 +304,126 @@ class EmployeeRosterCsv
     }
 
     /**
+     * 未登録社員の新規作成用（社用アドレスがあり、社員IDがある行）。
+     *
+     * @return list<array{
+     *     line: int,
+     *     name: string,
+     *     english_name: string,
+     *     abbreviated_name: string,
+     *     email: string,
+     *     employee_id: string,
+     *     company: string,
+     *     department: string,
+     *     section: string,
+     *     location: string,
+     *     employment_type: string,
+     *     employment_status: string,
+     *     gender: string,
+     *     nationality: string,
+     *     remarks: string,
+     *     joined_at: string|null,
+     *     resigned_at: string|null,
+     *     birth_date: string|null
+     * }>
+     */
+    public static function readCreateRows(string $path): array
+    {
+        $handle = self::openCsvHandle($path);
+        $header = fgetcsv($handle);
+
+        if ($header === false) {
+            fclose($handle);
+
+            return [];
+        }
+
+        $header = self::normalizeHeader($header);
+        $indexes = self::createColumnIndexes($header);
+        $rows = [];
+        $line = 1;
+
+        while (($data = fgetcsv($handle)) !== false) {
+            $line++;
+
+            if (self::isEmptyRow($data)) {
+                continue;
+            }
+
+            $email = self::normalizeEmail(self::cellValue($data, $indexes['email']));
+
+            if ($email === null) {
+                continue;
+            }
+
+            $employeeId = preg_replace('/\D/', '', self::cellValue($data, $indexes['employee_id'])) ?? '';
+
+            if ($employeeId === '') {
+                continue;
+            }
+
+            $affiliationCode = User::canonicalAffiliationCode(
+                self::normalizeTextField(self::cellValue($data, $indexes['affiliation_code'])),
+            ) ?? '';
+            $company = $affiliationCode !== ''
+                ? (self::mapAffiliationCodeToCompany($affiliationCode) ?? 'CareEarth')
+                : 'CareEarth';
+
+            $identity = self::identityRowFields($data, $indexes);
+            $registry = self::registryIdentityFields($data, $indexes) ?? [
+                'name_kana' => '',
+                'employee_id' => $employeeId,
+                'gender' => '',
+                'nationality' => '',
+                'remarks' => '',
+                'jurisdiction' => '',
+                'birth_date' => null,
+            ];
+            $location = $registry['jurisdiction'] !== '' ? $registry['jurisdiction'] : '大阪';
+
+            $employmentType = self::normalizeTextField(self::cellValue($data, $indexes['employment_type']));
+            if ($employmentType === '' || ! in_array($employmentType, User::EMPLOYMENT_TYPE_OPTIONS, true)) {
+                $employmentType = '正社員';
+            }
+
+            $employmentStatus = EmploymentStatus::normalize(
+                self::normalizeTextField(self::cellValue($data, $indexes['employment_status'])),
+            );
+            if ($employmentStatus === '' || $employmentStatus === '—') {
+                $employmentStatus = '在籍';
+            }
+
+            $rows[] = [
+                'line' => $line,
+                'name' => $identity['name'],
+                'english_name' => $identity['english_name'],
+                'abbreviated_name' => $identity['abbreviated_name'],
+                'email' => $email,
+                'employee_id' => $employeeId,
+                'company' => $company,
+                'department' => self::normalizeTextField(self::cellValue($data, $indexes['department'])),
+                'section' => self::normalizeTextField(self::cellValue($data, $indexes['section'])),
+                'location' => $location,
+                'employment_type' => $employmentType,
+                'employment_status' => $employmentStatus,
+                'gender' => $registry['gender'],
+                'nationality' => $registry['nationality'],
+                'remarks' => $registry['remarks'],
+                'joined_at' => self::resolveJoinedAt(
+                    self::cellValue($data, $indexes['joined_at']),
+                    self::cellValue($data, $indexes['planned_joined_at']),
+                ),
+                'resigned_at' => self::parseDate(self::cellValue($data, $indexes['resigned_at'])),
+                'birth_date' => $registry['birth_date'],
+            ];
+        }
+
+        fclose($handle);
+
+        return $rows;
+    }
+
+    /**
      * @return list<array{
      *     line: int,
      *     name: string,
@@ -894,6 +1014,45 @@ class EmployeeRosterCsv
             'department_primary' => self::headerIndex($header, ['部署*', '部署'], false),
             'section_primary' => self::headerIndex($header, ['課/チーム*', '課/チーム', '課'], false),
             'position_primary' => self::headerIndex($header, ['役職【選択】', '役職【表示】', '役職'], false),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $header
+     * @return array{
+     *     name: int,
+     *     english_name: int|null,
+     *     abbreviated_name: int|null,
+     *     email: int,
+     *     name_kana: int|null,
+     *     employee_id: int|null,
+     *     gender: int|null,
+     *     nationality: int|null,
+     *     remarks: int|null,
+     *     jurisdiction: int|null,
+     *     birth_date: int|null,
+     *     affiliation_code: int|null,
+     *     department: int|null,
+     *     section: int|null,
+     *     employment_status: int|null,
+     *     employment_type: int|null,
+     *     joined_at: int|null,
+     *     planned_joined_at: int|null,
+     *     resigned_at: int|null
+     * }
+     */
+    private static function createColumnIndexes(array $header): array
+    {
+        return [
+            ...self::registryIdentityColumnIndexes($header),
+            'affiliation_code' => self::headerIndex($header, ['所属'], false),
+            'department' => self::headerIndex($header, ['部署*', '部署'], false),
+            'section' => self::headerIndex($header, ['課/チーム*', '課/チーム', '課'], false),
+            'employment_status' => self::headerIndex($header, ['状況'], false),
+            'employment_type' => self::headerIndex($header, ['雇用形態'], false),
+            'joined_at' => self::headerIndex($header, ['入社日'], false),
+            'planned_joined_at' => self::headerIndex($header, ['入社予定日'], false),
+            'resigned_at' => self::headerIndex($header, ['退職日'], false),
         ];
     }
 

@@ -559,22 +559,23 @@ class User extends Authenticatable
     }
 
     /**
-     * 社員一覧の状況タブ対象となる登録済み社員（5桁社員ID）に絞り込む。
+     * 社員一覧の状況タブ対象となる登録済み社員（1〜5桁の数字社員ID）に絞り込む。
      *
      * @param  Builder<User>  $query
      */
     public function scopeWhereListedEmployee(Builder $query): void
     {
-        $length = EmployeeIdRules::LENGTH;
+        $min = EmployeeIdRules::MIN_LENGTH;
+        $max = EmployeeIdRules::LENGTH;
 
         $query->whereNotNull('employee_id')
             ->where('employee_id', '!=', '')
-            ->whereRaw('LENGTH(employee_id) = ?', [$length]);
+            ->whereRaw('LENGTH(employee_id) BETWEEN ? AND ?', [$min, $max]);
 
         if (DB::connection()->getDriverName() === 'sqlite') {
-            $query->whereRaw("employee_id GLOB '[0-9][0-9][0-9][0-9][0-9]'");
+            $query->whereRaw(EmployeeIdRules::sqliteDigitGlobSql());
         } else {
-            $query->whereRaw("employee_id REGEXP '^[0-9]{".$length."}$'");
+            $query->whereRaw("employee_id REGEXP '^[0-9]{".$min.','.$max."}$'");
         }
     }
 

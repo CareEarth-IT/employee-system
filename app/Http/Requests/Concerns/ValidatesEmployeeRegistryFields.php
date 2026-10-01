@@ -181,6 +181,7 @@ trait ValidatesEmployeeRegistryFields
             'email.unique' => 'このアドレスは既に使用されています。',
             'employee_id.required' => 'IDを入力してください。',
             'employee_id.digits' => EmployeeIdRules::FORMAT_MESSAGE,
+            'employee_id.regex' => EmployeeIdRules::FORMAT_MESSAGE,
             'employee_id.unique' => 'この社員IDは既に使用されています。',
             'department.required' => '部署を選択してください。',
             'department.in' => '部署を正しく選択してください。',

@@ -10,7 +10,8 @@ class SyncFromRosterCommand extends Command
     protected $signature = 'employee:sync-from-roster
         {file=database/imports/employee-roster.csv : 社員名簿 CSV のパス}
         {--dry-run : 更新せず内容だけ表示}
-        {--match-email-only : 氏名不一致でもメール一致なら更新（要確認）}';
+        {--match-email-only : 氏名不一致でもメール一致なら更新（要確認）}
+        {--create-missing : 未登録メールを名簿から新規登録してから同期する}';
 
     protected $description = 'Airtable 社員名簿 CSV から社員ポータルへ全項目を一括反映する';
 
@@ -39,6 +40,7 @@ class SyncFromRosterCommand extends Command
 
         $dryRun = (bool) $this->option('dry-run');
         $matchEmailOnly = (bool) $this->option('match-email-only');
+        $createMissing = (bool) $this->option('create-missing');
 
         $this->info('Airtable 社員名簿 CSV から社員ポータルへ反映します。');
         $this->line("CSV: {$path}");
@@ -51,8 +53,15 @@ class SyncFromRosterCommand extends Command
             $this->line('氏名不一致でもメール一致で更新します（--match-email-only）');
         }
 
+        if ($createMissing) {
+            $this->line('未登録メールを新規登録してから同期します（--create-missing）');
+        }
+
         $this->newLine();
         $this->line('反映する項目:');
+        if ($createMissing) {
+            $this->line('  未登録 → 新規登録（ID・氏名・会社・管轄・状況・入社日・退職日など）');
+        }
         $this->line('  社員番号・氏名・短縮表示・性別・生年月日・備考・拠点');
         $this->line('  入社日 → プロフィールの入社日（入社予定日は入社日が空のときのみ）');
         $this->line('  所属部署の開始日 → 入社日に合わせる（所属が1件、または一括取込日の誤設定のみ）');
@@ -76,14 +85,19 @@ class SyncFromRosterCommand extends Command
         }
 
         $failed = false;
+        $steps = self::STEPS;
 
-        foreach (self::STEPS as $index => $commandClass) {
+        if ($createMissing) {
+            array_unshift($steps, ImportMissingFromRosterCommand::class);
+        }
+
+        foreach ($steps as $index => $commandClass) {
             $step = $index + 1;
             $command = new $commandClass;
             $commandName = $command->getName();
             $stepOptions = $this->optionsForStep($command, $options);
 
-            $this->info("==> Step {$step}/".count(self::STEPS).": {$commandName}");
+            $this->info("==> Step {$step}/".count($steps).": {$commandName}");
             $this->newLine();
 
             $exitCode = Artisan::call($commandClass, $stepOptions);

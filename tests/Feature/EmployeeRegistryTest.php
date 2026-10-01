@@ -608,7 +608,7 @@ class EmployeeRegistryTest extends TestCase
                 'email' => 'invalid_id@careearth.info',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
-                'employee_id' => '10A99',
+                'employee_id' => '123456',
             ]))
             ->assertSessionHasErrors(['employee_id']);
 
@@ -655,6 +655,32 @@ class EmployeeRegistryTest extends TestCase
         $this->assertNotNull($created);
         $this->assertNull($created->email);
         $this->assertSame('アルバイト', $created->hrDetail?->employment_type);
+    }
+
+    public function test_store_allows_short_numeric_employee_id_from_roster(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'name' => '名簿 太郎',
+                'email' => 'roster_short_id@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '29',
+                'department' => '人材派遣事業部',
+                'employment_type' => '正社員',
+                'employment_status' => '退職',
+            ]))
+            ->assertRedirect(route('employees.create'))
+            ->assertSessionHasNoErrors();
+
+        $created = User::query()->where('email', 'roster_short_id@careearth.info')->first();
+
+        $this->assertNotNull($created);
+        $this->assertSame('29', $created->employee_id);
+        $this->assertTrue($created->isListedEmployee());
+        $this->assertSame('退職', $created->hrDetail?->employment_status);
     }
 
     public function test_store_rejects_full_time_employee_without_email(): void

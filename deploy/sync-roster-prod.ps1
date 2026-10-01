@@ -5,6 +5,7 @@
 #   deploy\sync-roster-prod.cmd --dry-run
 #   deploy\sync-roster-prod.cmd
 #   deploy\sync-roster-prod.cmd --match-email-only
+#   deploy\sync-roster-prod.cmd --create-missing --match-email-only
 #
 # Place Airtable export at database/imports/employee-roster.csv before running.
 
@@ -13,7 +14,8 @@ param(
     [switch]$DryRun,
     [switch]$SkipBuild,
     [switch]$WithServiceDeploy,
-    [switch]$MatchEmailOnly
+    [switch]$MatchEmailOnly,
+    [switch]$CreateMissing
 )
 
 $SkipServiceDeploy = -not $WithServiceDeploy
@@ -51,6 +53,9 @@ Write-Host ""
 Write-Host "This runs employee:sync-from-roster (all roster fields in one job)."
 Write-Host "Recommended: run --dry-run first, then apply without --dry-run."
 Write-Host "If names differ between CSV and portal, add --match-email-only."
+if ($CreateMissing) {
+    Write-Host "CreateMissing: unregistered emails will be created from the roster first."
+}
 Write-Host ""
 
 $containerCsvPath = "database/imports/.deploy-staging/employee-roster.csv"
@@ -147,6 +152,9 @@ if ($DryRun) {
 }
 if ($MatchEmailOnly) {
     $artisanArgs += "--match-email-only"
+}
+if ($CreateMissing) {
+    $artisanArgs += "--create-missing"
 }
 
 $argsJoined = ($artisanArgs | ForEach-Object { $_ -replace ',', '\,' }) -join ','

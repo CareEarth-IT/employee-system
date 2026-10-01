@@ -101,7 +101,7 @@
                 class="w-full rounded border border-slate-300 px-3 py-2 text-base"
                 oninput="this.value = this.value.replace(/\D/g, '').slice(0, 5)"
             >
-            <p class="mt-1 text-sm text-slate-500">5桁の数字</p>
+            <p class="mt-1 text-sm text-slate-500">1〜5桁の数字（名簿のIDをそのまま可）</p>
             @include('partials.field-error', ['field' => 'employee_id'])
         </div>
         <div>
