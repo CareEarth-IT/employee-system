@@ -129,12 +129,9 @@ class ImportMissingFromRosterCommand extends Command
     {
         $email = $row['email'] ?? null;
 
+        // メールがある行はメール一致のみを既存とみなす（社員ID一致は後段の重複チェックへ）
         if (is_string($email) && $email !== '') {
-            $byEmail = User::query()->where('email', $email)->first();
-
-            if ($byEmail) {
-                return $byEmail;
-            }
+            return User::query()->where('email', $email)->first();
         }
 
         return User::query()->where('employee_id', $row['employee_id'])->first();
