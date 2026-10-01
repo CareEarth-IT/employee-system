@@ -48,7 +48,7 @@ class SyncAffiliationStartFromJoinedAtCommand extends Command
                     continue;
                 }
 
-                $current = $affiliation->start_date->toDateString();
+                $current = $affiliation->start_date?->toDateString() ?? '—';
 
                 if ($dryRun) {
                     $results[] = [
