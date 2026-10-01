@@ -52,7 +52,7 @@ Write-Host "WARNING: This script updates joined_at from CSV only."
 Write-Host "         For code deploys, use deploy\docker-deploy.cmd (CSV is excluded)."
 Write-Host ""
 
-$containerCsvPath = "database/imports/.deploy-staging/employee-roster.csv"
+$containerCsvPath = "deploy/roster-job-data/employee-roster.csv"
 
 $authProbe = gcloud run services describe $Service --region=$Region --format="value(name)" 2>&1
 if ($LASTEXITCODE -ne 0) {

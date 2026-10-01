@@ -3,7 +3,7 @@
 #
 # Usage:
 #   deploy\deploy-realestate-portal.cmd
-#   deploy\deploy-realestate-portal.cmd -ProxySecret "共有秘密鍵"
+#   deploy\deploy-realestate-portal.cmd -ProxySecret "共有秘寁E��"
 
 param(
     [string]$RealEstateRoot = "",

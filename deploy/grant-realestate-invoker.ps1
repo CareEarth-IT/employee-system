@@ -32,7 +32,7 @@ $code = Invoke-Gcloud run services add-iam-policy-binding $Service `
 if ($code -ne 0) {
     Write-Host ""
     Write-Host "==> GCP admin: run the following in ce-realestate-inside-2606st"
-    Write-Host "    (needs run.services.setIamPolicy — e.g. roles/run.admin or Project IAM Admin)"
+    Write-Host "    (needs run.services.setIamPolicy  Ee.g. roles/run.admin or Project IAM Admin)"
     Write-Host ""
     Write-Host "gcloud run services add-iam-policy-binding $Service ``"
     Write-Host "  --project=$RealEstateProjectId ``"

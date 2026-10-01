@@ -1,8 +1,6 @@
-# ローカル開発: hosts + Apache VirtualHost を設定（employee.local）
-# 管理者として実行: deploy\setup-employee-local-host.cmd
+# ローカル開発: hosts + Apache VirtualHost を設定！Employee.local�E�E# 管琁E��E��して実衁E deploy\setup-employee-local-host.cmd
 #
-# localhost/employee/public との競合（ec-site 等）を避け、専用 URL で開きます。
-
+# localhost/employee/public との競合！Ec-site 等）を避け、専用 URL で開きます、E
 $ErrorActionPreference = "Stop"
 
 $Root = Split-Path $PSScriptRoot -Parent
@@ -21,8 +19,8 @@ function Test-Admin {
 }
 
 if (-not (Test-Admin)) {
-    Write-Host "ERROR: 管理者権限が必要です。"
-    Write-Host "deploy\setup-employee-local-host.cmd を右クリック -> 管理者として実行"
+    Write-Host "ERROR: 管琁E��E��限が忁E��です、E
+    Write-Host "deploy\setup-employee-local-host.cmd を右クリチE�� -> 管琁E��E��して実衁E
     exit 1
 }
 
@@ -35,9 +33,9 @@ if ($hostsContent -notmatch 'employee\.local') {
     Write-Host "  既に登録済み"
 }
 
-Write-Host "==> Apache VirtualHost を設定"
+Write-Host "==> Apache VirtualHost を設宁E
 if (-not (Test-Path $VhostsFile)) {
-    throw "見つかりません: $VhostsFile （XAMPP のパスを確認してください）"
+    throw "見つかりません: $VhostsFile �E�EAMPP のパスを確認してください�E�E
 }
 
 $snippet = (Get-Content $VhostSnippet -Raw).Trim()
@@ -46,12 +44,11 @@ if ($vhostsContent -notmatch [regex]::Escape($Marker)) {
     Add-Content -Path $VhostsFile -Value "`n$Marker`n$snippet"
     Write-Host "  httpd-vhosts.conf に追記しました"
 } else {
-    # 既存の employee.local VirtualHost を最新スニペットで置き換え
-    $pattern = '(?ms)# CE-GR employee\.local\s*<VirtualHost \*:80>.*?</VirtualHost>'
+    # 既存�E employee.local VirtualHost を最新スニ�EチE��で置き換ぁE    $pattern = '(?ms)# CE-GR employee\.local\s*<VirtualHost \*:80>.*?</VirtualHost>'
     $replacement = "$Marker`r`n$snippet"
     $updated = [regex]::Replace($vhostsContent, $pattern, $replacement)
     if ($updated -eq $vhostsContent) {
-        Write-Host "  VirtualHost は既に登録済み（置換パターン不一致のため手動確認）"
+        Write-Host "  VirtualHost は既に登録済み�E�置換パターン不一致のため手動確認！E
     } else {
         Set-Content -Path $VhostsFile -Value $updated -NoNewline -Encoding UTF8
         Write-Host "  VirtualHost を更新しました"
@@ -77,7 +74,7 @@ if (Test-Path $EnvFile) {
     Write-Host "  APP_URL=http://employee.local"
 }
 
-Write-Host "==> public/.htaccess の RewriteBase を / に更新"
+Write-Host "==> public/.htaccess の RewriteBase めE/ に更新"
 $htaccess = Get-Content $Htaccess -Raw
 $htaccess = $htaccess -replace 'RewriteBase /employee/public/', 'RewriteBase /'
 Set-Content -Path $Htaccess -Value $htaccess -NoNewline -Encoding UTF8
@@ -93,8 +90,8 @@ try {
 Write-Host ""
 Write-Host "Done."
 Write-Host ""
-Write-Host "次の手順:"
-Write-Host "  1. XAMPP Control Panel で Apache を Stop -> Start"
+Write-Host "次の手頁E"
+Write-Host "  1. XAMPP Control Panel で Apache めEStop -> Start"
 Write-Host "  2. ブラウザで開く: http://employee.local/login"
 Write-Host ""
-Write-Host "旧 URL (http://localhost/employee/public/...) は使わないでください。"
+Write-Host "旧 URL (http://localhost/employee/public/...) は使わなぁE��ください、E

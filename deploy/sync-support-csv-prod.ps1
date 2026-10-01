@@ -1,8 +1,8 @@
-# Sync 支援管理 CSV to production specific_skills DB (add missing only).
+# Sync 支援管琁ECSV to production specific_skills DB (add missing only).
 #
 # Usage:
 #   deploy\sync-support-csv-prod.cmd
-#   deploy\sync-support-csv-prod.cmd -CsvPath "C:\path\to\支援管理.csv"
+#   deploy\sync-support-csv-prod.cmd -CsvPath "C:\path\to\支援管琁Ecsv"
 #   deploy\sync-support-csv-prod.cmd -Apply
 #   deploy\sync-support-csv-prod.cmd -SkipBuild
 
@@ -32,7 +32,7 @@ if (-not (Test-Path $AppRoot)) {
 }
 
 if ($CsvPath -eq "") {
-    $CsvPath = Join-Path $env:USERPROFILE "Downloads\支援管理.csv"
+    $CsvPath = Join-Path $env:USERPROFILE "Downloads\支援管琁Ecsv"
 }
 if (-not (Test-Path $CsvPath)) {
     throw "CSV not found: $CsvPath"
@@ -41,7 +41,7 @@ if (-not (Test-Path $CsvPath)) {
 . (Join-Path $PSScriptRoot "deploy-common.ps1")
 
 Write-Host ""
-Write-Host "=== Sync 支援管理 CSV (production specific_skills) ===" -ForegroundColor Cyan
+Write-Host "=== Sync 支援管琁ECSV (production specific_skills) ===" -ForegroundColor Cyan
 Write-Host "Target DB : specific_skills only (existing rows unchanged)"
 Write-Host "CSV       : $CsvPath"
 Write-Host "Mode      : $(if ($Apply) { if ($PromoteMissing) { 'apply + promote-missing (status only)' } else { 'apply (insert missing)' } } else { 'dry-run' })"

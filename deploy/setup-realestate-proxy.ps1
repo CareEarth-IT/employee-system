@@ -2,7 +2,7 @@
 # Uses shared EMPLOYEE_PORTAL_PROXY_SECRET and --no-invoker-iam-check on real-estate Cloud Run.
 #
 # Usage:
-#   deploy\setup-realestate-proxy.cmd -ProxySecret "共有秘密鍵"
+#   deploy\setup-realestate-proxy.cmd -ProxySecret "共有秘寁E��"
 #   deploy\setup-realestate-proxy.cmd -GenerateSecret
 
 param(

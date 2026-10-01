@@ -1,4 +1,4 @@
-# Sync current enrolled affiliation org fields FROM HR detail (詳細情報が正) via Cloud Run Job.
+# Sync current enrolled affiliation org fields FROM HR detail (詳細惁E��が正) via Cloud Run Job.
 # Does NOT change employee_hr_details, past affiliation history, or other employee data.
 #
 # Usage:

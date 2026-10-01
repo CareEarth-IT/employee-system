@@ -48,13 +48,13 @@ Write-Host "CSV     : $resolvedCsv"
 Write-Host "Image   : $Image"
 Write-Host "Job     : $JobName"
 Write-Host ""
-Write-Host "WARNING: Updates affiliation company only (from roster CSV 所属 code)."
+Write-Host "WARNING: Updates affiliation company only (from roster CSV 所屁Ecode)."
 Write-Host "         CE->CareEarth, CEVN->Care EarthVietnam, GT->GROWTEC, EM->Earth Management, ME/MD->MidEarth"
 Write-Host "         Department, start_date, position are NOT changed."
 Write-Host "         start_date=2026-07-01 affiliations are skipped."
 Write-Host ""
 
-$containerCsvPath = "database/imports/.deploy-staging/employee-roster.csv"
+$containerCsvPath = "deploy/roster-job-data/employee-roster.csv"
 
 if ((Invoke-Gcloud config set project $ProjectId) -ne 0) {
     throw "gcloud config failed"

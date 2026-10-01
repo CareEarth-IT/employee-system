@@ -3,7 +3,7 @@
 #
 # Usage:
 #   deploy\deploy-specified-skills-portal.cmd
-#   deploy\deploy-specified-skills-portal.cmd -ProxySecret "共有秘密鍵"
+#   deploy\deploy-specified-skills-portal.cmd -ProxySecret "共有秘寁E��"
 #   deploy\deploy-specified-skills-portal.cmd -GenerateProxySecret
 
 param(
@@ -161,9 +161,7 @@ $envVars = @{
     DB_DATABASE = $DbName
     DB_USERNAME = $DbUser
     DB_PASSWORD = $DbPassword
-    # 秘密鍵は employee 新イメージが送るまで必須にしない。
-    # 認証は Cloud Run Invoker IAM + employee の identity token で行う。
-    EMPLOYEE_PORTAL_PROXY_SECRET = ""
+    # 秘寁E��は employee 新イメージが送るまで忁E��にしなぁE��E    # 認証は Cloud Run Invoker IAM + employee の identity token で行う、E    EMPLOYEE_PORTAL_PROXY_SECRET = ""
 }
 
 $envFile = [System.IO.Path]::GetTempFileName()
@@ -188,8 +186,7 @@ try {
     Remove-Item $envFile -Force -ErrorAction SilentlyContinue
 }
 
-# 同一プロジェクトの employee 実行 SA のみ呼び出し可（公開 allUsers は付けない）
-$invokerGranted = Grant-SameProjectInvoker -TargetService $Service -Region $Region -ProjectId $ProjectId
+# 同一プロジェクト�E employee 実衁ESA のみ呼び出し可�E��E閁EallUsers は付けなぁE��E$invokerGranted = Grant-SameProjectInvoker -TargetService $Service -Region $Region -ProjectId $ProjectId
 
 $serviceUrl = Get-CloudRunServiceUrl -Service $Service -Region $Region
 if (-not $serviceUrl) {

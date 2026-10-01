@@ -1,4 +1,4 @@
-# Hide real-estate portal users from home 担当者業績一覧 (show_performance = 0).
+# Hide real-estate portal users from home 拁E��老E��績一覧 (show_performance = 0).
 # Does NOT modify ceemployee database contents.
 #
 # Usage:

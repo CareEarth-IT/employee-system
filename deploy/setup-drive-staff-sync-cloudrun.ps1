@@ -1,8 +1,7 @@
 # Set drive staff sync env vars on employee Cloud Run.
-# gas-app 側は scripts/setup-employee-site-sync-cloudrun.ps1 で同じ SyncSecret を設定済みの想定。
-#
+# gas-app 側は scripts/setup-employee-site-sync-cloudrun.ps1 で同じ SyncSecret を設定済みの想定、E#
 # Usage:
-#   deploy\setup-drive-staff-sync-cloudrun.cmd -SyncSecret "共有秘密鍵"
+#   deploy\setup-drive-staff-sync-cloudrun.cmd -SyncSecret "共有秘寁E��"
 
 param(
     [string]$DriveApiUrl = "https://gas-app-231655548437.asia-northeast1.run.app",

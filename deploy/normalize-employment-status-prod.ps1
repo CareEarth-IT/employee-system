@@ -1,4 +1,4 @@
-# Normalize employee_hr_details.employment_status on production (在籍中 -> 在籍).
+# Normalize employee_hr_details.employment_status on production (在籍中 -> 在籁E.
 # Usage:
 #   deploy\normalize-employment-status-prod.cmd --dry-run
 #   deploy\normalize-employment-status-prod.cmd

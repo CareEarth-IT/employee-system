@@ -251,7 +251,7 @@ function Test-MailConfiguredForProduction {
 
     if ($mailer -eq "log" -or $mailer -eq "array") {
         Write-Host ""
-        Write-Host "WARN: MAIL_MAILER=$mailer in .env — password reset emails will NOT be sent."
+        Write-Host "WARN: MAIL_MAILER=$mailer in .env  Epassword reset emails will NOT be sent."
         Write-Host "Set SMTP in .env, then redeploy. Example:"
         Write-Host "  MAIL_MAILER=smtp"
         Write-Host "  MAIL_HOST=smtp.gmail.com"
@@ -447,7 +447,7 @@ function Get-CloudRunEnvVars {
         }
         Write-Host "WordPress GCS: bucket $($vars['WORDPRESS_GCS_BUCKET']) mode=$($vars['WORDPRESS_GCS_MODE']) adc=$($vars['WORDPRESS_GCS_USE_ADC'])"
 
-        # 経理・人事お問い合わせ（apps/finance-hr）— Cloud SQL 同一インスタンス上の別 DB
+        # 経理・人事お問い合わせ！Epps/finance-hr�E� ECloud SQL 同一インスタンス上�E別 DB
         $vars["FINANCE_HR_DB_SOCKET"] = "/cloudsql/$CloudSqlConnection"
         $vars["FINANCE_HR_DB_DATABASE"] = "finance_hr"
         $vars["FINANCE_HR_DB_USERNAME"] = $DbUser
@@ -808,7 +808,7 @@ function Grant-PublicInvoker {
     }
 }
 
-$script:DeployCsvStagingRelativeDir = "database/imports/.deploy-staging"
+$script:DeployCsvStagingRelativeDir = "deploy/roster-job-data"
 
 function Get-DeployCsvStagingDir {
     param([string]$ProjectRoot)

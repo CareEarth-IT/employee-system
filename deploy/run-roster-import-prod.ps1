@@ -18,7 +18,7 @@ $JobName = "employee-sync-roster"
 $Image = "${Region}-docker.pkg.dev/${ProjectId}/employee/${Service}:latest"
 $Root = Split-Path $PSScriptRoot -Parent
 $SourceCsv = Join-Path $Root "database\imports\employee-roster.csv"
-$ContainerCsvPath = "database/imports/.deploy-staging/employee-roster.csv"
+$ContainerCsvPath = "deploy/roster-job-data/employee-roster.csv"
 
 Set-Location $Root
 . (Join-Path $PSScriptRoot "deploy-common.ps1")

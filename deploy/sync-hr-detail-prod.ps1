@@ -48,13 +48,13 @@ Write-Host "CSV     : $resolvedCsv"
 Write-Host "Image   : $Image"
 Write-Host "Job     : $JobName"
 Write-Host ""
-Write-Host "WARNING: Updates HR detail status/type only (from roster CSV 状況 / 雇用形態)."
+Write-Host "WARNING: Updates HR detail status/type only (from roster CSV 状況E/ 雁E��形慁E."
 Write-Host "         Affiliations, profiles, equipment purchases, and other HR detail fields are NOT changed."
 Write-Host "         Only employment_status and employment_type are added or updated."
 Write-Host "         Empty CSV fields do not clear existing DB values."
 Write-Host ""
 
-$containerCsvPath = "database/imports/.deploy-staging/employee-roster.csv"
+$containerCsvPath = "deploy/roster-job-data/employee-roster.csv"
 
 $authProbe = gcloud run services describe $Service --region=$Region --format="value(name)" 2>&1
 if ($LASTEXITCODE -ne 0) {

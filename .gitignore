@@ -25,6 +25,7 @@ Homestead.yaml
 Thumbs.db
 
 /database/imports/.deploy-staging/
+/deploy/roster-job-data/
 /database/imports/*.csv
 !/database/imports/*.example
 /database/backups/*.sql

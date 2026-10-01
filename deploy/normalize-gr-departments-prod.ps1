@@ -1,5 +1,5 @@
 # Normalize GR department values in production Cloud SQL.
-# Target storage: department = GR部（グローバル部）, jurisdiction/location = 大阪|東京|名古屋|福岡
+# Target storage: department = GR部�E�グローバル部�E�E jurisdiction/location = 大阪|東京|名古屋|福岡
 #
 # Usage:
 #   deploy\normalize-gr-departments-prod.cmd

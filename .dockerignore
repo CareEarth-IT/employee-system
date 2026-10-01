@@ -12,8 +12,6 @@ storage/app/public/*
 # Do not ship HR CSV / SQL backups in the application image (code deploy only).
 database/imports/**
 !database/imports/*.example
-!database/imports/.deploy-staging/
-!database/imports/.deploy-staging/**
 database/backups/**
 .idea
 .vscode

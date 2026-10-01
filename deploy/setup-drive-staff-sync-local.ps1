@@ -39,8 +39,8 @@ if ($driveUrl -eq "" -or $syncSecret -eq "") {
 DRIVE_APP_API_URL or EMPLOYEE_SITE_SYNC_SECRET is missing on employee Cloud Run.
 
 Run first (same secret on gas-app Cloud Run):
-  deploy\setup-drive-staff-sync-cloudrun.cmd `"共有秘密鍵`"
-  gas-app\scripts\setup-employee-site-sync-cloudrun.ps1 -SyncSecret `"共有秘密鍵`"
+  deploy\setup-drive-staff-sync-cloudrun.cmd `"共有秘寁E��`"
+  gas-app\scripts\setup-employee-site-sync-cloudrun.ps1 -SyncSecret `"共有秘寁E��`"
 "@
 }
 

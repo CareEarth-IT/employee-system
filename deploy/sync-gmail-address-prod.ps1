@@ -53,7 +53,7 @@ Write-Host "         Only gmail_address is added or updated."
 Write-Host "         Rows without Googleアドレス in CSV are skipped."
 Write-Host ""
 
-$containerCsvPath = "database/imports/.deploy-staging/employee-roster.csv"
+$containerCsvPath = "deploy/roster-job-data/employee-roster.csv"
 
 $authProbe = gcloud run services describe $Service --region=$Region --format="value(name)" 2>&1
 if ($LASTEXITCODE -ne 0) {

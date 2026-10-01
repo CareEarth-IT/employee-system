@@ -130,7 +130,7 @@ $envVars = Get-CloudRunEnvVars `
 $envVars["RUN_MIGRATIONS"] = "false"
 $envVars["RUN_SEED"] = "false"
 
-$artisanArgs = @("artisan", "employee:import-bulk", "database/imports/.deploy-staging/employees.csv")
+$artisanArgs = @("artisan", "employee:import-bulk", "deploy/roster-job-data/employees.csv")
 if ($DryRun) {
     $artisanArgs += "--dry-run"
 }
