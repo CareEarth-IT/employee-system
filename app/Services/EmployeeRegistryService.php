@@ -69,7 +69,7 @@ class EmployeeRegistryService
 
             $user = User::create([
                 'employee_id' => $data['employee_id'],
-                'email' => $data['email'],
+                'email' => $data['email'] ?? null,
                 'password' => $data['password'],
                 'must_change_password' => true,
                 'role' => User::ROLE_EMPLOYEE,
@@ -170,7 +170,7 @@ class EmployeeRegistryService
 
             $user->fill([
                 'employee_id' => $data['employee_id'],
-                'email' => $data['email'],
+                'email' => $data['email'] ?? null,
                 'last_name' => $lastName,
                 'first_name' => $firstName,
                 'name' => $displayName,

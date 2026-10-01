@@ -633,6 +633,48 @@ class EmployeeRegistryTest extends TestCase
         $this->assertNull(User::query()->where('email', 'blank_dept@careearth.info')->first());
     }
 
+    public function test_store_allows_part_time_employee_without_email(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'name' => 'アルバイト 太郎',
+                'email' => '',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10960',
+                'department' => '人材派遣事業部',
+                'employment_type' => 'アルバイト',
+            ]))
+            ->assertRedirect(route('employees.create'))
+            ->assertSessionHasNoErrors();
+
+        $created = User::query()->where('employee_id', '10960')->first();
+
+        $this->assertNotNull($created);
+        $this->assertNull($created->email);
+        $this->assertSame('アルバイト', $created->hrDetail?->employment_type);
+    }
+
+    public function test_store_rejects_full_time_employee_without_email(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'name' => '正社員 太郎',
+                'email' => '',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10961',
+                'employment_type' => '正社員',
+            ]))
+            ->assertSessionHasErrors(['email']);
+
+        $this->assertNull(User::query()->where('employee_id', '10961')->first());
+    }
+
     public function test_store_rejects_invalid_department(): void
     {
         $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');

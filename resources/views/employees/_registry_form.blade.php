@@ -16,8 +16,12 @@
 
 <div class="space-y-4">
     <div>
-        <label for="email" class="mb-1 block text-base">アドレス <span class="text-red-600">*</span></label>
-        <input id="email" name="email" type="email" value="{{ $values['email'] ?? '' }}" required class="w-full rounded border border-slate-300 px-3 py-2 text-base">
+        <label for="email" class="mb-1 block text-base">
+            アドレス
+            <span id="email-required-mark" class="text-red-600">*</span>
+        </label>
+        <p class="mb-1 text-sm text-slate-500">アルバイトは未入力可</p>
+        <input id="email" name="email" type="email" value="{{ $values['email'] ?? '' }}" class="w-full rounded border border-slate-300 px-3 py-2 text-base">
         @include('partials.field-error', ['field' => 'email'])
     </div>
 
@@ -154,3 +158,24 @@
     </button>
     <a href="{{ route('employees.index') }}" class="rounded border border-slate-300 px-4 py-2 text-base hover:bg-slate-50">社員一覧へ戻る</a>
 </div>
+
+<script>
+(() => {
+    const employmentType = document.getElementById('employment_type');
+    const emailInput = document.getElementById('email');
+    const requiredMark = document.getElementById('email-required-mark');
+
+    if (!employmentType || !emailInput || !requiredMark) {
+        return;
+    }
+
+    const syncEmailRequired = () => {
+        const optional = employmentType.value === 'アルバイト';
+        emailInput.required = !optional;
+        requiredMark.classList.toggle('hidden', optional);
+    };
+
+    employmentType.addEventListener('change', syncEmailRequired);
+    syncEmailRequired();
+})();
+</script>

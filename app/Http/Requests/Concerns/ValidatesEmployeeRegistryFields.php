@@ -20,9 +20,11 @@ trait ValidatesEmployeeRegistryFields
     {
         $nullable = static fn (mixed $value): ?string => (($text = trim((string) $value)) !== '' ? $text : null);
 
+        $email = strtolower(trim((string) $this->input('email', '')));
+
         $this->merge([
             'name' => trim((string) $this->input('name', '')),
-            'email' => strtolower(trim((string) $this->input('email', ''))),
+            'email' => $email !== '' ? $email : null,
             'department' => RegistryDepartmentOptions::normalizeDepartment(
                 trim((string) $this->input('department', '')),
             ),
@@ -67,7 +69,8 @@ trait ValidatesEmployeeRegistryFields
         return [
             'name' => ['required', 'string', 'max:255', 'regex:/[\s　]/u'],
             'email' => [
-                'required',
+                Rule::requiredIf(fn (): bool => ! $this->isPartTimeEmploymentType()),
+                'nullable',
                 'email',
                 'max:255',
                 Rule::unique('users', 'email')->ignore($uniqueIgnoreUserId),
@@ -173,6 +176,7 @@ trait ValidatesEmployeeRegistryFields
             'name.required' => '名前を入力してください。',
             'name.regex' => '名前は姓と名の間にスペースを入れてください（全角・半角どちらでも可）。',
             'email.required' => 'アドレスを入力してください。',
+            'email.required_if' => 'アドレスを入力してください。',
             'email.email' => 'アドレスの形式が正しくありません。',
             'email.unique' => 'このアドレスは既に使用されています。',
             'employee_id.required' => 'IDを入力してください。',
@@ -253,5 +257,10 @@ trait ValidatesEmployeeRegistryFields
         array_unshift($rules, $required ? 'required' : 'nullable');
 
         return $rules;
+    }
+
+    protected function isPartTimeEmploymentType(): bool
+    {
+        return trim((string) $this->input('employment_type')) === 'アルバイト';
     }
 }
