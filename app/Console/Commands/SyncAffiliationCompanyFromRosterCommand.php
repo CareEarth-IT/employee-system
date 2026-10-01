@@ -81,7 +81,9 @@ class SyncAffiliationCompanyFromRosterCommand extends Command
             $targetCompany = $row['company'];
 
             foreach ($user->affiliationHistories as $affiliation) {
-                if ($affiliation->start_date->toDateString() === self::MANUAL_CORRECTION_START_DATE) {
+                $startDate = $affiliation->start_date?->toDateString();
+
+                if ($startDate === self::MANUAL_CORRECTION_START_DATE) {
                     $skippedManual++;
                     $unchanged++;
 
@@ -109,7 +111,7 @@ class SyncAffiliationCompanyFromRosterCommand extends Command
                         $row['affiliation_code'],
                         $currentCompany,
                         $targetCompany,
-                        $affiliation->start_date->toDateString(),
+                        $startDate ?? '—',
                         $affiliation->department ?? '—',
                         '更新予定',
                     ];
@@ -125,7 +127,7 @@ class SyncAffiliationCompanyFromRosterCommand extends Command
                     $row['affiliation_code'],
                     $currentCompany,
                     $targetCompany,
-                    $affiliation->start_date->toDateString(),
+                    $startDate ?? '—',
                     $affiliation->department ?? '—',
                     '更新',
                 ];
@@ -167,7 +169,7 @@ class SyncAffiliationCompanyFromRosterCommand extends Command
         AffiliationHistory $affiliation,
         int $affiliationCount,
     ): bool {
-        $start = $affiliation->start_date->toDateString();
+        $start = $affiliation->start_date?->toDateString();
 
         if ($start === self::BULK_IMPORT_START_DATE) {
             return true;

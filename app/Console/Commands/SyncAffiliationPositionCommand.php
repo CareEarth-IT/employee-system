@@ -105,7 +105,7 @@ class SyncAffiliationPositionCommand extends Command
             $user->displayName(),
             $current !== '' ? $current : '—',
             $target ?? '—',
-            $affiliation->start_date->toDateString(),
+            $affiliation->start_date?->toDateString() ?? '—',
             $affiliation->department ?? '—',
             $dryRun ? '更新予定' : '更新',
         ];
