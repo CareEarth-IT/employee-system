@@ -1,0 +1,56 @@
+*.log
+.DS_Store
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+/wordpress
+Homestead.json
+Homestead.yaml
+Thumbs.db
+
+/database/imports/.deploy-staging/
+/database/imports/*.csv
+!/database/imports/*.example
+/database/backups/*.sql
+
+# finance-hr 繧｢繝・・繝ｭ繝ｼ繝牙ｮ滉ｽ難ｼ医ョ繧｣繝ｬ繧ｯ繝医Μ閾ｪ菴薙・谿九☆・・/apps/finance-hr/uploads/*
+!/apps/finance-hr/uploads/.gitkeep
+
+# 繝ｭ繝ｼ繧ｫ繝ｫ逕ｨ繧ｸ繝｣繝ｳ繧ｯ繧ｷ繝ｧ繝ｳ・亥ｮ滉ｽ薙・ apps/finance-hr・・/public/finance-hr
+
+database/imports/_*.txt
+database/imports/_verify*.json
+database/imports/_wp-*.json
+
+# 縺輔￥繧・SMTP 繝ｪ繝ｬ繝ｼ・医Ο繝ｼ繧ｫ繝ｫ讀懆ｨｼ逕ｨ繝ｻGitHub 髱槫・髢具ｼ・/sakura/
+/app/Mail/Transport/SakuraRelayTransport.php
+/app/Console/Commands/SakuraMailVerifyCommand.php
+/app/Console/Commands/SakuraRelayMailVerifyCommand.php
+/deploy/*sakura*
+/deploy/check-sakura-relay-job-logs.*
+/deploy/__pycache__/
+
+# 譛ｬ逡ｪ遉ｾ蜩｡繝・・繧ｿ縺ｮ CSV 繧ｨ繧ｯ繧ｹ繝昴・繝茨ｼ亥倶ｺｺ諠・ｱ 窶・GitHub 縺ｫ霈峨○縺ｪ縺・ｼ・/deploy/*-prod.csv
+/deploy/gr-employees*.csv
+/deploy/compare-roster*.csv
+
+# Keep staged job CSVs for Cloud Build uploads
+!/deploy/roster-job-data/
+!/deploy/roster-job-data/**
+
