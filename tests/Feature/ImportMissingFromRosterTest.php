@@ -105,6 +105,84 @@ class ImportMissingFromRosterTest extends TestCase
         @unlink($path);
     }
 
+    public function test_imports_resigned_employee_without_employee_id(): void
+    {
+        $path = $this->writeRosterCsv([[
+            '名前' => '河上 純弥',
+            'Name' => 'Kawakami Junya',
+            '短縮表示' => '河上',
+            '状況' => '退職',
+            '所属' => 'CE',
+            'ID' => '',
+            '雇用形態' => '正社員',
+            '管轄' => '大阪',
+            '国籍' => 'JP',
+            '性別' => '男',
+            '社用アドレス' => 'junya_no_id_test@careearth.info',
+            '入社予定日' => '2024/1/1',
+            '入社日' => '1/1/2024',
+            '退職日' => '6/30/2024',
+        ]]);
+
+        $exit = Artisan::call('employee:import-missing-from-roster', [
+            'file' => $path,
+        ]);
+        $output = Artisan::output();
+
+        $this->assertSame(0, $exit, $output);
+
+        $created = User::query()->where('email', 'junya_no_id_test@careearth.info')->first();
+        $this->assertNotNull($created, $output);
+        $this->assertNull($created->employee_id);
+        $this->assertSame('退職', $created->hrDetail?->employment_status);
+        $this->assertTrue($created->fresh(['hrDetail'])->isListedEmployee());
+
+        $listed = User::query();
+        \App\Support\EmploymentStatus::applyUserStatusFilter($listed, '退職');
+        $this->assertTrue($listed->whereKey($created->id)->exists(), $output);
+
+        @unlink($path);
+    }
+
+    public function test_imports_resigned_employee_with_colliding_id_as_null_id(): void
+    {
+        User::factory()->create([
+            'email' => 'owner_of_id_40@careearth.info',
+            'employee_id' => '40',
+        ]);
+
+        $path = $this->writeRosterCsv([[
+            '名前' => '岡本 圭介',
+            'Name' => 'Okamoto Keisuke',
+            '短縮表示' => '岡本',
+            '状況' => '退職',
+            '所属' => 'CE',
+            'ID' => '40',
+            '雇用形態' => '正社員',
+            '管轄' => '大阪',
+            '国籍' => 'JP',
+            '性別' => '男',
+            '社用アドレス' => 'keisuke_collision_test@careearth.info',
+            '入社予定日' => '2024/1/1',
+            '入社日' => '1/1/2024',
+            '退職日' => '5/1/2024',
+        ]]);
+
+        $exit = Artisan::call('employee:import-missing-from-roster', [
+            'file' => $path,
+        ]);
+        $output = Artisan::output();
+
+        $this->assertSame(0, $exit, $output);
+
+        $created = User::query()->where('email', 'keisuke_collision_test@careearth.info')->first();
+        $this->assertNotNull($created, $output);
+        $this->assertNull($created->employee_id);
+        $this->assertSame('退職', $created->hrDetail?->employment_status);
+
+        @unlink($path);
+    }
+
     public function test_dry_run_does_not_create_users(): void
     {
         $path = $this->writeRosterCsv([[

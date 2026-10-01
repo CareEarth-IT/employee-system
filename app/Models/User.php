@@ -555,7 +555,18 @@ class User extends Authenticatable
      */
     public function isListedEmployee(): bool
     {
-        return EmployeeIdRules::isValid($this->employee_id);
+        if (EmployeeIdRules::isValid($this->employee_id)) {
+            return true;
+        }
+
+        // 社員IDなしの退職者も退職一覧に載せる
+        if ($this->employee_id !== null && $this->employee_id !== '') {
+            return false;
+        }
+
+        $status = EmploymentStatus::normalize(trim((string) ($this->hrDetail?->employment_status ?? '')));
+
+        return in_array($status, ['退職', '辞退'], true);
     }
 
     /**

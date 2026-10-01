@@ -86,7 +86,11 @@ final class EmploymentStatus
      */
     private static function applyResignedStatusFilter(Builder $query): void
     {
-        $query->whereListedEmployee()->whereHas(
+        $query->where(function (Builder $scope) {
+            $scope->whereListedEmployee()
+                ->orWhereNull('employee_id')
+                ->orWhere('employee_id', '');
+        })->whereHas(
             'hrDetail',
             fn (Builder $hrDetailQuery) => $hrDetailQuery->whereIn('employment_status', ['退職', '辞退']),
         );

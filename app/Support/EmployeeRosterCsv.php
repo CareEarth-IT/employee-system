@@ -350,12 +350,6 @@ class EmployeeRosterCsv
                 continue;
             }
 
-            $employeeId = preg_replace('/\D/', '', self::cellValue($data, $indexes['employee_id'])) ?? '';
-
-            if ($employeeId === '') {
-                continue;
-            }
-
             $employmentStatus = EmploymentStatus::normalize(
                 self::normalizeTextField(self::cellValue($data, $indexes['employment_status'])),
             );
@@ -363,11 +357,18 @@ class EmployeeRosterCsv
                 $employmentStatus = '在籍';
             }
 
+            $isResigned = in_array($employmentStatus, ['退職', '辞退'], true);
+            $employeeId = preg_replace('/\D/', '', self::cellValue($data, $indexes['employee_id'])) ?? '';
+
+            // 在籍者は社員ID必須。退職・辞退は社員IDなしでも登録対象にする。
+            if ($employeeId === '' && ! $isResigned) {
+                continue;
+            }
+
             $email = self::normalizeEmail(self::cellValue($data, $indexes['email']));
-            $allowMissingEmail = in_array($employmentStatus, ['退職', '辞退'], true);
 
             // 在籍者は社用アドレス必須。退職・辞退はメールなしでも退職一覧へ載せる。
-            if ($email === null && ! $allowMissingEmail) {
+            if ($email === null && ! $isResigned) {
                 continue;
             }
 
@@ -379,6 +380,11 @@ class EmployeeRosterCsv
                 : 'CareEarth';
 
             $identity = self::identityRowFields($data, $indexes);
+
+            if ($identity['name'] === '') {
+                continue;
+            }
+
             $registry = self::registryIdentityFields($data, $indexes) ?? [
                 'name_kana' => '',
                 'employee_id' => $employeeId,

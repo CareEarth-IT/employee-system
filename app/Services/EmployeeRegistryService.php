@@ -45,7 +45,7 @@ class EmployeeRegistryService
     public function create(array $data): User
     {
         return DB::transaction(function () use ($data): User {
-            $this->assertEmployeeIdIsAvailable($data['employee_id']);
+            $this->assertEmployeeIdIsAvailable($data['employee_id'] ?? null);
 
             [$lastName, $firstName, $displayName] = $this->splitName($data['name']);
             $affiliationOrg = \App\Support\RegistryDepartmentOptions::resolveAffiliation(
@@ -75,7 +75,9 @@ class EmployeeRegistryService
             }
 
             $user = User::create([
-                'employee_id' => $data['employee_id'],
+                'employee_id' => EmployeeIdRules::isValid($data['employee_id'] ?? null)
+                    ? (string) $data['employee_id']
+                    : null,
                 'email' => $data['email'] ?? null,
                 'password' => $data['password'],
                 'must_change_password' => true,
@@ -279,7 +281,7 @@ class EmployeeRegistryService
         return trim($user->name ?: $user->displayName());
     }
 
-    private function assertEmployeeIdIsAvailable(string $employeeId, ?int $ignoreUserId = null): void
+    private function assertEmployeeIdIsAvailable(?string $employeeId, ?int $ignoreUserId = null): void
     {
         if (! EmployeeIdRules::isValid($employeeId)) {
             return;
