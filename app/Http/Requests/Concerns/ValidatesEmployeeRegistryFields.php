@@ -40,6 +40,7 @@ trait ValidatesEmployeeRegistryFields
             'remarks' => $nullable($this->input('remarks', '')),
             'joined_at' => DateInput::normalize($nullable($this->input('joined_at', ''))),
             'employment_status' => trim((string) $this->input('employment_status', '在籍')),
+            'has_social_insurance' => $this->boolean('has_social_insurance'),
         ]);
     }
 
@@ -156,6 +157,7 @@ trait ValidatesEmployeeRegistryFields
             ] : ['nullable'],
             'location' => ['required', 'string', Rule::in(User::OFFICE_LOCATIONS)],
             'employment_type' => ['required', 'string', Rule::in(User::EMPLOYMENT_TYPE_OPTIONS)],
+            'has_social_insurance' => ['boolean'],
             'employment_status' => ['required', 'string', Rule::in(User::employmentStatusOptions($currentEmploymentStatus))],
             'name_kana' => ['nullable', 'string', 'max:255'],
             'english_name' => ['nullable', 'string', 'max:255'],
@@ -219,6 +221,7 @@ trait ValidatesEmployeeRegistryFields
             'team' => 'チーム',
             'location' => '管轄',
             'employment_type' => '雇用形態',
+            'has_social_insurance' => '社会保険',
             'employment_status' => '状況',
             'name_kana' => 'ナマエ',
             'english_name' => 'Name',

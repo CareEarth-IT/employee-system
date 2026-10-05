@@ -329,6 +329,32 @@ class EmployeeHrDetailOrgFormTest extends TestCase
         $this->assertNull($target->fresh()->profile?->joined_at);
     }
 
+    public function test_hr_detail_can_update_social_insurance(): void
+    {
+        $hr = $this->userInAffiliation('人事部', '人事課');
+        $target = User::factory()->create();
+        EmployeeHrDetail::create([
+            'user_id' => $target->id,
+            'employment_type' => 'アルバイト',
+            'has_social_insurance' => false,
+        ]);
+
+        $this->actingAs($hr)
+            ->get(route('users.profile.hr-detail.edit', $target))
+            ->assertOk()
+            ->assertSee('name="has_social_insurance"', false)
+            ->assertSee('社会保険', false);
+
+        $this->actingAs($hr)
+            ->put(route('users.profile.hr-detail.update', $target), [
+                'has_social_insurance' => '1',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue((bool) $target->fresh()->hrDetail?->has_social_insurance);
+    }
+
     private function userInAffiliation(string $department, string $section): User
     {
         $user = User::factory()->create();

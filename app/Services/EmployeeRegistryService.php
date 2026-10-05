@@ -30,6 +30,7 @@ class EmployeeRegistryService
      *     team?: string|null,
      *     location: string,
      *     employment_type: string,
+     *     has_social_insurance?: bool,
      *     employment_status?: string,
      *     name_kana?: string|null,
      *     english_name?: string|null,
@@ -150,6 +151,7 @@ class EmployeeRegistryService
      *     team?: string|null,
      *     location: string,
      *     employment_type: string,
+     *     has_social_insurance?: bool,
      *     employment_status?: string,
      *     name_kana?: string|null,
      *     english_name?: string|null,
@@ -344,6 +346,9 @@ class EmployeeRegistryService
                 $attributes[$field] = $data[$field];
             }
         }
+
+        $attributes['has_social_insurance'] = ($data['employment_type'] ?? '') === 'アルバイト'
+            && ! empty($data['has_social_insurance']);
 
         return $attributes;
     }

@@ -60,15 +60,36 @@
                     'value' => $affiliationDisplayName,
                     'readonly' => $roCore,
                 ])
-                @include('partials.form-field', [
-                    'name' => 'employment_type',
-                    'label' => '雇用形態',
-                    'type' => 'select',
-                    'options' => $employmentTypeOptions,
-                    'value' => $d->employment_type,
-                    'hint' => '（例: 正社員）',
-                    'readonly' => $roCore,
-                ])
+                <div>
+                    @include('partials.form-field', [
+                        'name' => 'employment_type',
+                        'label' => '雇用形態',
+                        'type' => 'select',
+                        'options' => $employmentTypeOptions,
+                        'value' => $d->employment_type,
+                        'hint' => '（例: 正社員）',
+                        'readonly' => $roCore,
+                    ])
+                    <div id="hr-detail-social-insurance-field" class="mt-2 {{ old('employment_type', $d->employment_type) === 'アルバイト' ? '' : 'hidden' }}">
+                        @if ($roCore)
+                            <p class="text-base">{{ $d->has_social_insurance ? '社会保険あり' : '社会保険' }}</p>
+                        @else
+                            <input type="hidden" name="has_social_insurance" value="0">
+                            <label class="inline-flex cursor-pointer items-center gap-2 text-base">
+                                <input
+                                    id="has_social_insurance"
+                                    type="checkbox"
+                                    name="has_social_insurance"
+                                    value="1"
+                                    @checked(old('has_social_insurance', $d->has_social_insurance))
+                                    class="rounded border-slate-300"
+                                >
+                                <span id="has_social_insurance_label">社会保険{{ old('has_social_insurance', $d->has_social_insurance) ? 'あり' : '' }}</span>
+                            </label>
+                            @include('partials.field-error', ['field' => 'has_social_insurance'])
+                        @endif
+                    </div>
+                </div>
                 <div>
                     <label for="nationality" class="mb-1 block text-base">国籍</label>
                     @if ($roCore)
@@ -206,3 +227,39 @@
         ])
     @endif
 </div>
+
+@unless ($roCore)
+<script>
+(() => {
+    const employmentType = document.getElementById('employment_type');
+    const socialInsuranceField = document.getElementById('hr-detail-social-insurance-field');
+    const socialInsuranceCheckbox = document.getElementById('has_social_insurance');
+    const socialInsuranceLabel = document.getElementById('has_social_insurance_label');
+
+    if (!employmentType || !socialInsuranceField) {
+        return;
+    }
+
+    const syncSocialInsuranceLabel = () => {
+        if (!socialInsuranceLabel || !socialInsuranceCheckbox) {
+            return;
+        }
+
+        socialInsuranceLabel.textContent = socialInsuranceCheckbox.checked ? '社会保険あり' : '社会保険';
+    };
+
+    const syncSocialInsurance = () => {
+        const isPartTime = employmentType.value === 'アルバイト';
+        socialInsuranceField.classList.toggle('hidden', !isPartTime);
+        if (socialInsuranceCheckbox && !isPartTime) {
+            socialInsuranceCheckbox.checked = false;
+        }
+        syncSocialInsuranceLabel();
+    };
+
+    employmentType.addEventListener('change', syncSocialInsurance);
+    socialInsuranceCheckbox?.addEventListener('change', syncSocialInsuranceLabel);
+    syncSocialInsurance();
+})();
+</script>
+@endunless

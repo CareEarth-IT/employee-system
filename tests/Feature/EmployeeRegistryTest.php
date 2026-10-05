@@ -655,6 +655,55 @@ class EmployeeRegistryTest extends TestCase
         $this->assertNotNull($created);
         $this->assertNull($created->email);
         $this->assertSame('アルバイト', $created->hrDetail?->employment_type);
+        $this->assertFalse((bool) $created->hrDetail?->has_social_insurance);
+    }
+
+    public function test_store_saves_social_insurance_for_part_time_employee(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'name' => 'アルバイト 花子',
+                'email' => 'part_time_insurance@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10959',
+                'department' => '人材派遣事業部',
+                'employment_type' => 'アルバイト',
+                'has_social_insurance' => '1',
+            ]))
+            ->assertRedirect(route('employees.create'))
+            ->assertSessionHasNoErrors();
+
+        $created = User::query()->where('employee_id', '10959')->first();
+
+        $this->assertNotNull($created);
+        $this->assertSame('アルバイト', $created->hrDetail?->employment_type);
+        $this->assertTrue((bool) $created->hrDetail?->has_social_insurance);
+    }
+
+    public function test_store_ignores_social_insurance_unless_part_time(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'name' => '正社員 太郎',
+                'email' => 'full_time_insurance@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10958',
+                'has_social_insurance' => '1',
+            ]))
+            ->assertRedirect(route('employees.create'))
+            ->assertSessionHasNoErrors();
+
+        $created = User::query()->where('employee_id', '10958')->first();
+
+        $this->assertNotNull($created);
+        $this->assertSame('正社員', $created->hrDetail?->employment_type);
+        $this->assertFalse((bool) $created->hrDetail?->has_social_insurance);
     }
 
     public function test_store_allows_short_numeric_employee_id_from_roster(): void
@@ -918,7 +967,9 @@ class EmployeeRegistryTest extends TestCase
             ->assertSee('name="gender"', false)
             ->assertSee('name="nationality"', false)
             ->assertSee('name="joined_at"', false)
-            ->assertSee('name="remarks"', false);
+            ->assertSee('name="remarks"', false)
+            ->assertSee('name="has_social_insurance"', false)
+            ->assertSee('社会保険', false);
     }
 
     public function test_registry_user_can_create_employee_with_extended_fields(): void

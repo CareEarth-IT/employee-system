@@ -29,6 +29,7 @@
             'team' => old('team'),
             'location' => old('location'),
             'employment_type' => old('employment_type'),
+            'has_social_insurance' => old('has_social_insurance'),
             'employment_status' => old('employment_status', '在籍'),
             'name_kana' => old('name_kana'),
             'english_name' => old('english_name'),

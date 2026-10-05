@@ -18,6 +18,7 @@ class EmployeeHrDetailFieldLabels
         'name_kana_halfwidth' => 'ｶﾅ（半角）',
         'affiliation_code' => '所属',
         'employment_type' => '雇用形態',
+        'has_social_insurance' => '社会保険',
         'employment_status' => '状況',
         'resigned_at' => '退職日',
         'last_working_day' => '最終出勤日',

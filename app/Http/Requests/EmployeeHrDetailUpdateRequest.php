@@ -149,6 +149,7 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
             'name_kana_halfwidth' => ['nullable', 'string', 'max:255'],
             'affiliation_code' => ['nullable', 'string', Rule::in(array_keys(User::companyAffiliationSelectOptions($hrDetail?->affiliation_code)))],
             'employment_type' => ['nullable', 'string', Rule::in(User::employmentTypeOptions($hrDetail?->employment_type))],
+            'has_social_insurance' => ['boolean'],
             'employment_status' => ['nullable', 'string', Rule::in(User::employmentStatusOptions($hrDetail?->employment_status))],
             'joined_at' => ['nullable', 'date'],
             'resigned_at' => ['nullable', 'date'],
@@ -330,6 +331,7 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
     {
         return [
             'my_number_verified',
+            'has_social_insurance',
             'has_pc',
             'has_mobile',
             'setup_completed',

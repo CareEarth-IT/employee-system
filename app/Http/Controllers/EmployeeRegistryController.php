@@ -82,6 +82,10 @@ class EmployeeRegistryController extends Controller
                 'employment_type',
                 (string) ($hrDetail?->employment_type ?: $affiliation?->position ?: ''),
             ),
+            'has_social_insurance' => old(
+                'has_social_insurance',
+                (bool) ($hrDetail?->has_social_insurance ?? false),
+            ),
             'employment_status' => old(
                 'employment_status',
                 (string) ($hrDetail?->employment_status ?: '在籍'),

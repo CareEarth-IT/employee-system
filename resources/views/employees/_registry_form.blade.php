@@ -113,6 +113,21 @@
                 @endforeach
             </select>
             @include('partials.field-error', ['field' => 'employment_type'])
+            <div id="social-insurance-field" class="mt-3 {{ ($values['employment_type'] ?? '') === 'アルバイト' ? '' : 'hidden' }}">
+                <input type="hidden" name="has_social_insurance" value="0">
+                <label class="inline-flex cursor-pointer items-center gap-2 text-base">
+                    <input
+                        id="has_social_insurance"
+                        type="checkbox"
+                        name="has_social_insurance"
+                        value="1"
+                        @checked(old('has_social_insurance', $values['has_social_insurance'] ?? false))
+                        class="rounded border-slate-300"
+                    >
+                    <span id="has_social_insurance_label">社会保険{{ old('has_social_insurance', $values['has_social_insurance'] ?? false) ? 'あり' : '' }}</span>
+                </label>
+                @include('partials.field-error', ['field' => 'has_social_insurance'])
+            </div>
         </div>
         <div>
             <label for="employment_status" class="block text-base mb-1">状況 <span class="text-red-600">*</span></label>
@@ -164,18 +179,43 @@
     const employmentType = document.getElementById('employment_type');
     const emailInput = document.getElementById('email');
     const requiredMark = document.getElementById('email-required-mark');
+    const socialInsuranceField = document.getElementById('social-insurance-field');
+    const socialInsuranceCheckbox = document.getElementById('has_social_insurance');
+    const socialInsuranceLabel = document.getElementById('has_social_insurance_label');
 
-    if (!employmentType || !emailInput || !requiredMark) {
+    if (!employmentType) {
         return;
     }
 
-    const syncEmailRequired = () => {
-        const optional = employmentType.value === 'アルバイト';
-        emailInput.required = !optional;
-        requiredMark.classList.toggle('hidden', optional);
+    const syncSocialInsuranceLabel = () => {
+        if (!socialInsuranceLabel || !socialInsuranceCheckbox) {
+            return;
+        }
+
+        socialInsuranceLabel.textContent = socialInsuranceCheckbox.checked ? '社会保険あり' : '社会保険';
     };
 
-    employmentType.addEventListener('change', syncEmailRequired);
-    syncEmailRequired();
+    const syncPartTimeFields = () => {
+        const isPartTime = employmentType.value === 'アルバイト';
+
+        if (emailInput && requiredMark) {
+            emailInput.required = !isPartTime;
+            requiredMark.classList.toggle('hidden', isPartTime);
+        }
+
+        if (socialInsuranceField) {
+            socialInsuranceField.classList.toggle('hidden', !isPartTime);
+        }
+
+        if (socialInsuranceCheckbox && !isPartTime) {
+            socialInsuranceCheckbox.checked = false;
+        }
+
+        syncSocialInsuranceLabel();
+    };
+
+    employmentType.addEventListener('change', syncPartTimeFields);
+    socialInsuranceCheckbox?.addEventListener('change', syncSocialInsuranceLabel);
+    syncPartTimeFields();
 })();
 </script>

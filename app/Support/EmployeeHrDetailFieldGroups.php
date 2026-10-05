@@ -15,6 +15,7 @@ class EmployeeHrDetailFieldGroups
         'gmail_address',
         'affiliation_code',
         'employment_type',
+        'has_social_insurance',
         'employment_status',
         'resigned_at',
         'last_working_day',
