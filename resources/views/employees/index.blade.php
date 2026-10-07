@@ -356,7 +356,7 @@
         contains: '次を含む',
         not_contains: '次を含まない',
         eq: '次と一致',
-        gte: 'この日付以降',
+        between: 'この日付からこの日付まで',
         not_eq: '次と一致しない',
         empty: '空',
         not_empty: '空でない',
@@ -364,9 +364,11 @@
     const presenceOperators = new Set(['empty', 'not_empty']);
     const controlClass = 'rounded border border-slate-300 bg-white text-sm py-1.5';
     const fieldSelectClass = `${controlClass} w-[8.75rem] max-w-[8.75rem] shrink-0 px-2`;
-    const operatorSelectClass = `${controlClass} w-[8.5rem] max-w-[8.5rem] shrink-0 px-2`;
+    const operatorSelectClass = `${controlClass} w-[13rem] max-w-[13rem] shrink-0 px-2`;
     const valueControlClass = `${controlClass} w-full px-2.5`;
     const valueContainerClass = 'w-[11rem] max-w-[11rem] shrink-0';
+    const rangeValueContainerClass = 'flex w-auto max-w-none shrink-0 items-center gap-1.5';
+    const rangeDateControlClass = `${controlClass} w-[9.5rem] max-w-[9.5rem] px-2`;
     const initialConditions = @json($filterConditions);
     const rowsContainer = document.getElementById('filter-rows');
     const addButton = document.getElementById('add-filter-condition');
@@ -389,7 +391,9 @@
 
             const fieldSelect = row.querySelector('[data-filter-field]');
             const operatorSelect = row.querySelector('[data-filter-operator]');
-            const valueControl = row.querySelector('[data-filter-value] input, [data-filter-value] select');
+            const valueFrom = row.querySelector('[data-filter-value-from]');
+            const valueTo = row.querySelector('[data-filter-value-to]');
+            const valueControl = row.querySelector('[data-filter-value] input:not([data-filter-value-from]):not([data-filter-value-to]), [data-filter-value] select');
 
             if (fieldSelect) {
                 fieldSelect.name = `filters[${index}][field]`;
@@ -399,7 +403,15 @@
                 operatorSelect.name = `filters[${index}][op]`;
             }
 
-            if (valueControl) {
+            if (valueFrom) {
+                valueFrom.name = `filters[${index}][value]`;
+            }
+
+            if (valueTo) {
+                valueTo.name = `filters[${index}][value_to]`;
+            }
+
+            if (! valueFrom && valueControl) {
                 valueControl.name = `filters[${index}][value]`;
             }
         });
@@ -535,6 +547,18 @@
         fieldSelect.value = selectedField || '';
     };
 
+    const buildDateInput = (value = '', datasetKey = null, className = valueControlClass) => {
+        const input = document.createElement('input');
+        input.type = 'date';
+        input.value = value;
+        input.className = className;
+        input.autocomplete = 'off';
+        if (datasetKey) {
+            input.dataset[datasetKey] = 'true';
+        }
+        return input;
+    };
+
     const buildValueControl = (field, value = '') => {
         const config = fieldConfig[field];
 
@@ -550,12 +574,7 @@
         }
 
         if (config.type === 'date') {
-            const input = document.createElement('input');
-            input.type = 'date';
-            input.value = value;
-            input.className = valueControlClass;
-            input.autocomplete = 'off';
-            return input;
+            return buildDateInput(value);
         }
 
         const input = document.createElement('input');
@@ -586,7 +605,28 @@
         return input;
     };
 
-    const syncValueControl = (row, field, operator, currentValue = '') => {
+    const buildBetweenValueControl = (fromValue = '', toValue = '') => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center gap-1.5';
+
+        const fromInput = buildDateInput(fromValue, 'filterValueFrom', rangeDateControlClass);
+        fromInput.title = '開始日';
+        fromInput.setAttribute('aria-label', '開始日');
+
+        const separator = document.createElement('span');
+        separator.className = 'shrink-0 text-sm text-slate-500';
+        separator.textContent = '〜';
+
+        const toInput = buildDateInput(toValue, 'filterValueTo', rangeDateControlClass);
+        toInput.title = '終了日';
+        toInput.setAttribute('aria-label', '終了日');
+
+        wrapper.append(fromInput, separator, toInput);
+
+        return wrapper;
+    };
+
+    const syncValueControl = (row, field, operator, currentValue = '', currentValueTo = '') => {
         const valueContainer = row.querySelector('[data-filter-value]');
         const config = fieldConfig[field];
 
@@ -603,10 +643,19 @@
         }
 
         valueContainer.hidden = false;
+        valueContainer.innerHTML = '';
+
+        if (operator === 'between' && config.type === 'date') {
+            valueContainer.className = rangeValueContainerClass;
+            valueContainer.appendChild(buildBetweenValueControl(currentValue, currentValueTo));
+            reindexFilterRows();
+
+            return;
+        }
+
         valueContainer.className = config.type === 'select'
             ? 'w-[13rem] max-w-[13rem] shrink-0'
             : valueContainerClass;
-        valueContainer.innerHTML = '';
         valueContainer.appendChild(buildValueControl(field, currentValue));
         reindexFilterRows();
     };
@@ -636,7 +685,8 @@
         }
 
         operatorSelect.disabled = false;
-        const currentValue = valueContainer.querySelector('input, select')?.value || '';
+        const currentValue = valueContainer.querySelector('[data-filter-value-from], input, select')?.value || '';
+        const currentValueTo = valueContainer.querySelector('[data-filter-value-to]')?.value || '';
         const previousOperator = row.dataset.operator || operatorSelect.value;
 
         operatorSelect.innerHTML = '';
@@ -650,7 +700,7 @@
         operatorSelect.value = selectedOperator;
         delete row.dataset.operator;
 
-        syncValueControl(row, field, selectedOperator, currentValue);
+        syncValueControl(row, field, selectedOperator, currentValue, currentValueTo);
     };
 
     const createRow = (condition = null) => {
@@ -714,8 +764,9 @@
         });
 
         operatorSelect.addEventListener('change', () => {
-            const currentValue = row.querySelector('[data-filter-value] input, [data-filter-value] select')?.value || '';
-            syncValueControl(row, fieldSelect.value, operatorSelect.value, currentValue);
+            const currentValue = row.querySelector('[data-filter-value-from], [data-filter-value] input, [data-filter-value] select')?.value || '';
+            const currentValueTo = row.querySelector('[data-filter-value-to]')?.value || '';
+            syncValueControl(row, fieldSelect.value, operatorSelect.value, currentValue, currentValueTo);
         });
 
         row.append(prefix, fieldSelect, operatorSelect, valueContainer, removeButton);
@@ -727,12 +778,21 @@
         }
         syncRow(row);
 
-        if (condition?.value) {
-            const valueControl = valueContainer.querySelector('input, select');
-            if (valueControl) {
+        if (condition) {
+            const valueFrom = valueContainer.querySelector('[data-filter-value-from]');
+            const valueTo = valueContainer.querySelector('[data-filter-value-to]');
+            const valueControl = valueContainer.querySelector('input:not([data-filter-value-from]):not([data-filter-value-to]), select');
+
+            if (valueFrom) {
+                valueFrom.value = condition.value || '';
+            } else if (valueControl && condition.value) {
                 valueControl.value = condition.value;
             }
-        } else if (! condition) {
+
+            if (valueTo) {
+                valueTo.value = condition.value_to || '';
+            }
+        } else {
             const valueControl = valueContainer.querySelector('input, select');
             if (valueControl) {
                 valueControl.value = '';

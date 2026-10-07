@@ -92,10 +92,10 @@ class EmployeeIndexFiltersTest extends TestCase
         $this->assertSame('select', $config['fields']['nationality']['type']);
         $this->assertSame('date', $config['fields']['joined_at']['type']);
         $this->assertSame(
-            ['eq', 'gte', 'not_eq', 'empty', 'not_empty'],
+            ['eq', 'between', 'not_eq', 'empty', 'not_empty'],
             $config['fields']['joined_at']['operators'],
         );
-        $this->assertSame('この日付以降', $config['operatorLabels']['gte']);
+        $this->assertSame('この日付からこの日付まで', $config['operatorLabels']['between']);
         $this->assertSame('employee_id', $config['fields']['employee_id']['input']);
         $this->assertSame('ascii', $config['fields']['email']['input']);
         $this->assertSame('次を含む', $config['operatorLabels']['contains']);
@@ -164,14 +164,15 @@ class EmployeeIndexFiltersTest extends TestCase
         ], EmployeeIndexFilters::parseFromRequest($request));
     }
 
-    public function test_accepts_date_gte_filter_value(): void
+    public function test_accepts_date_between_filter_values(): void
     {
         $request = Request::create('/employees', 'GET', [
             'filters' => [
                 [
                     'field' => 'joined_at',
-                    'op' => 'gte',
+                    'op' => 'between',
                     'value' => '2020-01-01',
+                    'value_to' => '2020-12-31',
                 ],
             ],
         ]);
@@ -179,10 +180,47 @@ class EmployeeIndexFiltersTest extends TestCase
         $this->assertSame([
             [
                 'field' => 'joined_at',
-                'op' => 'gte',
+                'op' => 'between',
                 'value' => '2020-01-01',
+                'value_to' => '2020-12-31',
             ],
         ], EmployeeIndexFilters::parseFromRequest($request));
+    }
+
+    public function test_date_between_swaps_reversed_range(): void
+    {
+        $request = Request::create('/employees', 'GET', [
+            'filters' => [
+                [
+                    'field' => 'birth_date',
+                    'op' => 'between',
+                    'value' => '2020-12-31',
+                    'value_to' => '2020-01-01',
+                ],
+            ],
+        ]);
+
+        $this->assertSame([
+            [
+                'field' => 'birth_date',
+                'op' => 'between',
+                'value' => '2020-01-01',
+                'value_to' => '2020-12-31',
+            ],
+        ], EmployeeIndexFilters::parseFromRequest($request));
+    }
+
+    public function test_value_label_formats_between_range(): void
+    {
+        $this->assertSame(
+            '2020-01-01 〜 2020-12-31',
+            EmployeeIndexFilters::valueLabel([
+                'field' => 'joined_at',
+                'op' => 'between',
+                'value' => '2020-01-01',
+                'value_to' => '2020-12-31',
+            ]),
+        );
     }
 
     public function test_field_label_uses_hr_detail_labels(): void

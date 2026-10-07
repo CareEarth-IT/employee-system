@@ -15,7 +15,7 @@ class EmployeeIndexFilters
 
     private const SELECT_OPERATORS = ['eq', 'not_eq', 'empty', 'not_empty'];
 
-    private const DATE_OPERATORS = ['eq', 'gte', 'not_eq', 'empty', 'not_empty'];
+    private const DATE_OPERATORS = ['eq', 'between', 'not_eq', 'empty', 'not_empty'];
 
     private const EMPLOYEE_ID_OPERATORS = ['contains', 'not_contains', 'eq', 'not_eq', 'empty', 'not_empty'];
 
@@ -169,7 +169,7 @@ class EmployeeIndexFilters
         'contains' => '次を含む',
         'not_contains' => '次を含まない',
         'eq' => '次と一致',
-        'gte' => 'この日付以降',
+        'between' => 'この日付からこの日付まで',
         'not_eq' => '次と一致しない',
         'empty' => '空',
         'not_empty' => '空でない',
@@ -271,7 +271,7 @@ class EmployeeIndexFilters
     }
 
     /**
-     * @return list<array{field: string, op: string, value: string}>
+     * @return list<array{field: string, op: string, value: string, value_to?: string}>
      */
     public static function parseFromRequest(Request $request): array
     {
@@ -286,17 +286,23 @@ class EmployeeIndexFilters
 
     /**
      * @param  Builder<User>  $query
-     * @param  list<array{field: string, op: string, value: string}>  $filters
+     * @param  list<array{field: string, op: string, value: string, value_to?: string}>  $filters
      */
     public static function apply(Builder $query, array $filters): void
     {
         foreach ($filters as $filter) {
-            self::applyFilter($query, $filter['field'], $filter['op'], $filter['value']);
+            self::applyFilter(
+                $query,
+                $filter['field'],
+                $filter['op'],
+                $filter['value'],
+                $filter['value_to'] ?? '',
+            );
         }
     }
 
     /**
-     * @param  list<array{field: string, op: string, value: string}>  $filters
+     * @param  list<array{field: string, op: string, value: string, value_to?: string}>  $filters
      * @return array<string, mixed>
      */
     public static function toQueryParams(array $filters): array
@@ -326,30 +332,46 @@ class EmployeeIndexFilters
     }
 
     /**
-     * @param  array{field: string, op: string, value: string}  $filter
+     * @param  array{field: string, op: string, value: string, value_to?: string}  $filter
      */
     public static function valueLabel(array $filter): string
     {
+        if (($filter['op'] ?? '') === 'between') {
+            $from = $filter['value'] ?? '';
+            $to = $filter['value_to'] ?? '';
+
+            if ($from === '' && $to === '') {
+                return '';
+            }
+
+            return $from.' 〜 '.$to;
+        }
+
         return (string) ($filter['value'] ?? '');
     }
 
     /**
      * @param  Builder<User>  $query
      */
-    private static function applyFilter(Builder $query, string $field, string $operator, string $value): void
-    {
+    private static function applyFilter(
+        Builder $query,
+        string $field,
+        string $operator,
+        string $value,
+        string $valueTo = '',
+    ): void {
         match ($field) {
             'company' => self::applyCompanyFilter($query, $operator, $value),
             'employee_id' => self::applyEmployeeIdFilter($query, $operator, $value),
             'name' => self::applyUserTextFilter($query, ['last_name', 'first_name', 'name'], $operator, $value),
             'english_name' => self::applyProfileTextFilter($query, 'english_name', $operator, $value),
             'email' => self::applyUserTextFilter($query, 'email', $operator, $value),
-            'joined_at' => self::applyProfileDateFilter($query, 'joined_at', $operator, $value),
+            'joined_at' => self::applyProfileDateFilter($query, 'joined_at', $operator, $value, $valueTo),
             'employment_type' => self::applyEmploymentTypeFilter($query, $operator, $value),
             'affiliation_code' => self::applyAffiliationCodeFilter($query, $operator, $value),
             'employment_status' => self::applyEmploymentStatusFilter($query, $operator, $value),
             'nationality' => self::applyProfileTextFilter($query, 'nationality', $operator, $value),
-            'resigned_at', 'last_working_day', 'birth_date' => self::applyHrDetailDateFilter($query, $field, $operator, $value),
+            'resigned_at', 'last_working_day', 'birth_date' => self::applyHrDetailDateFilter($query, $field, $operator, $value, $valueTo),
             'gender', 'company_phone', 'gmail_address',
             'department_primary', 'section_primary', 'position_primary',
             'department_secondary', 'section_secondary', 'position_secondary',
@@ -385,7 +407,7 @@ class EmployeeIndexFilters
 
     /**
      * @param  mixed  $rawFilters
-     * @return list<array{field: string, op: string, value: string}>
+     * @return list<array{field: string, op: string, value: string, value_to?: string}>
      */
     private static function parseFilterArray(mixed $rawFilters): array
     {
@@ -415,7 +437,7 @@ class EmployeeIndexFilters
     }
 
     /**
-     * @return list<array{field: string, op: string, value: string}>
+     * @return list<array{field: string, op: string, value: string, value_to?: string}>
      */
     private static function legacyFiltersFromRequest(Request $request): array
     {
@@ -441,13 +463,14 @@ class EmployeeIndexFilters
 
     /**
      * @param  array<string, mixed>  $rawFilter
-     * @return array{field: string, op: string, value: string}|null
+     * @return array{field: string, op: string, value: string, value_to?: string}|null
      */
     private static function normalizeFilter(array $rawFilter): ?array
     {
         $field = trim((string) ($rawFilter['field'] ?? ''));
         $operator = trim((string) ($rawFilter['op'] ?? ''));
         $value = trim((string) ($rawFilter['value'] ?? ''));
+        $valueTo = trim((string) ($rawFilter['value_to'] ?? ''));
 
         if (! isset(self::FIELD_DEFS[$field])) {
             return null;
@@ -463,6 +486,10 @@ class EmployeeIndexFilters
                 'op' => $operator,
                 'value' => '',
             ];
+        }
+
+        if ($operator === 'between') {
+            return self::normalizeBetweenDateFilter($field, $value, $valueTo);
         }
 
         if ($value === '') {
@@ -484,6 +511,34 @@ class EmployeeIndexFilters
             'field' => $field,
             'op' => $operator,
             'value' => $value,
+        ];
+    }
+
+    /**
+     * @return array{field: string, op: string, value: string, value_to: string}|null
+     */
+    private static function normalizeBetweenDateFilter(string $field, string $value, string $valueTo): ?array
+    {
+        if (self::FIELD_DEFS[$field]['type'] !== 'date') {
+            return null;
+        }
+
+        $from = self::normalizeDateValue($value);
+        $to = self::normalizeDateValue($valueTo);
+
+        if ($from === null || $to === null) {
+            return null;
+        }
+
+        if ($from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
+        return [
+            'field' => $field,
+            'op' => 'between',
+            'value' => $from,
+            'value_to' => $to,
         ];
     }
 
@@ -520,20 +575,30 @@ class EmployeeIndexFilters
     /**
      * @param  Builder<User>  $query
      */
-    private static function applyProfileDateFilter(Builder $query, string $column, string $operator, string $value): void
-    {
-        $query->whereHas('profile', function (Builder $profileQuery) use ($column, $operator, $value) {
-            self::applyDateColumnOperator($profileQuery, $column, $operator, $value);
+    private static function applyProfileDateFilter(
+        Builder $query,
+        string $column,
+        string $operator,
+        string $value,
+        string $valueTo = '',
+    ): void {
+        $query->whereHas('profile', function (Builder $profileQuery) use ($column, $operator, $value, $valueTo) {
+            self::applyDateColumnOperator($profileQuery, $column, $operator, $value, $valueTo);
         });
     }
 
     /**
      * @param  Builder<User>  $query
      */
-    private static function applyHrDetailDateFilter(Builder $query, string $column, string $operator, string $value): void
-    {
-        $query->whereHas('hrDetail', function (Builder $hrDetailQuery) use ($column, $operator, $value) {
-            self::applyDateColumnOperator($hrDetailQuery, $column, $operator, $value);
+    private static function applyHrDetailDateFilter(
+        Builder $query,
+        string $column,
+        string $operator,
+        string $value,
+        string $valueTo = '',
+    ): void {
+        $query->whereHas('hrDetail', function (Builder $hrDetailQuery) use ($column, $operator, $value, $valueTo) {
+            self::applyDateColumnOperator($hrDetailQuery, $column, $operator, $value, $valueTo);
         });
     }
 
@@ -545,11 +610,14 @@ class EmployeeIndexFilters
         string $column,
         string $operator,
         string $value,
+        string $valueTo = '',
         string $method = 'where',
     ): void {
         match ($operator) {
             'eq' => $query->{$method . 'Date'}($column, $value),
-            'gte' => $query->{$method . 'Date'}($column, '>=', $value),
+            'between' => $query
+                ->{$method . 'Date'}($column, '>=', $value)
+                ->{$method . 'Date'}($column, '<=', $valueTo),
             'not_eq' => $query->{$method . 'Date'}($column, '!=', $value),
             'empty' => self::applyEmptyColumn($query, $column, $method),
             'not_empty' => self::applyNotEmptyColumn($query, $column, $method),

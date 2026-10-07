@@ -99,35 +99,35 @@ class EmployeeIndexQueryTest extends TestCase
         $this->assertSame(['99001'], $ids);
     }
 
-    public function test_for_export_applies_joined_at_gte_filter(): void
+    public function test_for_export_applies_joined_at_between_filter(): void
     {
-        $onOrAfter = User::factory()->create([
+        $inRange = User::factory()->create([
             'employee_id' => '99101',
         ]);
-        $before = User::factory()->create([
+        $outOfRange = User::factory()->create([
             'employee_id' => '99102',
         ]);
 
-        $onOrAfter->profile()->create(['joined_at' => '2020-01-01']);
-        $before->profile()->create(['joined_at' => '2019-12-31']);
+        $inRange->profile()->create(['joined_at' => '2020-06-15']);
+        $outOfRange->profile()->create(['joined_at' => '2019-12-31']);
 
         EmployeeHrDetail::create([
-            'user_id' => $onOrAfter->id,
+            'user_id' => $inRange->id,
             'employment_status' => '在籍',
         ]);
         EmployeeHrDetail::create([
-            'user_id' => $before->id,
+            'user_id' => $outOfRange->id,
             'employment_status' => '在籍',
         ]);
 
         AffiliationHistory::create([
-            'user_id' => $onOrAfter->id,
-            'start_date' => '2020-01-01',
+            'user_id' => $inRange->id,
+            'start_date' => '2020-06-15',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'company' => 'CareEarth',
         ]);
         AffiliationHistory::create([
-            'user_id' => $before->id,
+            'user_id' => $outOfRange->id,
             'start_date' => '2019-12-31',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'company' => 'CareEarth',
@@ -138,8 +138,9 @@ class EmployeeIndexQueryTest extends TestCase
             'filters' => [
                 [
                     'field' => 'joined_at',
-                    'op' => 'gte',
+                    'op' => 'between',
                     'value' => '2020-01-01',
+                    'value_to' => '2020-12-31',
                 ],
             ],
         ]);
