@@ -15,7 +15,7 @@ class EmployeeIndexFilters
 
     private const SELECT_OPERATORS = ['eq', 'not_eq', 'empty', 'not_empty'];
 
-    private const DATE_OPERATORS = ['eq', 'not_eq', 'empty', 'not_empty'];
+    private const DATE_OPERATORS = ['eq', 'gte', 'not_eq', 'empty', 'not_empty'];
 
     private const EMPLOYEE_ID_OPERATORS = ['contains', 'not_contains', 'eq', 'not_eq', 'empty', 'not_empty'];
 
@@ -169,6 +169,7 @@ class EmployeeIndexFilters
         'contains' => '次を含む',
         'not_contains' => '次を含まない',
         'eq' => '次と一致',
+        'gte' => 'この日付以降',
         'not_eq' => '次と一致しない',
         'empty' => '空',
         'not_empty' => '空でない',
@@ -322,6 +323,14 @@ class EmployeeIndexFilters
     public static function operatorLabel(string $operator): string
     {
         return self::OPERATOR_LABELS[$operator] ?? $operator;
+    }
+
+    /**
+     * @param  array{field: string, op: string, value: string}  $filter
+     */
+    public static function valueLabel(array $filter): string
+    {
+        return (string) ($filter['value'] ?? '');
     }
 
     /**
@@ -540,6 +549,7 @@ class EmployeeIndexFilters
     ): void {
         match ($operator) {
             'eq' => $query->{$method . 'Date'}($column, $value),
+            'gte' => $query->{$method . 'Date'}($column, '>=', $value),
             'not_eq' => $query->{$method . 'Date'}($column, '!=', $value),
             'empty' => self::applyEmptyColumn($query, $column, $method),
             'not_empty' => self::applyNotEmptyColumn($query, $column, $method),

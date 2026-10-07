@@ -208,7 +208,7 @@
             <span class="text-slate-500">
                 ／ {{ EmployeeIndexFilters::fieldLabel($filter['field']) }}:
                 {{ EmployeeIndexFilters::operatorLabel($filter['op']) }}
-                {{ $filter['value'] }}
+                {{ EmployeeIndexFilters::valueLabel($filter) }}
             </span>
         @endforeach
         @if ($keyword !== '')
@@ -356,6 +356,7 @@
         contains: '次を含む',
         not_contains: '次を含まない',
         eq: '次と一致',
+        gte: 'この日付以降',
         not_eq: '次と一致しない',
         empty: '空',
         not_empty: '空でない',

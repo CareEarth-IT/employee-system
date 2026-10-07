@@ -98,4 +98,54 @@ class EmployeeIndexQueryTest extends TestCase
 
         $this->assertSame(['99001'], $ids);
     }
+
+    public function test_for_export_applies_joined_at_gte_filter(): void
+    {
+        $onOrAfter = User::factory()->create([
+            'employee_id' => '99101',
+        ]);
+        $before = User::factory()->create([
+            'employee_id' => '99102',
+        ]);
+
+        $onOrAfter->profile()->create(['joined_at' => '2020-01-01']);
+        $before->profile()->create(['joined_at' => '2019-12-31']);
+
+        EmployeeHrDetail::create([
+            'user_id' => $onOrAfter->id,
+            'employment_status' => '在籍',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $before->id,
+            'employment_status' => '在籍',
+        ]);
+
+        AffiliationHistory::create([
+            'user_id' => $onOrAfter->id,
+            'start_date' => '2020-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $before->id,
+            'start_date' => '2019-12-31',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+        ]);
+
+        $request = Request::create('/employees', 'GET', [
+            'status' => '在籍',
+            'filters' => [
+                [
+                    'field' => 'joined_at',
+                    'op' => 'gte',
+                    'value' => '2020-01-01',
+                ],
+            ],
+        ]);
+
+        $ids = EmployeeIndexQuery::forExport($request)->pluck('employee_id')->all();
+
+        $this->assertSame(['99101'], $ids);
+    }
 }

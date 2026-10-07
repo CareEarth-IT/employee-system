@@ -91,6 +91,11 @@ class EmployeeIndexFiltersTest extends TestCase
         $this->assertSame('select', $config['fields']['section_primary']['type']);
         $this->assertSame('select', $config['fields']['nationality']['type']);
         $this->assertSame('date', $config['fields']['joined_at']['type']);
+        $this->assertSame(
+            ['eq', 'gte', 'not_eq', 'empty', 'not_empty'],
+            $config['fields']['joined_at']['operators'],
+        );
+        $this->assertSame('この日付以降', $config['operatorLabels']['gte']);
         $this->assertSame('employee_id', $config['fields']['employee_id']['input']);
         $this->assertSame('ascii', $config['fields']['email']['input']);
         $this->assertSame('次を含む', $config['operatorLabels']['contains']);
@@ -156,6 +161,27 @@ class EmployeeIndexFiltersTest extends TestCase
 
         $this->assertSame([
             ['field' => 'joined_at', 'op' => 'eq', 'value' => '2020-04-01'],
+        ], EmployeeIndexFilters::parseFromRequest($request));
+    }
+
+    public function test_accepts_date_gte_filter_value(): void
+    {
+        $request = Request::create('/employees', 'GET', [
+            'filters' => [
+                [
+                    'field' => 'joined_at',
+                    'op' => 'gte',
+                    'value' => '2020-01-01',
+                ],
+            ],
+        ]);
+
+        $this->assertSame([
+            [
+                'field' => 'joined_at',
+                'op' => 'gte',
+                'value' => '2020-01-01',
+            ],
         ], EmployeeIndexFilters::parseFromRequest($request));
     }
 
