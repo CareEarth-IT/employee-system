@@ -52,7 +52,6 @@
 
 | 項目 | 状態 |
 |------|------|
-| Sateraito SSO 入場 | コードあり。`PORTAL_REQUIRE_SATERAITO_ENTRY=false` |
 | 派遣 / 食品 / 通信 / 美容ポータル | `internal_url` 未設定 → リンク非表示 |
 | さくら SMTP リレー | ローカル検証用。GitHub 非公開（`.gitignore`） |
 
@@ -96,16 +95,6 @@ flowchart TB
 - Laravel セッション認証（`auth` ミドルウェア）
 - 強制パスワード変更（`ForcePasswordChange`）
 - メール: Gmail SMTP（`deploy-gmail-mail-prod.cmd`）
-
-### 3.3 Sateraito SSO（コードのみ・本番未使用）
-
-| 設定 | ファイル | 説明 |
-|------|----------|------|
-| 入場ゲート | `config/portal_entry.php` | `PORTAL_REQUIRE_SATERAITO_ENTRY` |
-| SSO 受信 | `config/sateraito_sso.php` | `SATERAITO_SSO_ENABLED` |
-| 実装 | `PortalEntryGate`, `SateraitoSsoController` | Referer / SSO パラメータ検証 |
-
-本番では上記 env を false のまま運用する。テストは `@group sateraito` で通常 CI から除外（`phpunit.xml`）。
 
 ---
 

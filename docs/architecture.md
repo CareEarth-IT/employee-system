@@ -36,12 +36,12 @@ GCP プロジェクト: `ce-gr-employee-info-2606st` / リージョン: `asia-no
 
 ## 社員サイトの認証（入口）
 
-| 環境 | 入口 | SSO |
-|------|------|-----|
-| 本番 | `/login`（`/` は準備中） | 通常ログイン（Sateraito SSO は **無効**） |
+| 環境 | 入口 | 認証 |
+|------|------|------|
+| 本番 | `/login`（`/` は準備中） | 通常ログイン（email + password） |
 | ローカル | `/login` | 同上 |
 
-Sateraito 関連コード（`PortalEntryGate` 等）は存在しますが、本番では `PORTAL_REQUIRE_SATERAITO_ENTRY=false` が前提です。詳細は [environments.md](environments.md)。
+詳細は [environments.md](environments.md)。
 
 ## 部署タブと権限
 

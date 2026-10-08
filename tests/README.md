@@ -20,7 +20,6 @@ php artisan test tests/Unit/RealEstatePortalSsoHandoffTest.php
 | `Unit/RealEstatePortalProxyPathTest` | プロキシ path 正規化 |
 | `Unit/RealEstatePortalSsoHandoffTest` | SSO handoff フロー |
 | `Feature/EmployeeDirectoryApiTest` | 内部社員 API |
-| `Feature/PortalEntryGateTest` | Sateraito 入場（`@group sateraito`） |
 
 ## 社員・所属
 
