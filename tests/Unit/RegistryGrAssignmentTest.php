@@ -24,6 +24,18 @@ class RegistryGrAssignmentTest extends TestCase
         );
     }
 
+    public function test_gr_c_nagoya_teams_are_general_affairs_and_education(): void
+    {
+        $this->assertSame(
+            ['総務課', '教育課'],
+            RegistryGrAssignment::teamOptionsFor('名古屋', 'GR-C部'),
+        );
+        $this->assertNotContains(
+            '人事育成課',
+            RegistryGrAssignment::teamOptionsFor('名古屋', 'GR-C部'),
+        );
+    }
+
     public function test_gr_o_osaka_nested_cs_teams(): void
     {
         $this->assertSame(
@@ -82,7 +94,7 @@ class RegistryGrAssignmentTest extends TestCase
     public function test_resolve_for_storage_converts_registry_form_submission(): void
     {
         [$section, $team, $sectionPrimary] = RegistryOrgAssignment::resolveForStorage(
-            'GR部（グローバル部）',
+            'グローバル事業部',
             '大阪',
             'GR-O部',
             '固定現場チーム',
@@ -108,7 +120,7 @@ class RegistryGrAssignmentTest extends TestCase
             RegistryGrAssignment::normalizeOrgStorage(RegistryGrAssignment::DEPARTMENT, '', 'GR-O送迎課_名古屋'),
         );
         $this->assertSame(
-            ['GR部（グローバル部）,役員,食品事業部', '大阪'],
+            ['グローバル事業部,役員,食品事業部', '大阪'],
             RegistryGrAssignment::normalizeOrgStorage('大阪グローバル事業部,役員,食品事業部', ''),
         );
     }

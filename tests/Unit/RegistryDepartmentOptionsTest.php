@@ -21,8 +21,8 @@ class RegistryDepartmentOptionsTest extends TestCase
             '食品事業部',
             '管理部',
             '管理本部',
-            '人材派遣事業部',
-            'GR部（グローバル部）',
+            '営業部',
+            'グローバル事業部',
         ], RegistryDepartmentOptions::options());
     }
 
@@ -31,31 +31,39 @@ class RegistryDepartmentOptionsTest extends TestCase
         $this->assertSame(['food'], RegistryDepartmentOptions::dashboardTabsFor('食品事業部'));
         $this->assertSame([], RegistryDepartmentOptions::dashboardTabsFor('Food Sales部'));
         $this->assertSame(['specified-skills', 'real-estate'], RegistryDepartmentOptions::dashboardTabsFor('経理部'));
-        $this->assertSame(['dispatch'], RegistryDepartmentOptions::dashboardTabsFor('人材派遣事業部'));
         $this->assertSame(['dispatch'], RegistryDepartmentOptions::dashboardTabsFor('営業部'));
+        $this->assertSame(['dispatch'], RegistryDepartmentOptions::dashboardTabsFor('人材派遣事業部'));
     }
 
-    public function test_legacy_sales_department_normalizes_to_staffing(): void
+    public function test_legacy_department_names_normalize_to_current(): void
     {
+        foreach (['人材派遣事業部', '派遣事業部', '大阪営業部', '東京営業部', '名古屋営業部', '福岡営業部'] as $legacy) {
+            $this->assertSame(
+                '営業部',
+                RegistryDepartmentOptions::normalizeDepartment($legacy),
+                $legacy,
+            );
+        }
+        $this->assertSame('営業部', RegistryDepartmentOptions::normalizeDepartment('営業部'));
         $this->assertSame(
-            '人材派遣事業部',
-            RegistryDepartmentOptions::normalizeDepartment('営業部'),
+            'グローバル事業部',
+            RegistryDepartmentOptions::normalizeDepartment('GR部（グローバル部）'),
         );
         $this->assertSame(
-            ['department' => '人材派遣事業部', 'section' => null],
-            RegistryDepartmentOptions::resolveAffiliation('営業部'),
+            ['department' => '営業部', 'section' => null],
+            RegistryDepartmentOptions::resolveAffiliation('人材派遣事業部'),
         );
         $this->assertSame(
-            '人材派遣事業部',
-            RegistryDepartmentOptions::registryFormDepartment('営業部', null),
+            '営業部',
+            RegistryDepartmentOptions::registryFormDepartment('大阪営業部', null),
         );
         $this->assertContains(
-            '人材派遣事業部',
-            RegistryDepartmentOptions::forSelect('営業部'),
+            '営業部',
+            RegistryDepartmentOptions::forSelect('東京営業部'),
         );
         $this->assertNotContains(
-            '営業部',
-            RegistryDepartmentOptions::forSelect('営業部'),
+            '東京営業部',
+            RegistryDepartmentOptions::forSelect('東京営業部'),
         );
     }
 

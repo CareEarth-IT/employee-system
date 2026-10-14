@@ -26,6 +26,7 @@ class AffiliationHistory extends Model
         'start_date',
         'end_date',
         'enrollment_status',
+        'is_primary',
         'company',
         'location',
         'department',
@@ -40,6 +41,7 @@ class AffiliationHistory extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'is_primary' => 'boolean',
             'import_locked' => 'boolean',
         ];
     }
@@ -82,6 +84,7 @@ class AffiliationHistory extends Model
         $this->update([
             'enrollment_status' => self::STATUS_MOVED,
             'end_date' => $endDate ?? now()->toDateString(),
+            'is_primary' => false,
         ]);
     }
 
@@ -90,6 +93,7 @@ class AffiliationHistory extends Model
         $this->update([
             'enrollment_status' => self::STATUS_RESIGNED,
             'end_date' => $endDate,
+            'is_primary' => false,
         ]);
     }
 }

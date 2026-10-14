@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BrandingAssetController;
 use App\Http\Controllers\AffiliationController;
+use App\Http\Controllers\ScheduledAffiliationChangeController;
 use App\Http\Controllers\AttendanceNotificationController;
 use App\Http\Controllers\Auth\ForcedPasswordChangeController;
 use App\Http\Controllers\Auth\LoginController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeImportController;
 use App\Http\Controllers\EmployeeItDeviceListController;
 use App\Http\Controllers\EmployeeRegistryController;
+use App\Http\Controllers\SocialInsuranceStatsController;
 use App\Http\Controllers\EquipmentPurchaseController;
 use App\Http\Controllers\MonthlyAffiliationSnapshotController;
 use App\Http\Controllers\ProfileController;
@@ -30,6 +32,7 @@ use App\Http\Controllers\ProfilePhotoController;
 use App\Http\Controllers\SitePreparationController;
 use App\Http\Controllers\WordPressMediaController;
 use App\Support\DepartmentPortal;
+use App\Support\MissingAffiliationRedirect;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/index');
@@ -118,6 +121,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/attendance-notifications/{attendanceNotification}/complete', [AttendanceNotificationController::class, 'complete'])->name('attendance-notifications.complete');
 
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
+    Route::get('/employees/social-insurance-stats', [SocialInsuranceStatsController::class, 'index'])
+        ->name('social-insurance-stats.index');
     Route::get('/employees/import', [EmployeeImportController::class, 'create'])->name('employees.import.create');
     Route::get('/employees/import/template', [EmployeeImportController::class, 'template'])->name('employees.import.template');
     Route::post('/employees/import', [EmployeeImportController::class, 'store'])->name('employees.import.store');
@@ -172,7 +177,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/users/{user}/affiliations/create', [AffiliationController::class, 'create'])->name('users.affiliations.create');
     Route::post('/users/{user}/affiliations', [AffiliationController::class, 'store'])->name('users.affiliations.store');
 
-    Route::get('/affiliations/{affiliation}/edit', [AffiliationController::class, 'edit'])->name('affiliations.edit');
-    Route::put('/affiliations/{affiliation}', [AffiliationController::class, 'update'])->name('affiliations.update');
-    Route::delete('/affiliations/{affiliation}', [AffiliationController::class, 'destroy'])->name('affiliations.destroy');
+    Route::get('/affiliations/{affiliation}/edit', [AffiliationController::class, 'edit'])
+        ->missing(fn (\Illuminate\Http\Request $request) => app(MissingAffiliationRedirect::class)($request))
+        ->name('affiliations.edit');
+    Route::put('/affiliations/{affiliation}', [AffiliationController::class, 'update'])
+        ->missing(fn (\Illuminate\Http\Request $request) => app(MissingAffiliationRedirect::class)($request))
+        ->name('affiliations.update');
+    Route::delete('/affiliations/{affiliation}', [AffiliationController::class, 'destroy'])
+        ->missing(fn (\Illuminate\Http\Request $request) => app(MissingAffiliationRedirect::class)($request))
+        ->name('affiliations.destroy');
+
+    Route::get('/users/{user}/scheduled-affiliations/create', [ScheduledAffiliationChangeController::class, 'create'])->name('users.scheduled-affiliations.create');
+    Route::post('/users/{user}/scheduled-affiliations', [ScheduledAffiliationChangeController::class, 'store'])->name('users.scheduled-affiliations.store');
+    Route::get('/scheduled-affiliations/{schedule}/edit', [ScheduledAffiliationChangeController::class, 'edit'])->name('scheduled-affiliations.edit');
+    Route::put('/scheduled-affiliations/{schedule}', [ScheduledAffiliationChangeController::class, 'update'])->name('scheduled-affiliations.update');
+    Route::delete('/scheduled-affiliations/{schedule}', [ScheduledAffiliationChangeController::class, 'destroy'])->name('scheduled-affiliations.destroy');
 });

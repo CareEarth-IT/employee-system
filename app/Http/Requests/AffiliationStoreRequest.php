@@ -77,6 +77,7 @@ class AffiliationStoreRequest extends FormRequest
             ...$this->affiliationOrgFieldRules($currentDepartment, $currentOrg['section'], $currentOrg['team']),
             'position' => ['nullable', 'string', 'max:255'],
             'job_description' => ['nullable', 'string', 'max:5000'],
+            'close_others' => ['sometimes', 'boolean'],
             'action' => ['nullable', 'string', 'in:save,continue'],
         ];
     }
@@ -126,13 +127,13 @@ class AffiliationStoreRequest extends FormRequest
     {
         $validated = parent::validated($key, $default);
 
-        unset($validated['employee_id'], $validated['action']);
+        unset($validated['employee_id'], $validated['action'], $validated['close_others'], $validated['is_current']);
 
         if ($this->shouldResolveAffiliationOrgForStorage()) {
             $validated = $this->resolveAffiliationOrgForStorage($validated);
         }
 
-        unset($validated['team']);
+        unset($validated['team'], $validated['is_primary']);
 
         return $validated;
     }

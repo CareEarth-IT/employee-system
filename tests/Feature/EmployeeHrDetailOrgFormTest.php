@@ -185,7 +185,7 @@ class EmployeeHrDetailOrgFormTest extends TestCase
         $target = User::factory()->create();
         EmployeeHrDetail::create([
             'user_id' => $target->id,
-            'department_primary' => 'GR部（グローバル部）',
+            'department_primary' => 'グローバル事業部',
             'section_primary' => 'GR-C_大阪,GR-総務課_大阪',
             'jurisdiction' => '大阪',
         ]);
@@ -193,7 +193,7 @@ class EmployeeHrDetailOrgFormTest extends TestCase
         $this->actingAs($hr)
             ->put(route('users.profile.hr-detail.update', $target), [
                 'jurisdiction' => '大阪',
-                'department_primary' => 'GR部（グローバル部）',
+                'department_primary' => 'グローバル事業部',
                 'section_primary' => 'GR-O部',
                 'team_primary' => '固定現場チーム',
             ])
@@ -218,7 +218,7 @@ class EmployeeHrDetailOrgFormTest extends TestCase
             'enrollment_status' => \App\Models\AffiliationHistory::STATUS_ENROLLED,
             'company' => 'CareEarth',
             'location' => '大阪',
-            'department' => 'GR部（グローバル部）',
+            'department' => 'グローバル事業部',
             'section' => 'GR-C_大阪,GR-総務課_大阪',
             'position' => '一般',
         ]);
@@ -227,7 +227,7 @@ class EmployeeHrDetailOrgFormTest extends TestCase
             'user_id' => $target->id,
             'affiliation_code' => 'CE',
             'jurisdiction' => '大阪',
-            'department_primary' => 'GR部（グローバル部）',
+            'department_primary' => 'グローバル事業部',
             'section_primary' => 'GR-C_大阪,GR-総務課_大阪',
             'position_primary' => '一般',
         ]);
@@ -235,7 +235,7 @@ class EmployeeHrDetailOrgFormTest extends TestCase
         $this->actingAs($hr)
             ->put(route('users.profile.hr-detail.update', $target), [
                 'jurisdiction' => '大阪',
-                'department_primary' => 'GR部（グローバル部）',
+                'department_primary' => 'グローバル事業部',
                 'section_primary' => 'GR-O部',
                 'team_primary' => '固定現場チーム',
                 'position_primary' => '一般',

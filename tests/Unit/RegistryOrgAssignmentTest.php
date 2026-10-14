@@ -68,12 +68,12 @@ class RegistryOrgAssignmentTest extends TestCase
     public function test_hr_detail_primary_from_gr_affiliation(): void
     {
         $primary = RegistryOrgAssignment::hrDetailPrimaryFromAffiliation(
-            'GR部（グローバル部）',
+            'グローバル事業部',
             '大阪',
             'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
         );
 
-        $this->assertSame('GR部（グローバル部）', $primary['department_primary']);
+        $this->assertSame('グローバル事業部', $primary['department_primary']);
         $this->assertSame(
             'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
             $primary['section_primary'],

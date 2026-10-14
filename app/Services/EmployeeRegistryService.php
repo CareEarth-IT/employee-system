@@ -16,11 +16,13 @@ class EmployeeRegistryService
 {
     public function __construct(
         private DriveStaffSyncService $driveStaffSync,
+        private SocialInsuranceThresholdNotifier $socialInsuranceThresholdNotifier,
     ) {}
 
     /**
      * @param  array{
-     *     name: string,
+     *     last_name: string,
+     *     first_name: string,
      *     email: string,
      *     password: string,
      *     employee_id: string,
@@ -45,10 +47,10 @@ class EmployeeRegistryService
      */
     public function create(array $data): User
     {
-        return DB::transaction(function () use ($data): User {
+        $user = DB::transaction(function () use ($data): User {
             $this->assertEmployeeIdIsAvailable($data['employee_id'] ?? null);
 
-            [$lastName, $firstName, $displayName] = $this->splitName($data['name']);
+            [$lastName, $firstName, $displayName] = $this->resolveNameParts($data);
             $affiliationOrg = \App\Support\RegistryDepartmentOptions::resolveAffiliation(
                 $data['department'],
                 $data['section'] ?? null,
@@ -91,7 +93,7 @@ class EmployeeRegistryService
 
             EmployeeProfile::create([
                 'user_id' => $user->id,
-                ...$this->profileAttributes($data, $displayName),
+                ...$this->profileAttributes($data),
             ]);
 
             $hrAttributes = $this->hrDetailAttributes($data);
@@ -137,11 +139,16 @@ class EmployeeRegistryService
 
             return $fresh->fresh(['profile', 'hrDetail', 'affiliationHistories']);
         });
+
+        $this->socialInsuranceThresholdNotifier->notifyReachedCompanies();
+
+        return $user;
     }
 
     /**
      * @param  array{
-     *     name: string,
+     *     last_name: string,
+     *     first_name: string,
      *     email: string,
      *     password?: string|null,
      *     employee_id: string,
@@ -165,10 +172,10 @@ class EmployeeRegistryService
      */
     public function update(User $user, array $data): User
     {
-        return DB::transaction(function () use ($user, $data): User {
+        $updated = DB::transaction(function () use ($user, $data): User {
             $this->assertEmployeeIdIsAvailable($data['employee_id'], $user->id);
 
-            [$lastName, $firstName, $displayName] = $this->splitName($data['name']);
+            [$lastName, $firstName, $displayName] = $this->resolveNameParts($data);
             $affiliationOrg = \App\Support\RegistryDepartmentOptions::resolveAffiliation(
                 $data['department'],
                 $data['section'] ?? null,
@@ -210,7 +217,7 @@ class EmployeeRegistryService
             EmployeeProfile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    ...$this->profileAttributes($data, $displayName, $user->profile),
+                    ...$this->profileAttributes($data, $user->profile),
                     'import_locked' => true,
                 ],
             );
@@ -258,6 +265,30 @@ class EmployeeRegistryService
 
             return $user->fresh(['profile', 'hrDetail', 'affiliationHistories']);
         });
+
+        $this->socialInsuranceThresholdNotifier->notifyReachedCompanies();
+
+        return $updated;
+    }
+
+    /**
+     * @param  array{last_name?: string|null, first_name?: string|null, name?: string|null}  $data
+     * @return array{0: ?string, 1: ?string, 2: string}
+     */
+    public function resolveNameParts(array $data): array
+    {
+        $lastName = trim((string) ($data['last_name'] ?? ''));
+        $firstName = trim((string) ($data['first_name'] ?? ''));
+
+        if ($lastName !== '' || $firstName !== '') {
+            return [
+                $lastName !== '' ? $lastName : null,
+                $firstName !== '' ? $firstName : null,
+                trim($lastName.' '.$firstName),
+            ];
+        }
+
+        return $this->splitName((string) ($data['name'] ?? ''));
     }
 
     /**
@@ -280,7 +311,7 @@ class EmployeeRegistryService
 
     public function displayName(User $user): string
     {
-        return trim($user->name ?: $user->displayName());
+        return trim($user->familyGivenName() ?: $user->name ?: $user->displayName());
     }
 
     private function assertEmployeeIdIsAvailable(?string $employeeId, ?int $ignoreUserId = null): void
@@ -305,16 +336,21 @@ class EmployeeRegistryService
     /**
      * @return array<string, mixed>
      */
-    private function profileAttributes(array $data, string $displayName, ?EmployeeProfile $existing = null): array
+    private function profileAttributes(array $data, ?EmployeeProfile $existing = null): array
     {
         $attributes = [
-            'name_kana' => str_replace(' ', '', $displayName),
             'joined_at' => $existing?->joined_at?->format('Y-m-d') ?? now()->toDateString(),
             'import_locked' => true,
         ];
 
-        if (! empty($data['name_kana'])) {
-            $attributes['name_kana'] = $data['name_kana'];
+        // ナマエは入力されたときだけ保存する（姓名の漢字をカタカナ欄へコピーしない）
+        if (array_key_exists('name_kana', $data)) {
+            $nameKana = trim((string) ($data['name_kana'] ?? ''));
+            if ($nameKana !== '') {
+                $attributes['name_kana'] = $nameKana;
+            } elseif ($existing === null) {
+                $attributes['name_kana'] = null;
+            }
         }
 
         foreach (['english_name', 'abbreviated_name', 'nationality'] as $field) {

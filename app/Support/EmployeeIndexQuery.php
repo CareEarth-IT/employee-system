@@ -38,8 +38,7 @@ final class EmployeeIndexQuery
                 'affiliationHistories' => fn ($affiliationQuery) => $affiliationQuery
                     ->currentlyActive()
                     ->orderByDesc('start_date')
-                    ->orderByDesc('id')
-                    ->limit(1),
+                    ->orderByDesc('id'),
             ]);
 
         EmployeeIndexFilters::apply($query, EmployeeIndexFilters::parseFromRequest($request));

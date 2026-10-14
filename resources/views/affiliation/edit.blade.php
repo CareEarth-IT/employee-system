@@ -13,7 +13,11 @@
 
             @include('partials.validation-errors-banner')
 
-            @include('affiliation._form', ['affiliation' => $affiliation, 'user' => $user])
+            @include('affiliation._form', [
+                'affiliation' => $affiliation,
+                'user' => $user,
+                'hasOtherCurrentAffiliations' => $hasOtherCurrentAffiliations,
+            ])
         </form>
 
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 mt-6 border-t border-slate-200">
@@ -30,3 +34,8 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+    @include('partials.skip-stale-form-on-back', ['user' => $user])
+@endpush
+

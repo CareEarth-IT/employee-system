@@ -17,14 +17,14 @@ class HrDetailOrgFormStateTest extends TestCase
         $user = User::factory()->create();
         $detail = EmployeeHrDetail::create([
             'user_id' => $user->id,
-            'department_primary' => 'GR部（グローバル部）',
+            'department_primary' => 'グローバル事業部',
             'section_primary' => 'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
             'jurisdiction' => '大阪',
         ]);
 
         $values = HrDetailOrgFormState::assignmentValues($detail, 'primary');
 
-        $this->assertSame('GR部（グローバル部）', $values['department']);
+        $this->assertSame('グローバル事業部', $values['department']);
         $this->assertSame('大阪', $values['location']);
         $this->assertSame('GR-O部', $values['section']);
         $this->assertSame('固定現場チーム', $values['team']);
@@ -33,13 +33,13 @@ class HrDetailOrgFormStateTest extends TestCase
     public function test_merge_section_fields_stores_gr_o_nested_team_in_section_primary(): void
     {
         $merged = HrDetailOrgFormState::mergeSectionFields([
-            'department_primary' => 'GR部（グローバル部）',
+            'department_primary' => 'グローバル事業部',
             'section_primary' => 'GR-O部',
             'team_primary' => '固定現場チーム',
             'jurisdiction' => '大阪',
         ]);
 
-        $this->assertSame('GR部（グローバル部）', $merged['department_primary']);
+        $this->assertSame('グローバル事業部', $merged['department_primary']);
         $this->assertSame(
             'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
             $merged['section_primary'],

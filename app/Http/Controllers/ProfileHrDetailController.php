@@ -7,6 +7,7 @@ use App\Models\EmployeeHrDetail;
 use App\Models\User;
 use App\Services\DriveStaffSyncService;
 use App\Services\EmployeeHrDetailCsvExporter;
+use App\Services\SocialInsuranceThresholdNotifier;
 use App\Support\AffiliationHrDetailSync;
 use App\Support\AffiliationResignationSync;
 use App\Support\AffiliationStartDateAlignment;
@@ -25,6 +26,7 @@ class ProfileHrDetailController extends Controller
     public function __construct(
         private EmployeeHrDetailCsvExporter $csvExporter,
         private DriveStaffSyncService $driveStaffSync,
+        private SocialInsuranceThresholdNotifier $socialInsuranceThresholdNotifier,
     ) {}
 
     public function edit(?User $user = null): View|RedirectResponse
@@ -84,6 +86,7 @@ class ProfileHrDetailController extends Controller
         }
 
         $this->driveStaffSync->syncUser($target->fresh());
+        $this->socialInsuranceThresholdNotifier->notifyReachedCompanies();
 
         return redirect()
             ->to(UserRouteHelper::route($target, 'profile.hr-detail.edit', 'users.profile.hr-detail.edit'))

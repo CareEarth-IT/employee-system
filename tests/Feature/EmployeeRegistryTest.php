@@ -97,7 +97,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10999',
-                'department' => '人材派遣事業部',
+                'department' => '営業部',
             ]));
 
         $response->assertRedirect(route('employees.create'));
@@ -109,11 +109,13 @@ class EmployeeRegistryTest extends TestCase
         $this->assertSame('10999', $created->employee_id);
         $this->assertSame('山田', $created->last_name);
         $this->assertSame('太郎', $created->first_name);
+        $this->assertSame('山田 太郎', $created->displayName());
+        $this->assertNull($created->profile?->name_kana);
         $this->assertTrue($created->must_change_password);
 
         $affiliation = $created->currentAffiliation();
         $this->assertSame('CareEarth', $affiliation?->company);
-        $this->assertSame('人材派遣事業部', $affiliation?->department);
+        $this->assertSame('営業部', $affiliation?->department);
         $this->assertSame('大阪', $affiliation?->location);
 
         $this->assertSame('大阪', $created->hrDetail?->jurisdiction);
@@ -304,7 +306,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10974',
-                'department' => '人材派遣事業部',
+                'department' => '営業部',
                 'location' => '大阪',
                 'section' => '営業1課',
             ]))
@@ -312,7 +314,7 @@ class EmployeeRegistryTest extends TestCase
 
         $created = User::query()->where('email', 'sales_taro@careearth.info')->firstOrFail();
 
-        $this->assertSame('人材派遣事業部', $created->currentAffiliation()?->department);
+        $this->assertSame('営業部', $created->currentAffiliation()?->department);
         $this->assertSame('営業1課', $created->currentAffiliation()?->section);
     }
 
@@ -327,7 +329,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10973',
-                'department' => '人材派遣事業部',
+                'department' => '営業部',
                 'location' => '東京',
                 'section' => '営業3課',
             ]))
@@ -369,7 +371,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10971',
-                'department' => 'GR部（グローバル部）',
+                'department' => 'グローバル事業部',
                 'location' => '大阪',
                 'section' => 'GR-O部',
                 'team' => '固定現場チーム',
@@ -404,7 +406,7 @@ class EmployeeRegistryTest extends TestCase
             'start_date' => '2024-01-01',
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'company' => 'CareEarth',
-            'department' => 'GR部（グローバル部）',
+            'department' => 'グローバル事業部',
             'location' => '大阪',
             'section' => 'GR-C_大阪,GR-総務課_大阪',
         ]);
@@ -412,7 +414,7 @@ class EmployeeRegistryTest extends TestCase
             'user_id' => $employee->id,
             'employment_type' => '正社員',
             'employment_status' => '在籍',
-            'department_primary' => 'GR部（グローバル部）',
+            'department_primary' => 'グローバル事業部',
             'section_primary' => 'GR-C_大阪',
         ]);
 
@@ -421,7 +423,7 @@ class EmployeeRegistryTest extends TestCase
                 'name' => 'GR 既存',
                 'email' => 'gr_existing@careearth.info',
                 'employee_id' => '10972',
-                'department' => 'GR部（グローバル部）',
+                'department' => 'グローバル事業部',
                 'location' => '大阪',
                 'section' => 'GR-O部',
                 'team' => '固定現場チーム',
@@ -451,7 +453,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10969',
-                'department' => 'GR部（グローバル部）',
+                'department' => 'グローバル事業部',
                 'location' => '大阪',
             ]))
             ->assertSessionHasErrors(['section']);
@@ -577,23 +579,25 @@ class EmployeeRegistryTest extends TestCase
             ->assertSee('社員編集', false)
             ->assertSee('sample@careearth.info', false)
             ->assertSee('10055', false)
-            ->assertSee('課/チーム', false)
-            ->assertDontSee('name="team"', false);
+            ->assertSee('name="last_name"', false)
+            ->assertSee('name="first_name"', false)
+            ->assertSee('for="section"', false);
     }
 
-    public function test_store_rejects_name_without_space(): void
+    public function test_store_rejects_missing_first_name(): void
     {
         $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
 
         $this->actingAs($admin)
             ->post(route('employees.store'), $this->registryPayload([
-                'name' => '山田太郎',
+                'last_name' => '山田',
+                'first_name' => '',
                 'email' => 'invalid_name@careearth.info',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10998',
             ]))
-            ->assertSessionHasErrors(['name']);
+            ->assertSessionHasErrors(['first_name']);
 
         $this->assertNull(User::query()->where('email', 'invalid_name@careearth.info')->first());
     }
@@ -644,7 +648,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10960',
-                'department' => '人材派遣事業部',
+                'department' => '営業部',
                 'employment_type' => 'アルバイト',
             ]))
             ->assertRedirect(route('employees.create'))
@@ -669,7 +673,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '10959',
-                'department' => '人材派遣事業部',
+                'department' => '営業部',
                 'employment_type' => 'アルバイト',
                 'has_social_insurance' => '1',
             ]))
@@ -717,7 +721,7 @@ class EmployeeRegistryTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'employee_id' => '29',
-                'department' => '人材派遣事業部',
+                'department' => '営業部',
                 'employment_type' => '正社員',
                 'employment_status' => '退職',
             ]))
@@ -846,12 +850,12 @@ class EmployeeRegistryTest extends TestCase
             ->assertSee('M&A戦略推進部')
             ->assertSee('管理本部', false)
             ->assertSee('食品事業部', false)
-            ->assertSee('GR部（グローバル部）', false)
+            ->assertSee('グローバル事業部', false)
             ->assertSee('美容事業部', false)
             ->assertSee('不動産事業部', false)
             ->assertSee('通信事業部', false)
             ->assertSee('特定技能事業部', false)
-            ->assertSee('人材派遣事業部', false);
+            ->assertSee('営業部', false);
     }
 
     public function test_create_form_restricts_employee_id_input_to_digits(): void
@@ -961,6 +965,8 @@ class EmployeeRegistryTest extends TestCase
         $this->actingAs($admin)
             ->get(route('employees.create'))
             ->assertOk()
+            ->assertSee('name="last_name"', false)
+            ->assertSee('name="first_name"', false)
             ->assertSee('name="name_kana"', false)
             ->assertSee('name="english_name"', false)
             ->assertSee('name="birth_date"', false)
@@ -995,6 +1001,9 @@ class EmployeeRegistryTest extends TestCase
 
         $created = User::query()->where('email', 'ichiro_tanaka@careearth.info')->firstOrFail();
 
+        $this->assertSame('田中', $created->last_name);
+        $this->assertSame('一郎', $created->first_name);
+        $this->assertSame('田中 一郎', $created->displayName());
         $this->assertSame('タナカ イチロウ', $created->profile?->name_kana);
         $this->assertSame('Ichiro Tanaka', $created->profile?->english_name);
         $this->assertSame('1995-08-15', $created->hrDetail?->birth_date?->toDateString());
@@ -1012,7 +1021,16 @@ class EmployeeRegistryTest extends TestCase
      */
     private function registryPayload(array $overrides = []): array
     {
+        if (isset($overrides['name']) && ! isset($overrides['last_name']) && ! isset($overrides['first_name'])) {
+            $parts = preg_split('/\s+/u', trim((string) $overrides['name']), 2) ?: [];
+            $overrides['last_name'] = $parts[0] ?? '';
+            $overrides['first_name'] = $parts[1] ?? '';
+            unset($overrides['name']);
+        }
+
         return array_merge([
+            'last_name' => '山田',
+            'first_name' => '太郎',
             'company' => 'CareEarth',
             'department' => '営業部',
             'location' => '大阪',

@@ -124,3 +124,21 @@
 </div>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+    (() => {
+        @if (session('skip_stale_form'))
+            sessionStorage.setItem('employee_skip_stale_form', '1');
+        @endif
+
+        // 戻るで bfcache の古い所属一覧が出ないようにする
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+    })();
+</script>
+@endpush
+

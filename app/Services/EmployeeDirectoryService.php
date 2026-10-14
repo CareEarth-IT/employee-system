@@ -39,8 +39,17 @@ class EmployeeDirectoryService
             $status = self::DEFAULT_STATUS;
         }
 
+        app(ScheduledAffiliationChangeApplier::class)->applyDue();
+
         $query = User::query()
-            ->with(['profile', 'hrDetail', 'affiliationHistories'])
+            ->with([
+                'profile:id,user_id,english_name,name_kana',
+                'hrDetail:id,user_id,employment_status,department_primary,section_primary,position_primary',
+                'affiliationHistories' => fn ($affiliationQuery) => $affiliationQuery
+                    ->currentlyActive()
+                    ->orderByDesc('start_date')
+                    ->orderByDesc('id'),
+            ])
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->limit(self::MAX_RESULTS);
@@ -65,6 +74,7 @@ class EmployeeDirectoryService
 
         return $query
             ->get()
+            ->each(fn (User $user) => $user->skipScheduledAffiliationApply())
             ->map(fn (User $user) => $this->toDirectoryEntry($user))
             ->values()
             ->all();

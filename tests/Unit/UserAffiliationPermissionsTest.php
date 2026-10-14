@@ -90,4 +90,58 @@ class UserAffiliationPermissionsTest extends TestCase
         $this->assertTrue($user->fresh()->currentAffiliation()?->is($current));
         $this->assertFalse($user->fresh()->isHrDepartment());
     }
+
+    public function test_concurrent_affiliations_grant_permissions_from_each_department(): void
+    {
+        $user = User::factory()->create();
+
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '人事部',
+            'section' => '人事課',
+            'position' => '一般',
+        ]);
+
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2026-06-24',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '情報システム部',
+            'section' => '事業IT推進課',
+            'position' => '一般',
+        ]);
+
+        $user = $user->fresh(['affiliationHistories']);
+
+        $this->assertTrue($user->isInformationSystems());
+        $this->assertTrue($user->isHrDepartment());
+        $this->assertTrue($user->isHrSection());
+        $this->assertSame('情報システム部', $user->currentAffiliation()?->department);
+    }
+
+    public function test_concurrent_affiliations_do_not_mix_department_and_section_across_rows(): void
+    {
+        $user = User::factory()->create();
+
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '経理部',
+            'section' => '経理課',
+        ]);
+
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2026-06-24',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '営業部',
+            'section' => '総務課',
+        ]);
+
+        $this->assertFalse($user->fresh(['affiliationHistories'])->isGeneralAffairs());
+        $this->assertTrue($user->fresh(['affiliationHistories'])->isAccountingDepartment());
+    }
 }

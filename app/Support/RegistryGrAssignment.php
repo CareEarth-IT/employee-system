@@ -4,7 +4,7 @@ namespace App\Support;
 
 class RegistryGrAssignment
 {
-    public const DEPARTMENT = 'GR部（グローバル部）';
+    public const DEPARTMENT = 'グローバル事業部';
 
     /** @var list<string> */
     public const DIVISIONS = [
@@ -132,7 +132,11 @@ class RegistryGrAssignment
             return '';
         }
 
-        if (str_ends_with($departmentPrimary, 'グローバル事業部')) {
+        // 「大阪グローバル事業部」など既に管轄付きの表記はそのまま
+        if (
+            str_ends_with($departmentPrimary, 'グローバル事業部')
+            && $departmentPrimary !== self::DEPARTMENT
+        ) {
             return $departmentPrimary;
         }
 
@@ -184,7 +188,11 @@ class RegistryGrAssignment
             }
         }
 
-        if ($department === self::DEPARTMENT) {
+        if (
+            $department === self::DEPARTMENT
+            || $department === 'GR部（グローバル部）'
+            || $department === 'GR部(グローバル部)'
+        ) {
             $jurisdiction = self::inferJurisdiction($department, $jurisdiction, $section) ?? $jurisdiction;
 
             return [self::DEPARTMENT, $jurisdiction];

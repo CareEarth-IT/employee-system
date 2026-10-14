@@ -30,8 +30,8 @@ class AffiliationOrgFieldsTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)
-            ->post(route('affiliations.store'), [
+        $this->assertReplacesLocationTo(
+            $this->actingAs($user)->post(route('affiliations.store'), [
                 'is_current' => '1',
                 'start_date' => '2026-03-01',
                 'company' => 'CareEarth',
@@ -40,8 +40,9 @@ class AffiliationOrgFieldsTest extends TestCase
                 'team' => '法人チーム',
                 'position' => '一般',
                 'action' => 'save',
-            ])
-            ->assertRedirect(route('profile.edit'));
+            ]),
+            route('profile.edit'),
+        );
 
         $affiliation = $user->fresh()->currentAffiliation();
 
@@ -66,19 +67,20 @@ class AffiliationOrgFieldsTest extends TestCase
 
         $target = User::factory()->create();
 
-        $this->actingAs($hr->fresh())
-            ->post(route('users.affiliations.store', $target), [
+        $this->assertReplacesLocationTo(
+            $this->actingAs($hr->fresh())->post(route('users.affiliations.store', $target), [
                 'is_current' => '1',
                 'start_date' => '2026-03-01',
                 'company' => 'CareEarth',
                 'location' => '大阪',
-                'department' => 'GR部（グローバル部）',
+                'department' => 'グローバル事業部',
                 'section' => 'GR-O部',
                 'team' => '固定現場チーム',
                 'position' => '一般',
                 'action' => 'save',
-            ])
-            ->assertRedirect(route('users.profile.edit', $target));
+            ]),
+            route('users.profile.edit', $target),
+        );
 
         $affiliation = $target->fresh()->currentAffiliation();
 
@@ -92,23 +94,24 @@ class AffiliationOrgFieldsTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)
-            ->post(route('affiliations.store'), [
+        $this->assertReplacesLocationTo(
+            $this->actingAs($user)->post(route('affiliations.store'), [
                 'is_current' => '1',
                 'company' => 'CareEarth',
                 'location' => '大阪',
-                'department' => '人材派遣事業部',
+                'department' => '営業部',
                 'section' => '営業1課',
                 'position' => '一般',
                 'action' => 'save',
-            ])
-            ->assertRedirect(route('profile.edit'));
+            ]),
+            route('profile.edit'),
+        );
 
         $affiliation = $user->fresh()->currentAffiliation();
 
         $this->assertNotNull($affiliation);
         $this->assertNull($affiliation->start_date);
-        $this->assertSame('人材派遣事業部', $affiliation->department);
+        $this->assertSame('営業部', $affiliation->department);
     }
 
     public function test_profile_table_shows_section_and_team_columns(): void
@@ -120,7 +123,7 @@ class AffiliationOrgFieldsTest extends TestCase
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'company' => 'CareEarth',
             'location' => '大阪',
-            'department' => 'GR部（グローバル部）',
+            'department' => 'グローバル事業部',
             'section' => 'GR-O_大阪,GR-O CS課 固定現場チーム_大阪',
             'position' => '一般',
         ]);

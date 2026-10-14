@@ -99,7 +99,7 @@ class EmployeeIndexTest extends TestCase
             'user_id' => $active->id,
             'employment_status' => '在籍',
             'jurisdiction' => '大阪',
-            'department_primary' => 'GR部（グローバル部）',
+            'department_primary' => 'グローバル事業部',
             'section_primary' => 'GR-O_大阪,GR-O 送迎課_大阪',
             'position_primary' => '一般',
         ]);
@@ -144,7 +144,7 @@ class EmployeeIndexTest extends TestCase
             if ($status === '全体') {
                 $response
                     ->assertSee('大阪', false)
-                    ->assertSee('GR部（グローバル部）', false)
+                    ->assertSee('グローバル事業部', false)
                     ->assertSee('GR-O_大阪,GR-O 送迎課_大阪', false)
                     ->assertSee('東京', false)
                     ->assertSee('通信事業部', false)
@@ -157,7 +157,7 @@ class EmployeeIndexTest extends TestCase
             if ($status === '在籍') {
                 $response
                     ->assertSee('大阪', false)
-                    ->assertSee('GR部（グローバル部）', false)
+                    ->assertSee('グローバル事業部', false)
                     ->assertDontSee('通信事業部', false);
             }
 
@@ -165,14 +165,14 @@ class EmployeeIndexTest extends TestCase
                 $response
                     ->assertSee('東京', false)
                     ->assertSee('通信事業部', false)
-                    ->assertDontSee('GR部（グローバル部）', false);
+                    ->assertDontSee('グローバル事業部', false);
             }
 
             if ($status === '退職') {
                 $response
                     ->assertSee('名古屋', false)
                     ->assertSee('食品事業部', false)
-                    ->assertDontSee('GR部（グローバル部）', false);
+                    ->assertDontSee('グローバル事業部', false);
             }
         }
     }
@@ -985,6 +985,28 @@ class EmployeeIndexTest extends TestCase
             ->get(route('employees.index', ['status' => '在籍']))
             ->assertOk()
             ->assertDontSee('未設定 状況', false);
+    }
+
+    public function test_index_paginates_employees(): void
+    {
+        $viewer = User::factory()->create();
+        $this->markEmploymentStatus($viewer, '在籍');
+
+        for ($i = 1; $i <= 51; $i++) {
+            $employee = User::factory()->create([
+                'employee_id' => (string) (20000 + $i),
+                'last_name' => sprintf('一覧%02d', $i),
+                'first_name' => '太郎',
+            ]);
+            $this->markEmploymentStatus($employee, '在籍');
+        }
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['status' => '在籍']))
+            ->assertOk()
+            ->assertSee('52名', false)
+            ->assertSee('1 / 2 ページ', false)
+            ->assertSee('page=2', false);
     }
 
     private function markEmploymentStatus(User $user, string $status = '在籍'): void

@@ -61,7 +61,7 @@ class RegistryDepartmentPermissionsTest extends TestCase
 
     public function test_staffing_department_gets_attendance_access(): void
     {
-        $user = $this->userInRegistryDepartment('人材派遣事業部');
+        $user = $this->userInRegistryDepartment('営業部');
 
         $this->assertTrue($user->canViewAttendanceSection());
     }
@@ -88,7 +88,8 @@ class RegistryDepartmentPermissionsTest extends TestCase
 
         $this->actingAs($admin->fresh())
             ->post(route('employees.store'), [
-                'name' => '権限 太郎',
+                'last_name' => '権限',
+                'first_name' => '太郎',
                 'email' => 'permission_taro@careearth.info',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
@@ -124,7 +125,7 @@ class RegistryDepartmentPermissionsTest extends TestCase
             'Food Logistic部' => ['food'],
             'Food GA部' => ['food'],
             '経理部' => ['specified-skills', 'real-estate'],
-            '人材派遣事業部' => ['dispatch'],
+            '営業部' => ['dispatch'],
         ];
 
         $provider = [];

@@ -61,14 +61,15 @@ class EmployeeHrDetailAccess
             || $viewer->isExecutive();
     }
 
-    /** 基本情報〜備考: 情シス・人事課・人事部・経理部総務課・役員が閲覧 */
+    /** 基本情報〜備考: 情シス・人事課・人事部・経理部総務課・経営企画室・役員が閲覧 */
     public static function canViewCore(User $viewer, User $target): bool
     {
         return $viewer->isExecutive()
             || $viewer->isInformationSystems()
             || $viewer->isHrSection()
             || $viewer->isHrDepartment()
-            || $viewer->isGeneralAffairs();
+            || $viewer->isGeneralAffairs()
+            || $viewer->isCorporatePlanningOffice();
     }
 
     /** 入社・退職手続き: 情シス・人事部・役員が編集 */
@@ -138,7 +139,8 @@ class EmployeeHrDetailAccess
             || $viewer->isHrDepartment()
             || $viewer->isHrSection()
             || $viewer->isInformationSystems()
-            || $viewer->isGeneralAffairs();
+            || $viewer->isGeneralAffairs()
+            || $viewer->isCorporatePlanningOffice();
     }
 
     /** IT・デバイス一覧（Top Page「情シスデバイス用」） */

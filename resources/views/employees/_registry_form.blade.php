@@ -47,15 +47,25 @@
     @endif
 
     <div class="grid gap-4 sm:grid-cols-2">
-        <div>
-            <label for="name" class="block text-base mb-1">名前 <span class="text-red-600">*</span></label>
-            <p class="mb-1 text-sm text-slate-500">名簿上の名前、漢字orカナ<br>（パスポート等身分証上の表記に準ずる）</p>
-            <input id="name" name="name" value="{{ $values['name'] ?? '' }}" required class="w-full rounded border border-slate-300 px-3 py-2 text-base">
-            @include('partials.field-error', ['field' => 'name'])
+        <div class="sm:col-span-2">
+            <p class="mb-1 text-base">名前 <span class="text-red-600">*</span></p>
+            <p class="mb-2 text-sm text-slate-500">名簿上の姓名（漢字。外国人はローマ字可）を入力してください。</p>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label for="last_name" class="block text-base mb-1">姓</label>
+                    <input id="last_name" name="last_name" value="{{ $values['last_name'] ?? '' }}" required class="w-full rounded border border-slate-300 px-3 py-2 text-base" autocomplete="family-name">
+                    @include('partials.field-error', ['field' => 'last_name'])
+                </div>
+                <div>
+                    <label for="first_name" class="block text-base mb-1">名</label>
+                    <input id="first_name" name="first_name" value="{{ $values['first_name'] ?? '' }}" required class="w-full rounded border border-slate-300 px-3 py-2 text-base" autocomplete="given-name">
+                    @include('partials.field-error', ['field' => 'first_name'])
+                </div>
+            </div>
         </div>
         <div>
             <label for="name_kana" class="block text-base mb-1">ナマエ</label>
-            <p class="mb-1 text-sm text-slate-500">名簿上の名前、カタカナ表記<br>（全国籍共通）</p>
+            <p class="mb-1 text-sm text-slate-500">カタカナ表記のみ<br>（全国籍共通）</p>
             <input id="name_kana" name="name_kana" value="{{ $values['name_kana'] ?? '' }}" class="w-full rounded border border-slate-300 px-3 py-2 text-base">
             @include('partials.field-error', ['field' => 'name_kana'])
         </div>
@@ -67,7 +77,6 @@
         </div>
         <div>
             <label for="birth_date" class="block text-base mb-1">生年月日</label>
-            <p class="mb-1 text-sm text-slate-500 invisible select-none" aria-hidden="true">名簿上の名前、ローマ字or英字<br>（全国籍共通）</p>
             @include('partials.date-field', ['name' => 'birth_date', 'id' => 'birth_date', 'value' => $values['birth_date'] ?? ''])
             @include('partials.field-error', ['field' => 'birth_date'])
         </div>

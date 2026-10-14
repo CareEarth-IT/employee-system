@@ -15,7 +15,10 @@
 
         @include('partials.validation-errors-banner')
 
-        @include('affiliation._form', ['user' => $user])
+        @include('affiliation._form', [
+            'user' => $user,
+            'hasOtherCurrentAffiliations' => $hasOtherCurrentAffiliations,
+        ])
 
         <div class="flex flex-row flex-wrap items-center justify-center gap-6 pt-8 mt-2 border-t border-slate-200">
             <a href="{{ UserRouteHelper::route($user, 'profile.edit', 'users.profile.edit') }}" class="whitespace-nowrap rounded border border-slate-300 px-6 py-2.5 text-base hover:bg-slate-50">
@@ -31,3 +34,8 @@
     </form>
 </div>
 @endsection
+
+@push('scripts')
+    @include('partials.skip-stale-form-on-back', ['user' => $user])
+@endpush
+

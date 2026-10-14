@@ -11,6 +11,7 @@ use App\Services\DriveStaffSyncService;
 use App\Support\AffiliationHrDetailSync;
 use App\Support\UserRouteHelper;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class AffiliationController extends Controller
@@ -21,18 +22,22 @@ class AffiliationController extends Controller
         private DriveStaffSyncService $driveStaffSync,
     ) {}
 
-    public function create(?User $user = null): View|RedirectResponse
+    public function create(?User $user = null): View|Response|RedirectResponse
     {
         $target = $user ?? auth()->user();
         $this->assertCanManageAffiliation($target);
+        $this->rememberAffiliationReturnUser($target);
         $target->load('profile');
 
-        return view('affiliation.create', [
+        return $this->noStoreView('affiliation.create', [
             'user' => $target,
+            'hasOtherCurrentAffiliations' => $target->affiliationHistories()
+                ->currentlyActive()
+                ->exists(),
         ]);
     }
 
-    public function store(AffiliationStoreRequest $request, ?User $user = null): RedirectResponse
+    public function store(AffiliationStoreRequest $request, ?User $user = null): Response
     {
         $target = $user ?? auth()->user();
         $this->assertCanManageAffiliation($target);
@@ -43,13 +48,7 @@ class AffiliationController extends Controller
             'import_locked' => true,
         ]);
 
-        if ($affiliation->isEnrolled()) {
-            $target->closeOtherEnrolledAffiliations($affiliation);
-        }
-
-        if ($affiliation->isCurrent() && auth()->user()->canEditCurrentAffiliationOrg()) {
-            AffiliationHrDetailSync::syncHrDetailFromAffiliation($target->fresh(), $affiliation->fresh());
-        }
+        $this->afterSaveAffiliation($request, $target, $affiliation);
 
         $target->syncRoleFromAffiliation();
         $this->driveStaffSync->syncUser($target->fresh());
@@ -57,26 +56,44 @@ class AffiliationController extends Controller
         $message = '所属部署を登録しました。';
 
         if ($request->input('action') === 'continue') {
-            return redirect()
-                ->to(UserRouteHelper::route($target, 'affiliations.create', 'users.affiliations.create'))
-                ->with('success', $message);
+            return $this->replaceLocationTo(
+                UserRouteHelper::route($target, 'affiliations.create', 'users.affiliations.create'),
+                $target,
+                $message,
+            );
         }
 
         return $this->redirectToProfileEdit($target, $message);
     }
 
-    public function edit(AffiliationHistory $affiliation): View|RedirectResponse
+    public function edit(AffiliationHistory $affiliation): View|Response|RedirectResponse
     {
         $this->assertCanManageAffiliation($affiliation->user);
+        $this->rememberAffiliationReturnUser($affiliation->user);
         $affiliation->user->load('profile');
 
-        return view('affiliation.edit', [
+        return $this->noStoreView('affiliation.edit', [
             'affiliation' => $affiliation,
             'user' => $affiliation->user,
+            'hasOtherCurrentAffiliations' => $affiliation->user->affiliationHistories()
+                ->currentlyActive()
+                ->whereKeyNot($affiliation->id)
+                ->exists(),
         ]);
     }
 
-    public function update(AffiliationUpdateRequest $request, AffiliationHistory $affiliation): RedirectResponse
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function noStoreView(string $view, array $data): Response
+    {
+        return response()
+            ->view($view, $data)
+            ->header('Cache-Control', 'private, no-store, no-cache, must-revalidate')
+            ->header('Pragma', 'no-cache');
+    }
+
+    public function update(AffiliationUpdateRequest $request, AffiliationHistory $affiliation): Response
     {
         $this->assertCanManageAffiliation($affiliation->user);
 
@@ -86,13 +103,7 @@ class AffiliationController extends Controller
             'import_locked' => true,
         ]);
 
-        if ($affiliation->isEnrolled()) {
-            $affiliation->user->closeOtherEnrolledAffiliations($affiliation);
-        }
-
-        if ($affiliation->isCurrent() && auth()->user()->canEditCurrentAffiliationOrg()) {
-            AffiliationHrDetailSync::syncHrDetailFromAffiliation($affiliation->user->fresh(), $affiliation->fresh());
-        }
+        $this->afterSaveAffiliation($request, $affiliation->user, $affiliation->fresh());
 
         $affiliation->user->syncRoleFromAffiliation();
         $this->driveStaffSync->syncUser($affiliation->user->fresh());
@@ -100,7 +111,7 @@ class AffiliationController extends Controller
         return $this->redirectToProfileEdit($affiliation->user, '所属部署を更新しました。');
     }
 
-    public function destroy(AffiliationHistory $affiliation): RedirectResponse
+    public function destroy(AffiliationHistory $affiliation): Response
     {
         $user = $affiliation->user;
         $this->assertCanManageAffiliation($user);
@@ -109,6 +120,25 @@ class AffiliationController extends Controller
         $user->syncRoleFromAffiliation();
 
         return $this->redirectToProfileEdit($user, '所属部署を削除しました。');
+    }
+
+    private function afterSaveAffiliation(
+        AffiliationStoreRequest $request,
+        User $target,
+        AffiliationHistory $affiliation,
+    ): void {
+        if (! $affiliation->isEnrolled()) {
+            return;
+        }
+
+        // 異動時のみ他の在籍中を終了。オフなら兼任として複数の所属中を残す
+        if ($request->boolean('close_others')) {
+            $target->closeOtherEnrolledAffiliations($affiliation);
+        }
+
+        if (auth()->user()?->canEditCurrentAffiliationOrg()) {
+            AffiliationHrDetailSync::syncHrDetailFromAffiliation($target->fresh(), $affiliation->fresh());
+        }
     }
 
     private function syncEmployeeId(AffiliationStoreRequest $request, User $target): void

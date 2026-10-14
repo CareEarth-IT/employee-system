@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\ScheduledAffiliationChangeApplier;
 use App\Support\EmployeeHrDetailAccess;
 use App\Support\EmployeeIndexFilters;
 use App\Support\EmployeeIndexQuery;
@@ -13,7 +14,9 @@ use Illuminate\View\View;
 
 class EmployeeController extends Controller
 {
-    public function index(Request $request): View
+    private const LIST_PER_PAGE = 50;
+
+    public function index(Request $request, ScheduledAffiliationChangeApplier $scheduledApplier): View
     {
         $status = trim((string) $request->query('status', '在籍'));
         $keyword = trim((string) $request->query('keyword', ''));
@@ -33,11 +36,15 @@ class EmployeeController extends Controller
             $direction = 'asc';
         }
 
+        // 一覧の行ごとチェックを避け、反映日到来分は先にまとめて適用する
+        $scheduledApplier->applyDue();
+
         $query = User::query()
             ->with([
-                'profile',
-                'hrDetail',
+                'profile:id,user_id,english_name,name_kana',
+                'hrDetail:id,user_id,employment_status,employment_type,company_phone,jurisdiction,department_primary,section_primary,position_primary',
                 'affiliationHistories' => fn ($affiliationQuery) => $affiliationQuery
+                    ->currentlyActive()
                     ->orderByDesc('start_date')
                     ->orderByDesc('id'),
             ]);
@@ -58,8 +65,13 @@ class EmployeeController extends Controller
             EmployeeKeywordSearch::apply($query, $keyword);
         }
 
+        $employees = $query->paginate(self::LIST_PER_PAGE)->withQueryString();
+        $employees->getCollection()->each(
+            fn (User $employee) => $employee->skipScheduledAffiliationApply()
+        );
+
         return view('employees.index', [
-            'employees' => $query->get(),
+            'employees' => $employees,
             'filterConditions' => $filterConditions,
             'filterFieldConfig' => EmployeeIndexFilters::fieldConfig(),
             'status' => $status,
@@ -71,6 +83,7 @@ class EmployeeController extends Controller
             'hrDetailExportUrl' => self::hrDetailExportUrl($request),
             'canImportEmployees' => (bool) $request->user()?->isInformationSystems(),
             'canManageEmployeeRegistry' => (bool) $request->user()?->canManageEmployeeRegistry(),
+            'canViewSocialInsuranceStats' => (bool) $request->user()?->canViewSocialInsuranceStats(),
             'statusTabs' => User::EMPLOYMENT_STATUS_TAB_OPTIONS,
         ]);
     }

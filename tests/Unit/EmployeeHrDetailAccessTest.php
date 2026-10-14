@@ -60,6 +60,17 @@ class EmployeeHrDetailAccessTest extends TestCase
         $this->assertFalse(EmployeeHrDetailAccess::canViewProcedures($viewer, $target));
     }
 
+    public function test_corporate_planning_office_can_export_csv(): void
+    {
+        $viewer = $this->userInAffiliation('経営企画室');
+        $target = User::factory()->create();
+
+        $this->assertTrue($viewer->isCorporatePlanningOffice());
+        $this->assertTrue(EmployeeHrDetailAccess::canExportCsv($viewer));
+        $this->assertTrue(EmployeeHrDetailAccess::canViewCore($viewer, $target));
+        $this->assertFalse(EmployeeHrDetailAccess::canEditCore($viewer, $target));
+    }
+
     public function test_employee_can_view_but_not_edit_own_procedures(): void
     {
         $viewer = $this->userInAffiliation('通信部', '営業課');

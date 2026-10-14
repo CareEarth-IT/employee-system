@@ -17,6 +17,8 @@
             ? $affiliation->enrollment_status === AffiliationHistory::STATUS_ENROLLED
             : true
     );
+    $hasOtherCurrentAffiliations = (bool) ($hasOtherCurrentAffiliations ?? false);
+    $closeOthers = (bool) old('close_others', false);
     $lockCurrentOrgFields = ($affiliation?->isCurrent() ?? false)
         && ! auth()->user()->canEditCurrentAffiliationOrg();
     $orgSplit = RegistryOrgAssignment::splitForRegistryForm(
@@ -106,10 +108,31 @@
                     class="flex-1 rounded border border-slate-300 px-3 py-2 text-base {{ $isCurrent ? 'hidden' : '' }}"
                 >
             </div>
-            <p id="current-hint" class="mt-1 text-sm text-slate-500 {{ $isCurrent ? '' : 'hidden' }}">在籍中のため終了日は不要です。開始日が不明な場合は空欄のままで構いません。</p>
+            <p id="current-hint" class="mt-1 text-sm text-slate-500 {{ $isCurrent ? '' : 'hidden' }}">在籍中のため終了日は不要です。開始日が不明な場合は空欄のままで構いません。兼任の場合は複数の「現在」の所属を残せます。</p>
             @include('partials.field-error', ['field' => 'start_date'])
             @include('partials.field-error', ['field' => 'end_date'])
         @endif
+
+        @unless ($lockCurrentOrgFields)
+            <div
+                id="concurrent-options"
+                class="mt-3 {{ $isCurrent && $hasOtherCurrentAffiliations ? '' : 'hidden' }}"
+                data-has-others="{{ $hasOtherCurrentAffiliations ? '1' : '0' }}"
+            >
+                <label class="inline-flex cursor-pointer items-center gap-2 text-base">
+                    <input
+                        type="checkbox"
+                        id="close_others"
+                        name="close_others"
+                        value="1"
+                        @checked($closeOthers)
+                        class="rounded border-slate-300"
+                    >
+                    他の在籍中の所属を終了する
+                    <span class="text-sm text-slate-500">（異動のときだけオン。兼任ならオフのまま）</span>
+                </label>
+            </div>
+        @endunless
     </div>
 
     <div class="grid sm:grid-cols-2 gap-4">
@@ -134,16 +157,21 @@
         const endDate = document.getElementById('end_date');
         const separator = document.getElementById('end-date-separator');
         const hint = document.getElementById('current-hint');
+        const concurrent = document.getElementById('concurrent-options');
 
         if (!isCurrent || !endDate || !separator) return;
 
         const toggleEndDate = () => {
-            const hidden = isCurrent.checked;
-            endDate.classList.toggle('hidden', hidden);
-            separator.classList.toggle('hidden', hidden);
-            hint?.classList.toggle('hidden', !hidden);
+            const enrolled = isCurrent.checked;
+            endDate.classList.toggle('hidden', enrolled);
+            separator.classList.toggle('hidden', enrolled);
+            hint?.classList.toggle('hidden', !enrolled);
+            if (concurrent) {
+                const showCloseOthers = enrolled && concurrent.dataset.hasOthers === '1';
+                concurrent.classList.toggle('hidden', !showCloseOthers);
+            }
 
-            if (hidden) {
+            if (enrolled) {
                 endDate.value = '';
             }
         };

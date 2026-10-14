@@ -8,11 +8,18 @@ class RegistryDepartmentOptions
 
     public const MANAGEMENT_HEADQUARTERS = '管理本部';
 
-    public const STAFFING_DEPARTMENT = '人材派遣事業部';
+    public const STAFFING_DEPARTMENT = '営業部';
 
     /** @var array<string, string> 旧部署名 → 現行名 */
     public const LEGACY_DEPARTMENT_ALIASES = [
-        '営業部' => self::STAFFING_DEPARTMENT,
+        '人材派遣事業部' => self::STAFFING_DEPARTMENT,
+        '派遣事業部' => self::STAFFING_DEPARTMENT,
+        '大阪営業部' => self::STAFFING_DEPARTMENT,
+        '東京営業部' => self::STAFFING_DEPARTMENT,
+        '名古屋営業部' => self::STAFFING_DEPARTMENT,
+        '福岡営業部' => self::STAFFING_DEPARTMENT,
+        'GR部（グローバル部）' => RegistryGrAssignment::DEPARTMENT,
+        'GR部(グローバル部)' => RegistryGrAssignment::DEPARTMENT,
     ];
 
     /** @var list<string> 社員登録フォームの所属部署 */
@@ -29,7 +36,7 @@ class RegistryDepartmentOptions
         '管理部',
         self::MANAGEMENT_HEADQUARTERS,
         self::STAFFING_DEPARTMENT,
-        'GR部（グローバル部）',
+        RegistryGrAssignment::DEPARTMENT,
     ];
 
     /**
@@ -71,7 +78,7 @@ class RegistryDepartmentOptions
         '管理部' => ['department' => '管理部', 'section' => null],
         self::MANAGEMENT_HEADQUARTERS => ['department' => self::MANAGEMENT_HEADQUARTERS, 'section' => null],
         self::STAFFING_DEPARTMENT => ['department' => self::STAFFING_DEPARTMENT, 'section' => null],
-        'GR部（グローバル部）' => ['department' => 'GR部（グローバル部）', 'section' => null],
+        RegistryGrAssignment::DEPARTMENT => ['department' => RegistryGrAssignment::DEPARTMENT, 'section' => null],
     ];
 
     /**

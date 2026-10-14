@@ -69,7 +69,8 @@ class EmployeeRegistryController extends Controller
         );
 
         return [
-            'name' => old('name', $this->registry->displayName($user)),
+            'last_name' => old('last_name', (string) ($user->last_name ?? '')),
+            'first_name' => old('first_name', (string) ($user->first_name ?? '')),
             'email' => old('email', (string) $user->email),
             'employee_id' => old('employee_id', (string) ($user->employee_id ?? '')),
             'department' => old('department', (string) ($affiliation?->department ?? '')),

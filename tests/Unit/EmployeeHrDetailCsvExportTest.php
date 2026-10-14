@@ -122,7 +122,7 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $csv = (string) ob_get_clean();
 
         $this->assertStringContainsString('東京グローバル事業部', $csv);
-        $this->assertStringNotContainsString('GR部（グローバル部）', $csv);
+        $this->assertStringNotContainsString('グローバル事業部', $csv);
     }
 
     public function test_exporter_outputs_viewable_values_for_hr_section(): void

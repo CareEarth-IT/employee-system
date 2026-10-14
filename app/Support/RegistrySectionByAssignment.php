@@ -37,7 +37,7 @@ class RegistrySectionByAssignment
             '名古屋' => ['営業課_名古屋', 'SS課_名古屋'],
             '福岡' => ['営業課_福岡', 'SS課_福岡'],
         ],
-        'GR部（グローバル部）' => [
+        RegistryGrAssignment::DEPARTMENT => [
             '大阪' => RegistryGrAssignment::DIVISIONS,
             '福岡' => RegistryGrAssignment::DIVISIONS,
             '東京' => RegistryGrAssignment::DIVISIONS,

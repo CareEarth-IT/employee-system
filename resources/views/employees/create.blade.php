@@ -20,7 +20,8 @@
         'splitSectionTeam' => true,
         'sectionRequiredForGr' => true,
         'values' => [
-            'name' => old('name'),
+            'last_name' => old('last_name'),
+            'first_name' => old('first_name'),
             'email' => old('email'),
             'employee_id' => old('employee_id'),
             'department' => old('department'),

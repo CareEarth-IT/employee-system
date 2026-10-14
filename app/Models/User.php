@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ScheduledAffiliationChangeApplier;
 use App\Support\EmployeeIdRules;
 use App\Support\EmploymentStatus;
 use Database\Factories\UserFactory;
@@ -11,12 +12,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    private bool $applyingScheduledAffiliationChanges = false;
+
+    private bool $checkedScheduledAffiliationChanges = false;
 
     public const ROLE_EMPLOYEE = 'employee';
 
@@ -86,10 +92,11 @@ class User extends Authenticatable
      */
     public const DUAL_APPROVAL_TOKYO_DEPARTMENT_KEYWORDS = [
         '営業部',
-        '人材派遣事業部',
+        '人材派遣事業部', // 旧称互換
         'SS課',
         '管理部',
         'グローバル事業部',
+        'GR部', // 旧称互換
     ];
 
     /** @var list<string> */
@@ -152,6 +159,9 @@ class User extends Authenticatable
 
     /** 情報システム部の申請とみなす所属キーワード */
     public const INFORMATION_SYSTEMS_DEPARTMENT_KEYWORD = '情報システム';
+
+    /** 経営企画室とみなす所属キーワード（部・課） */
+    public const CORPORATE_PLANNING_OFFICE_KEYWORD = '経営企画室';
 
     /**
      * Top Page 全部署の閲覧・編集をメールで許可するアカウント（デフォルト）。
@@ -255,6 +265,24 @@ class User extends Authenticatable
         return $this->hasMany(AffiliationHistory::class)->orderByDesc('start_date');
     }
 
+    public function scheduledAffiliationChanges(): HasMany
+    {
+        return $this->hasMany(ScheduledAffiliationChange::class)->orderByDesc('effective_date');
+    }
+
+    public function pendingScheduledAffiliationChange(): ?ScheduledAffiliationChange
+    {
+        if ($this->relationLoaded('scheduledAffiliationChanges')) {
+            return $this->scheduledAffiliationChanges
+                ->first(fn (ScheduledAffiliationChange $change) => $change->isPending());
+        }
+
+        return $this->scheduledAffiliationChanges()
+            ->pending()
+            ->orderBy('effective_date')
+            ->first();
+    }
+
     public function equipmentPurchaseApplications(): HasMany
     {
         return $this->hasMany(EquipmentPurchaseApplication::class)->orderByDesc('created_at');
@@ -272,6 +300,8 @@ class User extends Authenticatable
 
     public function currentAffiliation(): ?AffiliationHistory
     {
+        $this->applyDueScheduledAffiliationChanges();
+
         if ($this->relationLoaded('affiliationHistories')) {
             $today = now()->toDateString();
 
@@ -284,20 +314,71 @@ class User extends Authenticatable
                     return $history->end_date === null
                         || $history->end_date->toDateString() >= $today;
                 })
-                ->sortByDesc(fn (AffiliationHistory $history) => $history->start_date?->toDateString() ?? '')
+                ->sortByDesc(fn (AffiliationHistory $history) => sprintf(
+                    '%s-%010d',
+                    $history->start_date?->toDateString() ?? '',
+                    $history->id,
+                ))
                 ->first();
         }
 
         return $this->affiliationHistories()
             ->currentlyActive()
             ->orderByDesc('start_date')
+            ->orderByDesc('id')
             ->first();
+    }
+
+    /**
+     * 在籍中の所属一覧（兼任時は複数）。権限判定はこちらをORで見る。
+     *
+     * @return Collection<int, AffiliationHistory>
+     */
+    public function activeAffiliations(): Collection
+    {
+        $this->applyDueScheduledAffiliationChanges();
+
+        if ($this->relationLoaded('affiliationHistories')) {
+            $today = now()->toDateString();
+
+            return $this->affiliationHistories
+                ->filter(function (AffiliationHistory $history) use ($today): bool {
+                    if ($history->enrollment_status !== AffiliationHistory::STATUS_ENROLLED) {
+                        return false;
+                    }
+
+                    return $history->end_date === null
+                        || $history->end_date->toDateString() >= $today;
+                })
+                ->values();
+        }
+
+        return $this->affiliationHistories()->currentlyActive()->get();
+    }
+
+    /**
+     * 反映日到来済みの事前登録があれば所属へ反映する（当日以降の初回参照で適用）。
+     */
+    public function applyDueScheduledAffiliationChanges(): void
+    {
+        if (! $this->exists || $this->applyingScheduledAffiliationChanges || $this->checkedScheduledAffiliationChanges) {
+            return;
+        }
+
+        $this->checkedScheduledAffiliationChanges = true;
+        $this->applyingScheduledAffiliationChanges = true;
+
+        try {
+            app(ScheduledAffiliationChangeApplier::class)->applyDueForUser($this);
+        } finally {
+            $this->applyingScheduledAffiliationChanges = false;
+        }
     }
 
     /**
      * 在籍中の所属が複数ある場合、指定以外を「他へ移動済」にする。
      */
-    public function closeOtherEnrolledAffiliations(?AffiliationHistory $except = null): void
+    public function closeOtherEnrolledAffiliations(?AffiliationHistory $except = null, ?string $endDate = null): void
     {
         $query = $this->affiliationHistories()
             ->where('enrollment_status', AffiliationHistory::STATUS_ENROLLED);
@@ -306,11 +387,30 @@ class User extends Authenticatable
             $query->whereKeyNot($except->id);
         }
 
-        $query->each(fn (AffiliationHistory $history) => $history->closeAsMoved());
+        $query->each(fn (AffiliationHistory $history) => $history->closeAsMoved($endDate));
+    }
+
+    /** 姓と名を半角スペースでつないだ表示名（一覧の日本語名向け） */
+    public function familyGivenName(): string
+    {
+        $name = trim(($this->last_name ?? '').' '.($this->first_name ?? ''));
+
+        if ($name !== '' && $this->last_name !== '未設定') {
+            return $name;
+        }
+
+        $fallback = trim((string) $this->name);
+
+        return $fallback !== '' && $fallback !== '未設定' ? $fallback : '';
     }
 
     public function displayName(): string
     {
+        $familyGiven = $this->familyGivenName();
+        if ($familyGiven !== '') {
+            return $familyGiven;
+        }
+
         $profile = $this->relationLoaded('profile')
             ? $this->profile
             : $this->profile()->first();
@@ -321,14 +421,6 @@ class User extends Authenticatable
 
         if ($profile?->english_name) {
             return $profile->english_name;
-        }
-
-        if ($this->last_name || $this->first_name) {
-            $name = trim("{$this->last_name} {$this->first_name}");
-
-            if ($name !== '' && $this->last_name !== '未設定') {
-                return $name;
-            }
         }
 
         return $this->name;
@@ -498,7 +590,7 @@ class User extends Authenticatable
 
     public function latestAffiliation(): ?AffiliationHistory
     {
-        if ($this->relationLoaded('affiliationHistories')) {
+        if ($this->relationLoaded('affiliationHistories') && $this->affiliationHistories->isNotEmpty()) {
             return $this->affiliationHistories
                 ->sortByDesc(fn (AffiliationHistory $history) => sprintf(
                     '%s-%010d',
@@ -512,6 +604,12 @@ class User extends Authenticatable
             ->orderByDesc('start_date')
             ->orderByDesc('id')
             ->first();
+    }
+
+    /** 一覧表示などで事前登録の都度チェックを省略する */
+    public function skipScheduledAffiliationApply(): void
+    {
+        $this->checkedScheduledAffiliationChanges = true;
     }
 
     /**
@@ -646,50 +744,50 @@ class User extends Authenticatable
         return $value !== null ? $value : '—';
     }
 
-    /** 人事部かどうか（users.role が admin、または現在有効な所属「部」に人事を含む） */
+    /** 人事部かどうか（users.role が admin、または在籍中の所属「部」に人事を含む） */
     public function isHr(): bool
     {
         return $this->isHrDepartment();
     }
 
-    /** 人事部（部単位）かどうか — 現在有効な所属のみ */
+    /** 人事部（部単位）かどうか — 在籍中の所属のいずれか */
     public function isHrDepartment(): bool
     {
         if ($this->role === self::ROLE_ADMIN) {
             return true;
         }
 
-        $department = $this->currentAffiliation()?->department;
-
-        return $department && str_contains($department, self::HR_DEPARTMENT_KEYWORD);
+        return $this->activeAffiliations()->contains(
+            fn (AffiliationHistory $affiliation): bool => is_string($affiliation->department)
+                && $affiliation->department !== ''
+                && str_contains($affiliation->department, self::HR_DEPARTMENT_KEYWORD)
+        );
     }
 
-    /** 人事課（課単位）かどうか — 現在有効な所属のみ */
+    /** 人事課（課単位）かどうか — 在籍中の所属のいずれか */
     public function isHrSection(): bool
     {
-        $section = $this->currentAffiliation()?->section;
-
-        return $section && str_contains($section, self::HR_SECTION_KEYWORD);
+        return $this->activeAffiliations()->contains(
+            fn (AffiliationHistory $affiliation): bool => is_string($affiliation->section)
+                && $affiliation->section !== ''
+                && str_contains($affiliation->section, self::HR_SECTION_KEYWORD)
+        );
     }
 
-    /** 役員かどうか — 現在有効な所属の部・課・役職に「役員」を含む */
+    /** 役員かどうか — 在籍中の所属の部・課・役職に「役員」を含む */
     public function isExecutive(): bool
     {
-        $affiliation = $this->currentAffiliation();
+        return $this->activeAffiliations()->contains(function (AffiliationHistory $affiliation): bool {
+            foreach (['department', 'section', 'position'] as $attribute) {
+                $value = $affiliation->{$attribute};
 
-        if ($affiliation === null) {
-            return false;
-        }
-
-        foreach (['department', 'section', 'position'] as $attribute) {
-            $value = $affiliation->{$attribute};
-
-            if (is_string($value) && $value !== '' && str_contains($value, self::EXECUTIVE_KEYWORD)) {
-                return true;
+                if (is_string($value) && $value !== '' && str_contains($value, self::EXECUTIVE_KEYWORD)) {
+                    return true;
+                }
             }
-        }
 
-        return false;
+            return false;
+        });
     }
 
     /**
@@ -717,28 +815,50 @@ class User extends Authenticatable
             || $this->isGeneralAffairs();
     }
 
-    /** 情報システム部かどうか */
+    /** 情報システム部かどうか — 在籍中の所属のいずれか */
     public function isInformationSystems(): bool
     {
-        $department = $this->currentAffiliation()?->department;
-
-        return $department && str_contains($department, self::INFORMATION_SYSTEMS_DEPARTMENT_KEYWORD);
+        return $this->activeAffiliations()->contains(
+            fn (AffiliationHistory $affiliation): bool => is_string($affiliation->department)
+                && $affiliation->department !== ''
+                && str_contains($affiliation->department, self::INFORMATION_SYSTEMS_DEPARTMENT_KEYWORD)
+        );
     }
 
-    /** 庶務課かどうか — 現在有効な所属のみ */
+    /** 経営企画室かどうか — 在籍中の所属の部・課に「経営企画室」を含む */
+    public function isCorporatePlanningOffice(): bool
+    {
+        return $this->activeAffiliations()->contains(function (AffiliationHistory $affiliation): bool {
+            foreach (['department', 'section'] as $attribute) {
+                $value = $affiliation->{$attribute};
+
+                if (is_string($value) && $value !== '' && str_contains($value, self::CORPORATE_PLANNING_OFFICE_KEYWORD)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }
+
+    /** 庶務課かどうか — 在籍中の所属のいずれか */
     public function isAdministrativeAffairsSection(): bool
     {
-        $section = $this->currentAffiliation()?->section;
-
-        return $section && str_contains($section, self::ADMINISTRATIVE_AFFAIRS_SECTION_KEYWORD);
+        return $this->activeAffiliations()->contains(
+            fn (AffiliationHistory $affiliation): bool => is_string($affiliation->section)
+                && $affiliation->section !== ''
+                && str_contains($affiliation->section, self::ADMINISTRATIVE_AFFAIRS_SECTION_KEYWORD)
+        );
     }
 
-    /** 経理部かどうか（部単位・現在有効な所属のみ） */
+    /** 経理部かどうか（部単位・在籍中の所属のいずれか） */
     public function isAccountingDepartment(): bool
     {
-        $department = $this->currentAffiliation()?->department;
-
-        return $department && str_contains($department, self::GENERAL_AFFAIRS_DEPARTMENT_KEYWORD);
+        return $this->activeAffiliations()->contains(
+            fn (AffiliationHistory $affiliation): bool => is_string($affiliation->department)
+                && $affiliation->department !== ''
+                && str_contains($affiliation->department, self::GENERAL_AFFAIRS_DEPARTMENT_KEYWORD)
+        );
     }
 
     /** 月次所属記録の閲覧・保存（経理部・情報システム部のみ） */
@@ -817,7 +937,7 @@ class User extends Authenticatable
     }
 
     /**
-     * 現所属の部・課がキーワードのいずれかを含むか。
+     * 在籍中の所属の部・課がキーワードのいずれかを含むか。
      *
      * @param  list<string>|mixed  $keywords
      */
@@ -827,25 +947,26 @@ class User extends Authenticatable
             return false;
         }
 
-        $affiliation = $this->currentAffiliation();
-        $haystacks = array_filter([
-            $affiliation?->department,
-            $affiliation?->section,
-        ], static fn ($value): bool => is_string($value) && $value !== '');
+        foreach ($this->activeAffiliations() as $affiliation) {
+            $haystacks = array_filter([
+                $affiliation->department,
+                $affiliation->section,
+            ], static fn ($value): bool => is_string($value) && $value !== '');
 
-        if ($haystacks === []) {
-            return false;
-        }
-
-        foreach ($keywords as $keyword) {
-            $keyword = trim((string) $keyword);
-            if ($keyword === '') {
+            if ($haystacks === []) {
                 continue;
             }
 
-            foreach ($haystacks as $haystack) {
-                if (str_contains($haystack, $keyword)) {
-                    return true;
+            foreach ($keywords as $keyword) {
+                $keyword = trim((string) $keyword);
+                if ($keyword === '') {
+                    continue;
+                }
+
+                foreach ($haystacks as $haystack) {
+                    if (str_contains($haystack, $keyword)) {
+                        return true;
+                    }
                 }
             }
         }
@@ -922,12 +1043,14 @@ class User extends Authenticatable
         return \App\Support\DashboardTab::findByDepartment($department) !== null;
     }
 
-    /** 不動産部かどうか（部単位・現在有効な所属のみ） */
+    /** 不動産部かどうか（部単位・在籍中の所属のいずれか） */
     public function isRealEstateDepartment(): bool
     {
-        $department = $this->currentAffiliation()?->department;
-
-        return $department && str_contains($department, self::REAL_ESTATE_DEPARTMENT_KEYWORD);
+        return $this->activeAffiliations()->contains(
+            fn (AffiliationHistory $affiliation): bool => is_string($affiliation->department)
+                && $affiliation->department !== ''
+                && str_contains($affiliation->department, self::REAL_ESTATE_DEPARTMENT_KEYWORD)
+        );
     }
 
     /** @var list<string> 本人が編集できるプロフィール項目（話せる言語・自己紹介・写真はプロフィール非表示のため空） */
@@ -1026,6 +1149,18 @@ class User extends Authenticatable
             || ($this->isHrDepartment() && $this->isHrSection())
             || $this->isExecutive()
             || $this->isAdministrativeAffairsSection();
+    }
+
+    /** 社会保険人数（所属会社別）画面: 人事課・総務課のみ */
+    public function canViewSocialInsuranceStats(): bool
+    {
+        return $this->isHrSection() || $this->isGeneralAffairs();
+    }
+
+    /** 異動・役職の事前登録: 人事部・人事課のみ */
+    public function canScheduleAffiliationChange(): bool
+    {
+        return $this->isHrDepartment() && $this->isHrSection();
     }
 
     /** 人事部による社員新規登録時に既定パスワードを使う（情シスは画面で入力） */
@@ -1164,19 +1299,21 @@ class User extends Authenticatable
 
     public function canViewAttendanceSection(): bool
     {
-        $department = $this->currentAffiliation()?->department;
+        return $this->activeAffiliations()->contains(function (AffiliationHistory $affiliation): bool {
+            $department = $affiliation->department;
 
-        if (! $department) {
-            return false;
-        }
-
-        foreach (self::ATTENDANCE_DEPARTMENTS as $keyword) {
-            if (str_contains($department, $keyword)) {
-                return true;
+            if (! is_string($department) || $department === '') {
+                return false;
             }
-        }
 
-        return false;
+            foreach (self::ATTENDANCE_DEPARTMENTS as $keyword) {
+                if (str_contains($department, $keyword)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
     }
 
     /** 備品購入の申請（全社員） */
@@ -1215,50 +1352,50 @@ class User extends Authenticatable
         return $application->user_id === $this->id;
     }
 
-    /** 経理部・総務課かどうか（備品購入の全権限）— 現在有効な所属のみ */
+    /** 経理部・総務課かどうか（備品購入の全権限）— 在籍中の所属のいずれか */
     public function isGeneralAffairs(): bool
     {
-        $affiliation = $this->currentAffiliation();
+        return $this->activeAffiliations()->contains(function (AffiliationHistory $affiliation): bool {
+            $department = $affiliation->department;
+            $section = $affiliation->section;
 
-        if (! $affiliation) {
-            return false;
-        }
-
-        $department = $affiliation->department;
-        $section = $affiliation->section;
-
-        return $department
-            && str_contains($department, self::GENERAL_AFFAIRS_DEPARTMENT_KEYWORD)
-            && $section
-            && str_contains($section, self::GENERAL_AFFAIRS_SECTION_KEYWORD);
+            return is_string($department)
+                && $department !== ''
+                && str_contains($department, self::GENERAL_AFFAIRS_DEPARTMENT_KEYWORD)
+                && is_string($section)
+                && $section !== ''
+                && str_contains($section, self::GENERAL_AFFAIRS_SECTION_KEYWORD);
+        });
     }
 
-    /** 現在の役職が部長かどうか（本部長・副部長は除く） */
+    /** 在籍中の役職に部長があるか（本部長・副部長は除く） */
     public function isDepartmentManager(): bool
     {
-        $position = $this->currentAffiliation()?->position;
+        return $this->activeAffiliations()->contains(function (AffiliationHistory $affiliation): bool {
+            $position = $affiliation->position;
 
-        if (! $position) {
-            return false;
-        }
+            if (! is_string($position) || $position === '') {
+                return false;
+            }
 
-        if (str_contains($position, '本部長') || str_contains($position, '副部長')) {
-            return false;
-        }
+            if (str_contains($position, '本部長') || str_contains($position, '副部長')) {
+                return false;
+            }
 
-        return str_contains($position, self::DEPARTMENT_MANAGER_POSITION_KEYWORD);
+            return str_contains($position, self::DEPARTMENT_MANAGER_POSITION_KEYWORD);
+        });
     }
 
-    /** 現在の役職が支店長かどうか */
+    /** 在籍中の役職に支店長があるか */
     public function isBranchManager(): bool
     {
-        $position = $this->currentAffiliation()?->position;
+        return $this->activeAffiliations()->contains(function (AffiliationHistory $affiliation): bool {
+            $position = $affiliation->position;
 
-        if (! $position) {
-            return false;
-        }
-
-        return str_contains($position, self::BRANCH_MANAGER_POSITION_KEYWORD);
+            return is_string($position)
+                && $position !== ''
+                && str_contains($position, self::BRANCH_MANAGER_POSITION_KEYWORD);
+        });
     }
 
     /** 備品購入の上長承認対象となる部長または支店長かどうか */
@@ -1321,7 +1458,7 @@ class User extends Authenticatable
             && in_array($email, EquipmentPurchaseApplication::globalManagerApproverEmails(), true);
     }
 
-    /** 部長・支店長承認の対象者か（情報システム部は指定承認者のみ、それ以外は部長または支店長） */
+    /** 部長・支店長承認の対象者か（情報システム部のみは指定承認者、他部署兼任の部長・支店長は可） */
     public function canActAsDepartmentApprover(): bool
     {
         if ($this->isGlobalEquipmentApprover() || $this->isDesignatedInformationSystemsApprover()) {
@@ -1332,7 +1469,18 @@ class User extends Authenticatable
             return false;
         }
 
-        return ! $this->isInformationSystemsDepartment($this->currentDepartment());
+        return $this->activeAffiliations()->contains(
+            fn (AffiliationHistory $affiliation): bool => is_string($affiliation->department)
+                && $affiliation->department !== ''
+                && ! $this->isInformationSystemsDepartment($affiliation->department)
+        );
+    }
+
+    private function applicationMatchesAnyActiveDepartment(EquipmentPurchaseApplication $application): bool
+    {
+        return $this->activeAffiliations()->contains(
+            fn (AffiliationHistory $affiliation): bool => $application->belongsToDepartment($affiliation->department)
+        );
     }
 
     private function approvesByDepartmentRule(EquipmentPurchaseApplication $application): bool
@@ -1362,7 +1510,7 @@ class User extends Authenticatable
 
             if ($application->isAwaitingFirstApproval()) {
                 return $this->isDepartmentManager()
-                    && $application->belongsToDepartment($this->currentDepartment());
+                    && $this->applicationMatchesAnyActiveDepartment($application);
             }
 
             return false;
@@ -1370,7 +1518,7 @@ class User extends Authenticatable
 
         if ($this->isDepartmentManager()
             && ! $application->requiresBranchManagerOnlyApproval()
-            && $application->belongsToDepartment($this->currentDepartment())) {
+            && $this->applicationMatchesAnyActiveDepartment($application)) {
             return true;
         }
 
@@ -1385,21 +1533,18 @@ class User extends Authenticatable
      */
     public function branchOfficeKeywords(): array
     {
-        $affiliation = $this->currentAffiliation();
-        if ($affiliation === null) {
-            return [];
-        }
-
         $keywords = [];
 
-        foreach (self::OFFICE_LOCATIONS as $location) {
-            if ($affiliation->location === $location) {
-                $keywords[] = $location;
-                continue;
-            }
+        foreach ($this->activeAffiliations() as $affiliation) {
+            foreach (self::OFFICE_LOCATIONS as $location) {
+                if ($affiliation->location === $location) {
+                    $keywords[] = $location;
+                    continue;
+                }
 
-            if ($affiliation->department && str_contains($affiliation->department, $location)) {
-                $keywords[] = $location;
+                if ($affiliation->department && str_contains($affiliation->department, $location)) {
+                    $keywords[] = $location;
+                }
             }
         }
 

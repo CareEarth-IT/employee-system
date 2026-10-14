@@ -22,8 +22,13 @@ trait ValidatesEmployeeRegistryFields
 
         $email = strtolower(trim((string) $this->input('email', '')));
 
+        $lastName = trim((string) $this->input('last_name', ''));
+        $firstName = trim((string) $this->input('first_name', ''));
+
         $this->merge([
-            'name' => trim((string) $this->input('name', '')),
+            'last_name' => $lastName,
+            'first_name' => $firstName,
+            'name' => trim($lastName.' '.$firstName),
             'email' => $email !== '' ? $email : null,
             'department' => RegistryDepartmentOptions::normalizeDepartment(
                 trim((string) $this->input('department', '')),
@@ -68,7 +73,9 @@ trait ValidatesEmployeeRegistryFields
         );
 
         return [
-            'name' => ['required', 'string', 'max:255', 'regex:/[\s　]/u'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'email' => [
                 Rule::requiredIf(fn (): bool => ! $this->isPartTimeEmploymentType()),
                 'nullable',
@@ -175,8 +182,9 @@ trait ValidatesEmployeeRegistryFields
     protected function registryFieldMessages(): array
     {
         return [
+            'last_name.required' => '姓を入力してください。',
+            'first_name.required' => '名を入力してください。',
             'name.required' => '名前を入力してください。',
-            'name.regex' => '名前は姓と名の間にスペースを入れてください（全角・半角どちらでも可）。',
             'email.required' => 'アドレスを入力してください。',
             'email.required_if' => 'アドレスを入力してください。',
             'email.email' => 'アドレスの形式が正しくありません。',
@@ -211,6 +219,8 @@ trait ValidatesEmployeeRegistryFields
     protected function registryFieldAttributes(): array
     {
         return [
+            'last_name' => '姓',
+            'first_name' => '名',
             'name' => '名前',
             'email' => 'アドレス',
             'password' => 'パスワード',

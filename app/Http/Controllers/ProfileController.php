@@ -30,7 +30,7 @@ class ProfileController extends Controller
 
         $editableProfileFields = $viewer->editableProfileFieldNames($target);
 
-        $target->load(['profile', 'hrDetail', 'affiliationHistories']);
+        $target->load(['profile', 'hrDetail', 'affiliationHistories', 'scheduledAffiliationChanges']);
 
         return view('profile.show', [
             'user' => $target,
@@ -47,7 +47,7 @@ class ProfileController extends Controller
             return redirect()->to(UserRouteHelper::route($target, 'profile.show', 'users.profile.show'));
         }
 
-        $target->load(['profile', 'affiliationHistories']);
+        $target->load(['profile', 'affiliationHistories', 'scheduledAffiliationChanges']);
 
         $editableProfileFields = auth()->user()->editableProfileFieldNames($target);
 
@@ -171,9 +171,10 @@ class ProfileController extends Controller
 
     private function syncUserNameFromProfile(User $user, EmployeeProfile $profile): void
     {
-        $displayName = $profile->name_kana ?: $profile->english_name;
+        $displayName = $user->familyGivenName()
+            ?: trim((string) ($profile->name_kana ?: $profile->english_name ?: ''));
 
-        if (! $displayName) {
+        if ($displayName === '') {
             return;
         }
 

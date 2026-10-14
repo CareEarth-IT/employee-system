@@ -51,6 +51,7 @@ class RegistrySectionOptions
         '名古屋グローバル事業部',
         'GR-C総務課_名古屋',
         'GR-C教育課_名古屋',
+        'GR-C人事育成課_名古屋',
         'GR-M1課_名古屋',
         'GR-セールス3課_大阪',
         'GR-C_福岡',

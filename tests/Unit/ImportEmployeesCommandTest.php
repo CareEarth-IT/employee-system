@@ -124,8 +124,8 @@ class ImportEmployeesCommandTest extends TestCase
             'location' => '大阪',
         ]);
 
-        $this->actingAs($editor->fresh())
-            ->put(route('affiliations.update', $affiliation), [
+        $this->assertReplacesLocationTo(
+            $this->actingAs($editor->fresh())->put(route('affiliations.update', $affiliation), [
                 'is_current' => '1',
                 'start_date' => '2024-01-01',
                 'company' => 'CareEarth',
@@ -134,8 +134,9 @@ class ImportEmployeesCommandTest extends TestCase
                 'section' => '',
                 'position' => '',
                 'job_description' => '',
-            ])
-            ->assertRedirect();
+            ]),
+            route('users.profile.edit', $target),
+        );
 
         $this->assertTrue($affiliation->fresh()->import_locked);
         $this->assertSame('不動産部', $affiliation->fresh()->department);

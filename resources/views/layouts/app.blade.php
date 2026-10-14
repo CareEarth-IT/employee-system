@@ -11,7 +11,7 @@
 <body class="bg-slate-50 text-slate-800 min-h-screen">
     @auth
         <header class="bg-white border-b border-slate-200">
-            <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="max-w-6xl mx-auto flex items-center justify-between px-4">
                 <a href="{{ route('dashboard') }}" class="inline-flex items-center">
                     <img
                         src="{{ \App\Services\SiteBrandingStorage::url('group-web.png') }}"
@@ -58,8 +58,65 @@
             </div>
         @endif
 
+        @auth
+            @unless (request()->routeIs('dashboard'))
+                <div id="global-back-button-wrap" class="mb-3 hidden">
+                    <a
+                        href="{{ route('dashboard') }}"
+                        id="global-back-button"
+                        class="inline-flex items-center gap-1 text-base text-blue-600 hover:underline"
+                        title="前の画面に戻ります（登録済みの内容は変更しません）"
+                    >← 戻る</a>
+                </div>
+            @endunless
+        @endauth
+
         @yield('content')
     </main>
     @stack('scripts')
+    @auth
+        @unless (request()->routeIs('dashboard'))
+            <script>
+                (() => {
+                    const wrap = document.getElementById('global-back-button-wrap');
+                    const button = document.getElementById('global-back-button');
+                    if (!wrap || !button) {
+                        return;
+                    }
+
+                    const main = document.querySelector('main');
+                    const heading = main?.querySelector('h1');
+
+                    if (heading?.parentElement) {
+                        const parent = heading.parentElement;
+                        const parentClass = typeof parent.className === 'string' ? parent.className : '';
+                        const isTitleRow = /\b(flex|grid)\b/.test(parentClass);
+                        const isCenteredColumn = /\bmx-auto\b/.test(parentClass);
+
+                        if (isTitleRow && parent.parentElement) {
+                            parent.parentElement.insertBefore(wrap, parent);
+                        } else if (isCenteredColumn) {
+                            parent.insertBefore(wrap, parent.firstChild);
+                        } else {
+                            parent.insertBefore(wrap, heading);
+                        }
+                    }
+
+                    wrap.classList.remove('hidden');
+
+                    button.addEventListener('click', (event) => {
+                        // 登録済みデータは触らず、ブラウザ履歴で前画面へ戻るだけ。
+                        // 所属の保存/削除後は location.replace でフォーム履歴を消しているので通常の back で足りる。
+                        if (window.history.length > 1) {
+                            event.preventDefault();
+                            sessionStorage.removeItem('employee_skip_stale_form');
+                            window.history.back();
+                        }
+                        // 履歴がない新規タブ等のみ、href（Top Page）へ通常遷移
+                    });
+                })();
+            </script>
+        @endunless
+    @endauth
 </body>
 </html>

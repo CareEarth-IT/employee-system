@@ -59,6 +59,9 @@
         @if ($canManageEmployeeRegistry)
             <a href="{{ route('employees.create') }}" class="text-blue-600 hover:underline">新規登録</a>
         @endif
+        @if ($canViewSocialInsuranceStats ?? false)
+            <a href="{{ route('social-insurance-stats.index') }}" class="text-blue-600 hover:underline">社会保険人数</a>
+        @endif
         <a href="{{ route('dashboard') }}" class="text-blue-600 hover:underline">Top Page へ</a>
     </div>
 </div>
@@ -202,7 +205,7 @@
         @endforeach
     </nav>
     <div class="border-b border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-600">
-        {{ $employees->count() }}名
+        {{ number_format($employees->total()) }}名
         <span class="text-slate-500">／ 状況: {{ $status }}</span>
         @foreach ($filterConditions as $filter)
             <span class="text-slate-500">
@@ -288,16 +291,12 @@
                         <td class="{{ $tableBodyCell }} min-w-[5.5rem]">{{ $employee->employee_id ?? '—' }}</td>
                         <td class="{{ $tableBodyCell }} min-w-[8rem]">
                             <a href="{{ $profileUrl }}" class="text-blue-600 hover:underline">
-                                {{ $englishName ?: $employee->displayName() }}
+                                {{ $englishName ?: ($employee->familyGivenName() ?: '—') }}
                             </a>
                         </td>
                         <td class="{{ $tableBodyCell }} min-w-[8rem]">
                             <a href="{{ $profileUrl }}" class="text-blue-600 hover:underline">
-                                @if ($employee->profile?->name_kana)
-                                    {{ $employee->profile->name_kana }}
-                                @else
-                                    {{ $employee->displayName() }}
-                                @endif
+                                {{ $employee->familyGivenName() ?: ($employee->profile?->name_kana ?: '—') }}
                             </a>
                         </td>
                         <td class="{{ $tableBodyCell }} min-w-[14rem]">
@@ -334,6 +333,22 @@
             </tbody>
         </table>
         </div>
+
+        @if ($employees->hasPages())
+            <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-600 sm:flex-row">
+                <p>{{ $employees->currentPage() }} / {{ $employees->lastPage() }} ページ（{{ $employees->perPage() }}件ずつ）</p>
+                <div class="flex flex-wrap gap-1">
+                    @foreach ($employees->getUrlRange(max(1, $employees->currentPage() - 4), min($employees->lastPage(), $employees->currentPage() + 5)) as $page => $url)
+                        <a
+                            href="{{ $url }}"
+                            class="inline-flex min-w-[2rem] items-center justify-center rounded border px-2 py-1 {{ $page === $employees->currentPage() ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 hover:bg-slate-50' }}"
+                        >
+                            {{ $page }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     </div>
 </div>
 

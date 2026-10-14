@@ -72,7 +72,7 @@ class AffiliationCurrentOrgLockTest extends TestCase
             'action' => 'save',
         ]);
 
-        $response->assertRedirect();
+        $this->assertReplacesLocationTo($response, route('users.profile.edit', $target));
 
         $affiliation->refresh();
         $this->assertSame('2026-02-01', $affiliation->start_date->toDateString());
@@ -135,7 +135,7 @@ class AffiliationCurrentOrgLockTest extends TestCase
             'action' => 'save',
         ]);
 
-        $response->assertRedirect();
+        $this->assertReplacesLocationTo($response, route('users.profile.edit', $target));
 
         $affiliation->refresh();
         $this->assertSame('2026-03-01', $affiliation->start_date->toDateString());
@@ -176,7 +176,7 @@ class AffiliationCurrentOrgLockTest extends TestCase
             'action' => 'save',
         ]);
 
-        $response->assertRedirect();
+        $this->assertReplacesLocationTo($response, route('users.profile.edit', $target));
 
         $affiliation->refresh();
         $this->assertSame('2026-03-01', $affiliation->start_date->toDateString());
@@ -205,7 +205,7 @@ class AffiliationCurrentOrgLockTest extends TestCase
             'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
             'company' => 'CareEarth',
             'location' => '大阪',
-            'department' => 'GR部（グローバル部）',
+            'department' => 'グローバル事業部',
             'section' => 'GR-C_大阪,GR-総務課_大阪',
             'position' => '一般',
         ]);
@@ -215,14 +215,14 @@ class AffiliationCurrentOrgLockTest extends TestCase
             'start_date' => '2026-02-01',
             'company' => 'CareEarth',
             'location' => '大阪',
-            'department' => 'GR部（グローバル部）',
+            'department' => 'グローバル事業部',
             'section' => 'GR-O部',
             'team' => '固定現場チーム',
             'position' => '一般',
             'action' => 'save',
         ]);
 
-        $response->assertRedirect();
+        $this->assertReplacesLocationTo($response, route('users.profile.edit', $target));
 
         $affiliation->refresh();
         $this->assertSame(

@@ -41,7 +41,7 @@ class RegistrySectionByAssignmentTest extends TestCase
         $expectedOsaka = ['人材育成課', 'SS課', '営業1課', '営業2課', '営業3課', '営業4課', '営業5課'];
         $this->assertSame(
             $expectedOsaka,
-            RegistrySectionByAssignment::optionsFor('人材派遣事業部', '大阪'),
+            RegistrySectionByAssignment::optionsFor('営業部', '大阪'),
         );
         $this->assertSame(
             $expectedOsaka,
@@ -49,15 +49,15 @@ class RegistrySectionByAssignmentTest extends TestCase
         );
         $this->assertSame(
             ['営業1課', '営業2課', 'SS課'],
-            RegistrySectionByAssignment::optionsFor('人材派遣事業部', '東京'),
+            RegistrySectionByAssignment::optionsFor('営業部', '東京'),
         );
         $this->assertSame(
             ['営業課_名古屋', 'SS課_名古屋'],
-            RegistrySectionByAssignment::optionsFor('人材派遣事業部', '名古屋'),
+            RegistrySectionByAssignment::optionsFor('営業部', '名古屋'),
         );
         $this->assertSame(
             ['営業課_福岡', 'SS課_福岡'],
-            RegistrySectionByAssignment::optionsFor('人材派遣事業部', '福岡'),
+            RegistrySectionByAssignment::optionsFor('営業部', '福岡'),
         );
     }
 
@@ -65,11 +65,11 @@ class RegistrySectionByAssignmentTest extends TestCase
     {
         $this->assertSame(
             ['GR-C部', 'GR-S部', 'GR-M部', 'GR-O部'],
-            RegistrySectionByAssignment::optionsFor('GR部（グローバル部）', '大阪'),
+            RegistrySectionByAssignment::optionsFor('グローバル事業部', '大阪'),
         );
         $this->assertSame(
             ['GR-S部', '管理部業務課'],
-            RegistrySectionByAssignment::optionsFor('GR部（グローバル部）', 'ベトナム'),
+            RegistrySectionByAssignment::optionsFor('グローバル事業部', 'ベトナム'),
         );
     }
 

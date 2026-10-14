@@ -1,5 +1,6 @@
 @php
     use App\Support\RegistryOrgAssignment;
+    use App\Support\ScheduledAffiliationChangeDiff;
     use App\Support\UserRouteHelper;
 @endphp
 
@@ -50,7 +51,11 @@
                         <td class="py-2 pr-4">
                             {{ $history->start_date?->format('Y-m-d') ?? '—' }}
                             〜
-                            {{ $history->end_date?->format('Y-m-d') ?? '現在' }}
+                            @if ($history->isCurrent())
+                                現在
+                            @else
+                                {{ $history->end_date?->format('Y-m-d') ?? '—' }}
+                            @endif
                         </td>
                         <td class="py-2 pr-4">{{ $history->company ?? '—' }}</td>
                         <td class="py-2 pr-4">{{ $history->location ?? '—' }}</td>
@@ -68,4 +73,52 @@
             </tbody>
         </table>
     </div>
+
+    @if (auth()->user()?->canScheduleAffiliationChange())
+        @php
+            $pendingSchedule = $user->pendingScheduledAffiliationChange();
+            $pendingChanges = $pendingSchedule
+                ? ScheduledAffiliationChangeDiff::changedSummaries($pendingSchedule)
+                : [];
+        @endphp
+        <div class="mt-6 border-t border-slate-200 pt-4">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-base font-bold text-slate-800">異動・役職の事前登録</h3>
+                @if ($pendingSchedule === null)
+                    <a
+                        href="{{ route('users.scheduled-affiliations.create', $user) }}"
+                        class="rounded border border-slate-400 px-3 py-1.5 text-sm hover:bg-slate-50"
+                    >
+                        事前登録する
+                    </a>
+                @endif
+            </div>
+
+            @if ($pendingSchedule)
+                <div class="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    <p class="font-medium">
+                        {{ $pendingSchedule->effective_date?->format('Y-m-d') }} 反映予定
+                        <span class="ml-2 font-normal text-slate-500">（変更箇所のみ反映・それ以外は現行のまま）</span>
+                    </p>
+                    <ul class="mt-2 list-disc space-y-1 pl-5">
+                        @forelse ($pendingChanges as $change)
+                            <li>{{ $change['label'] }}: {{ $change['value'] }}</li>
+                        @empty
+                            <li>変更項目なし</li>
+                        @endforelse
+                    </ul>
+                    <div class="mt-3 flex flex-wrap gap-4">
+                        <a href="{{ route('scheduled-affiliations.edit', $pendingSchedule) }}" class="text-blue-600 hover:underline">編集</a>
+                        <form method="POST" action="{{ route('scheduled-affiliations.destroy', $pendingSchedule) }}" onsubmit="return confirm('この事前登録を取り消しますか？');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-red-600 hover:underline">取消</button>
+                        </form>
+                    </div>
+                </div>
+            @else
+                <p class="text-sm text-slate-500">反映日を指定して役職変更・部署異動を予約できます。変更した項目だけが反映され、それ以外は現行所属のままです。</p>
+            @endif
+        </div>
+    @endif
 </div>
