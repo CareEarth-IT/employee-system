@@ -6,6 +6,7 @@ use App\Models\AffiliationHistory;
 use App\Models\EmployeeHrDetail;
 use App\Models\EmployeeProfile;
 use App\Models\User;
+use App\Support\AffiliationResignationSync;
 use App\Support\EmployeeIdRules;
 use App\Support\RegistryGrAssignment;
 use App\Support\RegistryOrgAssignment;
@@ -1243,6 +1244,16 @@ class EmployeeBulkImporter
      */
     private function syncAffiliation(User $user, array $affiliationData, array $options): void
     {
+        $user->loadMissing('hrDetail');
+
+        // 退職・辞退者には在籍中所属を新規作成しない（既存の誤所属は閉じる）
+        if ($user->isResigned() || $user->hrDetail?->resigned_at !== null) {
+            AffiliationResignationSync::syncFromHrDetail($user);
+            $user->syncRoleFromAffiliation();
+
+            return;
+        }
+
         $currentAffiliation = AffiliationHistory::query()
             ->where('user_id', $user->id)
             ->currentlyActive()

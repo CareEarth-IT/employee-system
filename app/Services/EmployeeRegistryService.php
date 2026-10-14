@@ -260,10 +260,13 @@ class EmployeeRegistryService
                 $user->closeOtherEnrolledAffiliations($affiliation);
             }
 
-            $user->syncRoleFromAffiliation();
-            $this->driveStaffSync->syncUser($user->fresh());
+            $fresh = $user->fresh(['profile', 'hrDetail', 'affiliationHistories']);
+            AffiliationResignationSync::syncFromHrDetail($fresh);
+            $fresh = $fresh->fresh(['profile', 'hrDetail', 'affiliationHistories']);
+            $fresh->syncRoleFromAffiliation();
+            $this->driveStaffSync->syncUser($fresh);
 
-            return $user->fresh(['profile', 'hrDetail', 'affiliationHistories']);
+            return $fresh->fresh(['profile', 'hrDetail', 'affiliationHistories']);
         });
 
         $this->socialInsuranceThresholdNotifier->notifyReachedCompanies();

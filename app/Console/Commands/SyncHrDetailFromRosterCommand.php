@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\EmployeeHrDetail;
 use App\Models\User;
+use App\Support\AffiliationResignationSync;
 use App\Support\EmploymentStatus;
 use App\Support\EmployeeRosterCsv;
 use Illuminate\Console\Command;
@@ -103,6 +104,8 @@ class SyncHrDetailFromRosterCommand extends Command
             } else {
                 $detail->update($updates);
             }
+
+            AffiliationResignationSync::syncFromHrDetail($user->fresh(), $detail->fresh());
 
             $results[] = $this->resultRow(
                 $row,

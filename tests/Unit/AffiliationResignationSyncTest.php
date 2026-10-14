@@ -106,4 +106,68 @@ class AffiliationResignationSyncTest extends TestCase
 
         $this->assertSame('2025-04-15', $affiliation->end_date?->toDateString());
     }
+
+    public function test_employment_status_resigned_without_resigned_at_closes_current_affiliation(): void
+    {
+        $user = User::factory()->create();
+
+        $affiliation = AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+            'department' => '営業部',
+            'position' => '部長',
+        ]);
+
+        $detail = EmployeeHrDetail::create([
+            'user_id' => $user->id,
+            'employment_status' => '退職',
+            'resigned_at' => null,
+        ]);
+
+        $this->assertTrue(AffiliationResignationSync::syncFromHrDetail($user->fresh(), $detail));
+
+        $affiliation->refresh();
+
+        $this->assertSame(AffiliationHistory::STATUS_RESIGNED, $affiliation->enrollment_status);
+        $this->assertNotNull($affiliation->end_date);
+        $this->assertNull($user->fresh()->currentAffiliation());
+    }
+
+    public function test_phantom_enrolled_affiliation_after_resignation_date_is_deleted(): void
+    {
+        $user = User::factory()->create();
+
+        $historical = AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2024-06-01',
+            'end_date' => '2024-08-31',
+            'enrollment_status' => AffiliationHistory::STATUS_RESIGNED,
+            'company' => 'CareEarth',
+            'department' => '不動産事業部',
+        ]);
+
+        $phantom = AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2026-02-20',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+            'location' => '大阪',
+            'department' => '不動産事業部',
+        ]);
+
+        $detail = EmployeeHrDetail::create([
+            'user_id' => $user->id,
+            'employment_status' => '退職',
+            'resigned_at' => '2024-08-31',
+        ]);
+
+        $this->assertTrue(AffiliationResignationSync::syncFromHrDetail($user->fresh(), $detail));
+
+        $this->assertNull(AffiliationHistory::query()->find($phantom->id));
+        $historical->refresh();
+        $this->assertSame('2024-08-31', $historical->end_date?->toDateString());
+        $this->assertNull($user->fresh()->currentAffiliation());
+    }
 }

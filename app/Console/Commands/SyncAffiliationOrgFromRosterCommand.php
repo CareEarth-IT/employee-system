@@ -55,7 +55,7 @@ class SyncAffiliationOrgFromRosterCommand extends Command
 
         foreach ($rows as $row) {
             $user = User::query()
-                ->with(['profile', 'affiliationHistories'])
+                ->with(['profile', 'hrDetail', 'affiliationHistories'])
                 ->where('email', $row['email'])
                 ->first();
 
@@ -71,6 +71,13 @@ class SyncAffiliationOrgFromRosterCommand extends Command
                 continue;
             }
 
+            // 退職・辞退者に CareEarth 等の在籍中所属を新規作成しない
+            if ($this->isResignedUser($user)) {
+                $errors[] = "行 {$row['line']}: 退職・辞退のため所属同期スキップ {$row['email']}";
+
+                continue;
+            }
+
             $updates = $this->buildUpdates($row, $user, $errors);
 
             if ($updates === []) {
@@ -82,31 +89,8 @@ class SyncAffiliationOrgFromRosterCommand extends Command
             $affiliation = $user->currentAffiliation();
 
             if ($affiliation === null) {
-                $startDate = $user->profile?->joined_at?->toDateString() ?? now()->toDateString();
-
-                if ($dryRun) {
-                    $results[] = $this->resultRow($row, $user, null, $updates, '新規所属予定');
-
-                    continue;
-                }
-
-                $affiliation = AffiliationHistory::create([
-                    'user_id' => $user->id,
-                    'start_date' => $startDate,
-                    'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
-                    'company' => User::COMPANY_NAMES[0] ?? 'CareEarth',
-                    'location' => $updates['location'] ?? null,
-                    'department' => $updates['department'] ?? '',
-                    'section' => $updates['section'] ?? null,
-                    'position' => $updates['position'] ?? '',
-                ]);
-                $user->closeOtherEnrolledAffiliations($affiliation);
-                $user->syncRoleFromAffiliation();
-                EmployeeHrDetail::query()->updateOrCreate(
-                    ['user_id' => $user->id],
-                    \App\Support\AffiliationHrDetailSync::hrDetailAttributesFromAffiliation($affiliation),
-                );
-                $results[] = $this->resultRow($row, $user, $affiliation, $updates, '新規所属');
+                // 在籍中所属がない場合は新規作成しない（退職済みの再オープン防止）
+                $errors[] = "行 {$row['line']}: 在籍中の所属がないためスキップ {$row['email']}";
 
                 continue;
             }
@@ -156,8 +140,18 @@ class SyncAffiliationOrgFromRosterCommand extends Command
         ));
         $this->line('  所属会社名・開始日・人事詳細の他項目は変更していません。');
         $this->line('  在籍中の所属を更新した場合は、詳細情報の部署①・課/チーム①も同期します。');
+        $this->line('  退職・辞退者、および在籍中所属がない社員には新規所属を作成しません。');
 
         return self::SUCCESS;
+    }
+
+    private function isResignedUser(User $user): bool
+    {
+        if ($user->isResigned()) {
+            return true;
+        }
+
+        return $user->hrDetail?->resigned_at !== null;
     }
 
     /**

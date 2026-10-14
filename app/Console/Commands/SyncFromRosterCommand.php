@@ -21,6 +21,7 @@ class SyncFromRosterCommand extends Command
         SyncJoinedAtFromRosterCommand::class,
         SyncAffiliationStartFromJoinedAtCommand::class,
         SyncHrDetailFromRosterCommand::class,
+        SyncAffiliationResignationCommand::class,
         SyncHrDetailOrgPrimaryFromRosterCommand::class,
         SyncAffiliationOrgFromRosterCommand::class,
         SyncAffiliationPositionCommand::class,
