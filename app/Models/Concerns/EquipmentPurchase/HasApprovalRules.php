@@ -7,15 +7,17 @@ use App\Models\User;
 
 trait HasApprovalRules
 {
-    /** 社内備品・3万円以上（指定承認者） */
+    /** 社内備品・3万円以上で指定承認者が設定されているか */
     public function requiresInternalOver30kApprover(): bool
     {
-        return $this->application_type === self::TYPE_INTERNAL_OVER_30K;
+        return $this->application_type === self::TYPE_INTERNAL_OVER_30K
+            && self::internalOver30kApproverEmails() !== [];
     }
 
     public function requiresManagerApproval(): bool
     {
-        if ($this->requiresInternalOver30kApprover()) {
+        // 社内3万円以上は指定承認者（いなければ総務課）。部長ルートには載せない
+        if ($this->application_type === self::TYPE_INTERNAL_OVER_30K) {
             return false;
         }
 

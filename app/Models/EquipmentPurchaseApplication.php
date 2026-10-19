@@ -49,8 +49,12 @@ class EquipmentPurchaseApplication extends Model
 
     public const TYPE_PURCHASED_OVER_10K = 'purchased_over_10k';
 
-    /** @deprecated Use internalOver30kApproverEmails() */
-    public const INTERNAL_OVER_30K_APPROVER_EMAIL = 'takuya_nishi@careearth.info';
+    /**
+     * 社内3万円以上の既定指定承認者（空 = 指定なし。総務課承認にフォールバック）。
+     *
+     * @deprecated Use internalOver30kApproverEmails()
+     */
+    public const INTERNAL_OVER_30K_APPROVER_EMAIL = 'nanami_takahashi@careearth.info';
 
     /** @deprecated Use informationSystemsApproverEmails() */
     public const INFORMATION_SYSTEMS_APPROVER_EMAIL = 'mariko_nakamoto@careearth.info';

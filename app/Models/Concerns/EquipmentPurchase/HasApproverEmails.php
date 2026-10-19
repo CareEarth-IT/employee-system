@@ -12,9 +12,13 @@ trait HasApproverEmails
      */
     public static function internalOver30kApproverEmails(): array
     {
+        $defaults = self::INTERNAL_OVER_30K_APPROVER_EMAIL !== ''
+            ? [self::INTERNAL_OVER_30K_APPROVER_EMAIL]
+            : [];
+
         return self::approverEmailsFromEnv(
             'EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS',
-            [self::INTERNAL_OVER_30K_APPROVER_EMAIL],
+            $defaults,
         );
     }
 

@@ -469,6 +469,14 @@ class User extends Authenticatable
         return '—';
     }
 
+    /** 詳細情報の状況が退職・辞退か（備品承認メール等の宛先除外用） */
+    public function isResigned(): bool
+    {
+        $status = EmploymentStatus::normalize(trim((string) ($this->hrDetail?->employment_status ?? '')));
+
+        return in_array($status, ['退職', '辞退'], true);
+    }
+
     public static function canonicalAffiliationCode(?string $code): ?string
     {
         $code = strtoupper(trim((string) $code));
@@ -1559,6 +1567,10 @@ class User extends Authenticatable
     /** 部長承認: 経理部・総務課は3万円未満（情報システム部以外）、情報システム部は金額問わず指定承認者、社内3万円以上（情シス以外）は指定承認者、部長・支店長はその他の3万円以上かつ同部署。全部署横断アカウントは上長以上を全部署で承認可。食品備品は桃谷店・物流センター・緊急対応の指定承認者 */
     public function canApproveEquipmentPurchase(EquipmentPurchaseApplication $application): bool
     {
+        if ($this->isResigned()) {
+            return false;
+        }
+
         if ($this->isGlobalEquipmentApprover() && $application->requiresSuperiorApproval()) {
             return true;
         }

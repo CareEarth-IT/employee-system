@@ -123,7 +123,7 @@ class EquipmentPurchaseApprovalNotifier
                 $application->foodDesignatedApproverEmails(),
             );
         } elseif ($application->belongsToInformationSystemsDepartment()) {
-            // 情シス申請は金額問わず指定承認者のみ（社内3万円以上の西さん宛と二重送信しない）
+            // 情シス申請は金額問わず指定承認者のみ（社内3万円以上の指定承認と二重送信しない）
             $this->appendConfiguredEmailRecipients(
                 $recipients,
                 $seenEmails,
@@ -153,12 +153,19 @@ class EquipmentPurchaseApprovalNotifier
                 continue;
             }
 
+            $user = User::query()
+                ->with('hrDetail')
+                ->whereRaw('LOWER(email) = ?', [$normalized])
+                ->first();
+
+            if ($user?->isResigned()) {
+                continue;
+            }
+
             $seenEmails[$normalized] = true;
             $recipients[] = [
                 'email' => $configuredEmail,
-                'user' => User::query()
-                    ->whereRaw('LOWER(email) = ?', [$normalized])
-                    ->first(),
+                'user' => $user,
             ];
         }
     }
@@ -169,11 +176,19 @@ class EquipmentPurchaseApprovalNotifier
     private function resolveApproverUsers(EquipmentPurchaseApplication $application): Collection
     {
         return User::query()
-            ->with(['affiliationHistories' => fn ($query) => $query->currentlyActive()])
+            ->with([
+                'hrDetail',
+                'affiliationHistories' => fn ($query) => $query->currentlyActive(),
+            ])
             ->whereNotNull('email')
             ->where('email', '!=', '')
             ->get()
             ->filter(function (User $user) use ($application) {
+                if ($user->isResigned()) {
+                    // 退職者は所属役職が残っていても承認依頼メールを送らない
+                    return false;
+                }
+
                 if ($user->isGlobalEquipmentApprover()) {
                     // 全部署横断アカウントには通常の承認依頼メールを送らない
                     return false;

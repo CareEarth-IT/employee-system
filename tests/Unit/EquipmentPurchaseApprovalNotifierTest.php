@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Mail\EquipmentPurchaseApprovalRequested;
 use App\Mail\EquipmentPurchaseSubmitted;
 use App\Models\AffiliationHistory;
+use App\Models\EmployeeHrDetail;
 use App\Models\EquipmentPurchaseApplication;
 use App\Models\User;
 use App\Services\EquipmentPurchaseApprovalNotifier;
@@ -16,23 +17,57 @@ class EquipmentPurchaseApprovalNotifierTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_internal_over_30k_notifies_configured_approver_emails_even_without_matching_user(): void
+    public function test_internal_over_30k_notifies_designated_approver_by_default(): void
     {
         Mail::fake();
 
         $applicant = $this->makeUser('applicant@careearth.info', '通信部', '一般');
+        $this->makeUser('nanami_takahashi@careearth.info', '経理部', '一般', '総務課');
+        $generalAffairs = $this->makeUser('ga@careearth.info', '経理部', '一般', '総務課');
         $application = $this->makeEquipmentApplication($applicant, EquipmentPurchaseApplication::TYPE_INTERNAL_OVER_30K, 35000);
 
         app(EquipmentPurchaseApprovalNotifier::class)->notifySubmitted($application);
 
         Mail::assertSent(EquipmentPurchaseSubmitted::class, 1);
-        Mail::assertSent(EquipmentPurchaseApprovalRequested::class, 1);
         Mail::assertSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) {
-            return $mail->hasTo('takuya_nishi@careearth.info');
+            return $mail->hasTo('nanami_takahashi@careearth.info');
+        });
+        Mail::assertNotSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) use ($generalAffairs) {
+            return $mail->hasTo($generalAffairs->email);
         });
         Mail::assertNotSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) {
-            return $mail->hasTo('nishi@careearth.info');
+            return $mail->hasTo('takuya_nishi@careearth.info');
         });
+    }
+
+    public function test_internal_over_30k_notifies_configured_approver_emails_from_env(): void
+    {
+        Mail::fake();
+
+        $previous = env('EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS');
+        putenv('EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS=takuya_nishi@careearth.info');
+        $_ENV['EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS'] = 'takuya_nishi@careearth.info';
+        $_SERVER['EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS'] = 'takuya_nishi@careearth.info';
+
+        try {
+            $applicant = $this->makeUser('applicant@careearth.info', '通信部', '一般');
+            $application = $this->makeEquipmentApplication($applicant, EquipmentPurchaseApplication::TYPE_INTERNAL_OVER_30K, 35000);
+
+            app(EquipmentPurchaseApprovalNotifier::class)->notifySubmitted($application);
+
+            Mail::assertSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) {
+                return $mail->hasTo('takuya_nishi@careearth.info');
+            });
+        } finally {
+            if ($previous === null) {
+                putenv('EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS');
+                unset($_ENV['EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS'], $_SERVER['EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS']);
+            } else {
+                putenv('EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS='.$previous);
+                $_ENV['EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS'] = $previous;
+                $_SERVER['EQUIPMENT_PURCHASE_INTERNAL_OVER_30K_APPROVER_EMAILS'] = $previous;
+            }
+        }
     }
 
     public function test_information_systems_notifies_designated_email_not_representative_position(): void
@@ -72,7 +107,7 @@ class EquipmentPurchaseApprovalNotifierTest extends TestCase
 
         $applicant = $this->makeUser('applicant@careearth.info', '情報システム部', '一般');
         $this->makeUser('mariko_nakamoto@careearth.info', '情報システム部', '一般');
-        $this->makeUser('takuya_nishi@careearth.info', '経理部', '課長代理', '総務課');
+        $this->makeUser('nanami_takahashi@careearth.info', '経理部', '一般', '総務課');
 
         $application = $this->makeEquipmentApplication(
             $applicant,
@@ -88,14 +123,14 @@ class EquipmentPurchaseApprovalNotifierTest extends TestCase
             return $mail->hasTo('mariko_nakamoto@careearth.info');
         });
         Mail::assertNotSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) {
-            return $mail->hasTo('takuya_nishi@careearth.info');
+            return $mail->hasTo('nanami_takahashi@careearth.info');
         });
 
         $nakamoto = User::where('email', 'mariko_nakamoto@careearth.info')->firstOrFail();
-        $nishi = User::where('email', 'takuya_nishi@careearth.info')->firstOrFail();
+        $takahashi = User::where('email', 'nanami_takahashi@careearth.info')->firstOrFail();
 
         $this->assertTrue($nakamoto->canApproveEquipmentPurchase($application));
-        $this->assertFalse($nishi->canApproveEquipmentPurchase($application));
+        $this->assertFalse($takahashi->canApproveEquipmentPurchase($application));
     }
 
     public function test_global_manager_approver_can_approve_all_superior_applications_without_mail(): void
@@ -160,6 +195,37 @@ class EquipmentPurchaseApprovalNotifierTest extends TestCase
         });
         Mail::assertNotSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) use ($otherManager) {
             return $mail->hasTo($otherManager->email);
+        });
+    }
+
+    public function test_resigned_department_manager_is_not_notified(): void
+    {
+        Mail::fake();
+
+        $applicant = $this->makeUser('applicant@careearth.info', '不動産部', '一般');
+        $activeManager = $this->makeUser('manager@careearth.info', '不動産部', '部長');
+        $resignedManager = $this->makeUser('donguyendan_vy@careearth.info', '不動産部', '部長');
+        EmployeeHrDetail::create([
+            'user_id' => $resignedManager->id,
+            'employment_status' => '退職',
+        ]);
+
+        $application = $this->makeEquipmentApplication(
+            $applicant,
+            EquipmentPurchaseApplication::TYPE_ONSITE_OVER_30K,
+            40000,
+            department: '不動産部',
+        );
+
+        $this->assertFalse($resignedManager->fresh(['hrDetail', 'affiliationHistories'])->canApproveEquipmentPurchase($application));
+
+        app(EquipmentPurchaseApprovalNotifier::class)->notifySubmitted($application);
+
+        Mail::assertSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) use ($activeManager) {
+            return $mail->hasTo($activeManager->email);
+        });
+        Mail::assertNotSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) use ($resignedManager) {
+            return $mail->hasTo($resignedManager->email);
         });
     }
 
@@ -288,15 +354,17 @@ class EquipmentPurchaseApprovalNotifierTest extends TestCase
         });
     }
 
-    public function test_designated_internal_approver_matches_default_email_list(): void
+    public function test_designated_internal_approver_is_nanami_takahashi_by_default(): void
     {
-        $takuya = $this->makeUser('takuya_nishi@careearth.info', '経理部', '課長代理', '総務課');
-        $other = $this->makeUser('other@careearth.info', '経理部', '課長代理', '総務課');
-        $nishi = $this->makeUser('nishi@careearth.info', '経理部', '課長代理', '総務課');
+        $takahashi = $this->makeUser('nanami_takahashi@careearth.info', '経理部', '一般', '総務課');
+        $nishi = $this->makeUser('takuya_nishi@careearth.info', '経理部', '課長代理', '総務課');
 
-        $this->assertTrue($takuya->isDesignatedInternalOver30kApprover());
+        $this->assertSame(
+            ['nanami_takahashi@careearth.info'],
+            EquipmentPurchaseApplication::internalOver30kApproverEmails(),
+        );
+        $this->assertTrue($takahashi->isDesignatedInternalOver30kApprover());
         $this->assertFalse($nishi->isDesignatedInternalOver30kApprover());
-        $this->assertFalse($other->isDesignatedInternalOver30kApprover());
     }
 
     public function test_tokyo_over_30k_notifies_department_manager_only_on_submit(): void
