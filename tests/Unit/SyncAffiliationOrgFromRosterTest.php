@@ -95,7 +95,7 @@ CSV
         );
     }
 
-    public function test_command_does_not_create_affiliation_when_no_current_affiliation(): void
+    public function test_command_creates_affiliation_for_active_user_without_current_affiliation(): void
     {
         $user = User::factory()->create([
             'name' => '在籍 花子',
@@ -105,6 +105,7 @@ CSV
         EmployeeHrDetail::create([
             'user_id' => $user->id,
             'employment_status' => '在籍',
+            'affiliation_code' => 'CE',
         ]);
 
         $path = $this->writeRosterCsv(<<<'CSV'
@@ -117,8 +118,12 @@ CSV
             'file' => $path,
         ]);
 
-        $this->assertNull($user->fresh()->currentAffiliation());
-        $this->assertSame(0, $user->affiliationHistories()->count());
+        $affiliation = $user->fresh()->currentAffiliation();
+        $this->assertNotNull($affiliation);
+        $this->assertSame(AffiliationHistory::STATUS_ENROLLED, $affiliation->enrollment_status);
+        $this->assertSame('CareEarth', $affiliation->company);
+        $this->assertSame('大阪', $affiliation->location);
+        $this->assertSame('不動産事業部', $affiliation->department);
     }
 
     private function writeRosterCsv(string $contents): string

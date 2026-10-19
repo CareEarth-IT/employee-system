@@ -84,17 +84,33 @@ $envFile = [System.IO.Path]::GetTempFileName()
 try {
     Write-CloudRunEnvVarsFile -Vars $envVars -Path $envFile
 
-    $jobCode = Invoke-Gcloud run jobs deploy $JobName `
-        --image=$Image `
-        --region=$Region `
-        --set-cloudsql-instances=$($cfg.CloudSqlConnection) `
-        --env-vars-file=$envFile `
-        --command=php `
-        --args=$argsJoined `
-        --max-retries=0 `
-        --task-timeout=30m `
-        --memory=512Mi `
-        --cpu=1
+    $jobExists = (Invoke-Gcloud run jobs describe $JobName --region=$Region --format="value(name)") -eq 0
+    if ($jobExists) {
+        Write-Host "==> Job already exists; updating image/args"
+        $jobCode = Invoke-Gcloud run jobs update $JobName `
+            --image=$Image `
+            --region=$Region `
+            --set-cloudsql-instances=$($cfg.CloudSqlConnection) `
+            --env-vars-file=$envFile `
+            --command=php `
+            --args=$argsJoined `
+            --max-retries=0 `
+            --task-timeout=30m `
+            --memory=512Mi `
+            --cpu=1
+    } else {
+        $jobCode = Invoke-Gcloud run jobs deploy $JobName `
+            --image=$Image `
+            --region=$Region `
+            --set-cloudsql-instances=$($cfg.CloudSqlConnection) `
+            --env-vars-file=$envFile `
+            --command=php `
+            --args=$argsJoined `
+            --max-retries=0 `
+            --task-timeout=30m `
+            --memory=512Mi `
+            --cpu=1
+    }
 
     if ($jobCode -ne 0) { throw "Cloud Run job deploy failed" }
 } finally {
