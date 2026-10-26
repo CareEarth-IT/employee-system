@@ -77,7 +77,8 @@ class EquipmentPurchaseApprovalNotifier
             $email = $recipient['email'];
             $approver = $recipient['user'];
 
-            if ($approver !== null && $approver->id === $application->user_id) {
+            if ($approver !== null && $approver->id === $application->user_id
+                && ! $approver->receivesOwnInternalOver30kApprovalRequest($application)) {
                 continue;
             }
 

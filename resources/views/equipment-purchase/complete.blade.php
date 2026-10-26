@@ -32,6 +32,15 @@
             </dl>
         </div>
 
+        @if ($application->isPending() && auth()->user()->canApproveEquipmentPurchase($application))
+            <div class="rounded border border-blue-200 bg-blue-50 px-4 py-3 text-base text-blue-900 text-left">
+                <p class="mb-3">この申請はあなたが承認できます。承認画面から許可／許可しないを選択してください。</p>
+                <a href="{{ route('equipment-purchases.approve', $application) }}" class="inline-block rounded bg-blue-600 text-white px-6 py-2 text-base font-medium hover:bg-blue-700">
+                    承認画面へ
+                </a>
+            </div>
+        @endif
+
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <a href="{{ route('equipment-purchases.index') }}" class="rounded bg-blue-600 text-white px-8 py-2 text-base font-medium hover:bg-blue-700">
                 備品購入トップへ

@@ -1440,6 +1440,14 @@ class User extends Authenticatable
             && in_array($email, EquipmentPurchaseApplication::internalOver30kApproverEmails(), true);
     }
 
+    /** 社内3万円以上の指定承認者が、自分の申請に対して承認依頼メールを受け取るか */
+    public function receivesOwnInternalOver30kApprovalRequest(EquipmentPurchaseApplication $application): bool
+    {
+        return $application->user_id === $this->id
+            && $application->requiresInternalOver30kApprover()
+            && $this->isDesignatedInternalOver30kApprover();
+    }
+
     /** 食品備品の指定承認者か（桃谷店・物流センター・緊急対応のいずれか） */
     public function isDesignatedFoodApprover(): bool
     {

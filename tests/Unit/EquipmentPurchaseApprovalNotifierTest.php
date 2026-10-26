@@ -40,6 +40,28 @@ class EquipmentPurchaseApprovalNotifierTest extends TestCase
         });
     }
 
+    public function test_internal_over_30k_notifies_designated_approver_when_they_are_the_applicant(): void
+    {
+        Mail::fake();
+
+        $takahashi = $this->makeUser('nanami_takahashi@careearth.info', '経理部', '一般', '総務課');
+        $application = $this->makeEquipmentApplication(
+            $takahashi,
+            EquipmentPurchaseApplication::TYPE_INTERNAL_OVER_30K,
+            35000,
+            department: '通信部',
+        );
+
+        $this->assertTrue($takahashi->canApproveEquipmentPurchase($application));
+
+        app(EquipmentPurchaseApprovalNotifier::class)->notifySubmitted($application);
+
+        Mail::assertSent(EquipmentPurchaseSubmitted::class, 1);
+        Mail::assertSent(EquipmentPurchaseApprovalRequested::class, function (EquipmentPurchaseApprovalRequested $mail) {
+            return $mail->hasTo('nanami_takahashi@careearth.info');
+        });
+    }
+
     public function test_internal_over_30k_notifies_configured_approver_emails_from_env(): void
     {
         Mail::fake();

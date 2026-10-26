@@ -54,6 +54,43 @@ class EquipmentPurchasePendingListTest extends TestCase
         $response->assertDontSee($internal->product_name, false);
     }
 
+    public function test_designated_internal_approver_can_approve_own_internal_over_30k_application(): void
+    {
+        $takahashi = $this->makeUser('nanami_takahashi@careearth.info', '経理部', '一般', '総務課');
+
+        $application = $this->makeApplication(
+            $takahashi,
+            EquipmentPurchaseApplication::TYPE_INTERNAL_OVER_30K,
+            35000,
+            department: '通信部',
+        );
+
+        $this->assertTrue($takahashi->canApproveEquipmentPurchase($application));
+
+        $this->actingAs($takahashi)
+            ->get(route('equipment-purchases.approve', $application))
+            ->assertOk();
+
+        $this->actingAs($takahashi)
+            ->get(route('equipment-purchases.pending'))
+            ->assertOk()
+            ->assertSee($application->product_name, false);
+
+        $approvedAt = now(config('app.timezone'))->format('Y-m-d\TH:i');
+
+        $this->actingAs($takahashi)
+            ->put(route('equipment-purchases.approve.update', $application), [
+                'approved_at' => $approvedAt,
+                'approval_decision' => EquipmentPurchaseApplication::DECISION_APPROVED,
+                'approval_memo' => '自己承認テスト',
+            ])
+            ->assertRedirect(route('equipment-purchases.pending'));
+
+        $application->refresh();
+        $this->assertSame(EquipmentPurchaseApplication::STATUS_APPROVED, $application->status);
+        $this->assertSame($takahashi->id, $application->approver_id);
+    }
+
     public function test_information_systems_approver_can_open_over_30k_approve_page_from_mail_link(): void
     {
         $nakamoto = $this->makeUser('mariko_nakamoto@careearth.info', '情報システム部', '一般');
