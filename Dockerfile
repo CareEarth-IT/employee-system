@@ -55,7 +55,7 @@ RUN curl -fsSL https://wordpress.org/latest.tar.gz -o wordpress.tar.gz \
     && chmod +x wp-cli.phar
 
 # --- Runtime (Cloud Run) ---
-FROM php:8.3-fpm-bookworm AS runtime
+FROM php:8.3.36-fpm-bookworm AS runtime
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

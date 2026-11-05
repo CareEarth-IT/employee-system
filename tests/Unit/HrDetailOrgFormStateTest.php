@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\AffiliationHistory;
 use App\Models\EmployeeHrDetail;
 use App\Models\User;
 use App\Support\HrDetailOrgFormState;
@@ -11,6 +12,42 @@ use Tests\TestCase;
 class HrDetailOrgFormStateTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_assignment_values_use_concurrent_active_affiliations_for_primary_and_secondary(): void
+    {
+        $user = User::factory()->create();
+        $detail = EmployeeHrDetail::create([
+            'user_id' => $user->id,
+            'department_primary' => '通信事業部',
+            'section_primary' => '通信課',
+            'jurisdiction' => '大阪',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '通信事業部',
+            'section' => '通信課',
+            'location' => '大阪',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2025-04-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '食品事業部',
+            'section' => '店舗運営課',
+            'location' => '大阪',
+        ]);
+        $user->load('affiliationHistories');
+
+        $primary = HrDetailOrgFormState::assignmentValues($detail, 'primary', $user);
+        $secondary = HrDetailOrgFormState::assignmentValues($detail, 'secondary', $user);
+
+        $this->assertSame('通信事業部', $primary['department']);
+        $this->assertSame('通信課', $primary['section']);
+        $this->assertSame('食品事業部', $secondary['department']);
+        $this->assertSame('店舗運営課', $secondary['section']);
+    }
 
     public function test_assignment_values_split_stored_section_and_team(): void
     {

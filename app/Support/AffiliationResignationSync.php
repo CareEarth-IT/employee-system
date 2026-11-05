@@ -24,28 +24,27 @@ final class AffiliationResignationSync
         $status = EmploymentStatus::normalize(trim((string) $detail->employment_status));
         $isResignedStatus = in_array($status, ['退職', '辞退'], true);
 
-        // 退職日がある、または状況が退職/辞退なら所属の「現在」を閉じる
+        // 退職日がある、または状況が退職/辞退なら所属の「現在」を閉じる。退職日が空なら終了日も空のままにする。
         if ($resignedAt === null && ! $isResignedStatus) {
             return false;
         }
 
-        $endDate = $resignedAt ?? now()->toDateString();
         $changed = false;
 
         $user->affiliationHistories()
             ->where('enrollment_status', AffiliationHistory::STATUS_ENROLLED)
-            ->each(function (AffiliationHistory $affiliation) use ($endDate, &$changed): void {
+            ->each(function (AffiliationHistory $affiliation) use ($resignedAt, &$changed): void {
                 $start = $affiliation->start_date?->toDateString();
 
                 // 退職日より後に作られた誤った在籍中所属は削除する
-                if ($start !== null && $start > $endDate) {
+                if ($resignedAt !== null && $start !== null && $start > $resignedAt) {
                     $affiliation->delete();
                     $changed = true;
 
                     return;
                 }
 
-                $affiliation->closeAsResigned($endDate);
+                $affiliation->closeAsResigned($resignedAt);
                 $changed = true;
             });
 

@@ -8,6 +8,7 @@
     $roCore = ! ($access['core']['edit'] ?? false);
     $roIt = ! ($access['it']['edit'] ?? false);
     $roItDevice = ! (($access['it']['edit'] ?? false) || ($access['it']['edit_self_device'] ?? false));
+    $canEditIdentity = (bool) ($access['canEditIdentity'] ?? false);
     $nationalityValue = NationalityOptions::toDisplayName($user->profile?->nationality) ?? ($user->profile?->nationality ?? '');
     $affiliationSelectOptions = User::companyAffiliationSelectOptions($d->affiliation_code);
     $affiliationDisplayName = User::affiliationDisplayName($d->affiliation_code);
@@ -15,8 +16,8 @@
     $employmentStatusOptions = User::employmentStatusOptions($d->employment_status);
     $positionPrimaryOptions = User::registryPositionOptions($d->position_primary);
     $positionSecondaryOptions = User::registryPositionOptions($d->position_secondary);
-    $primaryOrgValues = \App\Support\HrDetailOrgFormState::assignmentValues($d, 'primary');
-    $secondaryOrgValues = \App\Support\HrDetailOrgFormState::assignmentValues($d, 'secondary');
+    $primaryOrgValues = \App\Support\HrDetailOrgFormState::assignmentValues($d, 'primary', $user);
+    $secondaryOrgValues = \App\Support\HrDetailOrgFormState::assignmentValues($d, 'secondary', $user);
 @endphp
 
 <div class="space-y-8">
@@ -29,21 +30,56 @@
                 @endif
             </div>
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                    <label class="mb-1 block text-base">ID</label>
-                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->employee_id ?? '—' }}</p>
-                </div>
-                <div>
-                    <label class="mb-1 block text-base">名前</label>
-                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->displayName() }}</p>
-                </div>
+                @if ($canEditIdentity)
+                    <div>
+                        <label for="employee_id" class="mb-1 block text-base">ID</label>
+                        <input
+                            id="employee_id"
+                            name="employee_id"
+                            type="text"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            maxlength="5"
+                            value="{{ old('employee_id', $user->employee_id) }}"
+                            class="w-full rounded border border-slate-300 px-3 py-2 text-base"
+                            oninput="this.value = this.value.replace(/\D/g, '').slice(0, 5)"
+                        >
+                        <p class="mt-1 text-sm text-slate-500">1〜5桁の数字。未入力可。</p>
+                        @include('partials.field-error', ['field' => 'employee_id'])
+                    </div>
+                    <div>
+                        <label for="last_name" class="mb-1 block text-base">姓 <span class="text-red-600">*</span></label>
+                        <input id="last_name" name="last_name" value="{{ old('last_name', $user->last_name) }}" required class="w-full rounded border border-slate-300 px-3 py-2 text-base" autocomplete="family-name">
+                        @include('partials.field-error', ['field' => 'last_name'])
+                    </div>
+                    <div>
+                        <label for="first_name" class="mb-1 block text-base">名 <span class="text-red-600">*</span></label>
+                        <input id="first_name" name="first_name" value="{{ old('first_name', $user->first_name) }}" required class="w-full rounded border border-slate-300 px-3 py-2 text-base" autocomplete="given-name">
+                        @include('partials.field-error', ['field' => 'first_name'])
+                    </div>
+                    <div>
+                        <label for="email" class="mb-1 block text-base">社用メール</label>
+                        <input id="email" name="email" type="email" value="{{ old('email', $user->email) }}" class="w-full break-all rounded border border-slate-300 px-3 py-2 text-base">
+                        <p class="mt-1 text-sm text-slate-500">未入力可。</p>
+                        @include('partials.field-error', ['field' => 'email'])
+                    </div>
+                @else
+                    <div>
+                        <label class="mb-1 block text-base">ID</label>
+                        <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->employee_id ?? '—' }}</p>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-base">名前</label>
+                        <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->displayName() }}</p>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-base">社用メール</label>
+                        <p class="break-all rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->email ?: '—' }}</p>
+                    </div>
+                @endif
                 <div>
                     <label class="mb-1 block text-base">Name</label>
                     <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->profile?->english_name ?? '—' }}</p>
-                </div>
-                <div>
-                    <label class="mb-1 block text-base">社用メール</label>
-                    <p class="break-all rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->email }}</p>
                 </div>
                 @include('partials.form-field', [
                     'name' => 'gmail_address',
@@ -124,7 +160,7 @@
                         @include('partials.field-error', ['field' => 'joined_at'])
                     @endif
                 </div>
-                @include('partials.form-field', ['name' => 'resigned_at', 'label' => '退職日', 'type' => 'date', 'value' => $date($d->resigned_at), 'readonly' => $roCore])
+                @include('partials.form-field', ['name' => 'resigned_at', 'label' => '退職日', 'type' => 'date', 'value' => $date($d->resigned_at), 'hint' => '（不明な場合は空欄）', 'readonly' => $roCore])
                 @include('partials.form-field', ['name' => 'last_working_day', 'label' => '最終出勤日', 'type' => 'date', 'value' => $date($d->last_working_day), 'readonly' => $roCore])
             </div>
         </section>
@@ -144,6 +180,7 @@
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 @include('partials.hr-detail-org-assignment', [
                     'hrDetail' => $d,
+                    'user' => $user,
                     'suffix' => 'primary',
                     'readonly' => $roCore,
                 ])
@@ -157,6 +194,7 @@
                 ])
                 @include('partials.hr-detail-org-assignment', [
                     'hrDetail' => $d,
+                    'user' => $user,
                     'suffix' => 'secondary',
                     'readonly' => $roCore,
                 ])
@@ -169,6 +207,42 @@
                     'readonly' => $roCore,
                 ])
             </div>
+            @unless ($roCore)
+                @php
+                    $extraOrgRows = \App\Support\HrDetailOrgFormState::extraAssignmentRows($user);
+                    $positionOptions = \App\Support\RegistryPositionOptions::OPTIONS;
+                @endphp
+                <input type="hidden" name="org_extra_present" value="1">
+                <div id="hr-detail-org-extra-list" class="space-y-4">
+                    @foreach ($extraOrgRows as $extraIndex => $extraRow)
+                        @include('partials.hr-detail-org-extra-row', [
+                            'index' => $extraIndex,
+                            'row' => $extraRow,
+                            'positionOptions' => $positionOptions,
+                            'location' => $d->jurisdiction,
+                        ])
+                    @endforeach
+                </div>
+                <button type="button" id="hr-detail-org-add" class="rounded border border-slate-400 px-3 py-1.5 text-sm hover:bg-slate-50">
+                    部署を追加
+                </button>
+                <template id="hr-detail-org-extra-template">
+                    @include('partials.hr-detail-org-extra-row', [
+                        'index' => '__INDEX__',
+                        'mark' => '__MARK__',
+                        'row' => [
+                            'affiliation_id' => '',
+                            'department' => '',
+                            'section' => '',
+                            'team' => '',
+                            'position' => '',
+                            'location' => '',
+                        ],
+                        'positionOptions' => $positionOptions,
+                        'location' => $d->jurisdiction,
+                    ])
+                </template>
+            @endunless
         </section>
 
         @unless ($roCore)
@@ -197,6 +271,17 @@
                         'initialSection' => old('section_secondary', $secondaryOrgValues['section']),
                         'initialTeam' => old('team_secondary', $secondaryOrgValues['team']),
                     ],
+                    ...collect($extraOrgRows ?? [])->map(fn (array $extraRow, int $extraIndex): array => [
+                        'suffix' => 'extra_'.$extraIndex,
+                        'departmentId' => 'org_extra_'.$extraIndex.'_department',
+                        'sectionId' => 'org_extra_'.$extraIndex.'_section',
+                        'teamId' => 'org_extra_'.$extraIndex.'_team',
+                        'sectionHintId' => 'hr-detail-section-hint-extra-'.$extraIndex,
+                        'teamHintId' => 'hr-detail-team-hint-extra-'.$extraIndex,
+                        'teamFieldId' => 'hr-detail-team-field-extra-'.$extraIndex,
+                        'initialSection' => $extraRow['section'] ?? '',
+                        'initialTeam' => $extraRow['team'] ?? '',
+                    ])->all(),
                 ],
             ])
         @endunless

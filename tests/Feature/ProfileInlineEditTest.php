@@ -205,6 +205,10 @@ class ProfileInlineEditTest extends TestCase
 
         $this->actingAs($executive->fresh())
             ->get(route('users.profile.show', $target))
+            ->assertRedirect(route('users.profile.edit', $target));
+
+        $this->actingAs($executive->fresh())
+            ->get(route('users.profile.edit', $target))
             ->assertOk()
             ->assertSee('data-profile-inline-edit', false);
     }
@@ -317,9 +321,38 @@ class ProfileInlineEditTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_hr_cannot_update_other_employee_identity(): void
+    public function test_hr_section_can_update_other_employee_identity(): void
     {
-        $viewer = $this->userInDepartment('人事部');
+        $viewer = $this->userInDepartment('人事部', '人事課');
+        $target = User::factory()->create([
+            'email' => 'old-hr@careearth.info',
+            'employee_id' => '10001',
+            'last_name' => '旧姓',
+            'first_name' => '旧名',
+        ]);
+
+        $this->actingAs($viewer)->putJson(route('users.profile.update', $target), [
+            'email' => 'new-hr@careearth.info',
+            'employee_id' => '20003',
+            'last_name' => '新姓',
+            'first_name' => '新名',
+        ])->assertOk()
+            ->assertJsonPath('fields.email.value', 'new-hr@careearth.info')
+            ->assertJsonPath('fields.employee_id.value', '20003')
+            ->assertJsonPath('fields.last_name.value', '新姓')
+            ->assertJsonPath('fields.first_name.value', '新名');
+
+        $target->refresh();
+        $this->assertSame('new-hr@careearth.info', $target->email);
+        $this->assertSame('20003', $target->employee_id);
+        $this->assertSame('新姓', $target->last_name);
+        $this->assertSame('新名', $target->first_name);
+        $this->assertSame('新姓 新名', $target->name);
+    }
+
+    public function test_hr_department_without_hr_section_cannot_update_identity(): void
+    {
+        $viewer = $this->userInDepartment('人事部', '人材開発課');
         $target = User::factory()->create([
             'email' => 'keep@careearth.info',
             'employee_id' => '10001',
@@ -351,19 +384,40 @@ class ProfileInlineEditTest extends TestCase
         $this->assertSame('10001', $target->fresh()->employee_id);
     }
 
-    public function test_information_systems_cannot_set_non_five_digit_employee_id(): void
+    public function test_information_systems_cannot_set_invalid_employee_id(): void
     {
         $viewer = $this->userInDepartment('情報システム部');
         $target = User::factory()->create(['employee_id' => '10001']);
 
-        $response = $this->actingAs($viewer)->putJson(route('users.profile.update', $target), [
-            'employee_id' => '255',
-        ]);
-
-        $response->assertUnprocessable()
+        $this->actingAs($viewer)->putJson(route('users.profile.update', $target), [
+            'employee_id' => '123456',
+        ])->assertUnprocessable()
             ->assertJsonValidationErrors(['employee_id']);
 
         $this->assertSame('10001', $target->fresh()->employee_id);
+    }
+
+    public function test_information_systems_can_update_last_and_first_name(): void
+    {
+        $viewer = $this->userInDepartment('情報システム部');
+        $target = User::factory()->create([
+            'employee_id' => '10001',
+            'last_name' => '山田',
+            'first_name' => '太郎',
+        ]);
+
+        $this->actingAs($viewer)->putJson(route('users.profile.update', $target), [
+            'last_name' => '佐藤',
+            'first_name' => '花子',
+        ])->assertOk()
+            ->assertJsonPath('fields.last_name.value', '佐藤')
+            ->assertJsonPath('fields.first_name.value', '花子');
+
+        $target->refresh();
+        $this->assertSame('佐藤', $target->last_name);
+        $this->assertSame('花子', $target->first_name);
+        $this->assertSame('佐藤 花子', $target->name);
+        $this->assertSame('佐藤 花子', $target->familyGivenName());
     }
 
     public function test_self_cannot_update_own_identity_unless_information_systems(): void

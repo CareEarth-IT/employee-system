@@ -27,6 +27,24 @@
             const teamMap = JSON.parse(teamMapElement.textContent || '{}');
             const blocks = JSON.parse(blocksElement.textContent || '[]');
             const grDepartment = @json(RegistryGrAssignment::DEPARTMENT);
+            const departmentBaseOptions = @json(\App\Support\RegistryDepartmentOptions::options());
+            const locationBranchDepartments = @json(\App\Support\RegistryDepartmentOptions::LOCATION_BRANCH_DEPARTMENTS);
+            const locationBranchNames = Object.values(locationBranchDepartments);
+
+            const departmentOptionsFor = (location, current) => {
+                const options = [...departmentBaseOptions];
+                const branch = locationBranchDepartments[location] || '';
+
+                if (branch && !options.includes(branch)) {
+                    options.push(branch);
+                }
+
+                if (current && !options.includes(current) && !locationBranchNames.includes(current)) {
+                    options.push(current);
+                }
+
+                return options;
+            };
             const teamParentSelections = {};
 
             const isStandaloneSection = (section) => standaloneSections.includes(section);
@@ -288,6 +306,12 @@
                     rebuildTeamOptions();
                 };
 
+                const rebuildDepartmentOptions = () => {
+                    const current = departmentSelect.value;
+                    const options = departmentOptionsFor(locationSelect.value, current);
+                    fillSelect(departmentSelect, options, options.includes(current) ? current : '');
+                };
+
                 const resetOrgSelections = () => {
                     useInitialValues = false;
                     teamParentSelections[block.suffix] = '';
@@ -327,16 +351,71 @@
                     block.initialTeam,
                 );
 
+                rebuildDepartmentOptions();
                 refreshOrgSelects();
                 useInitialValues = false;
 
-                return { sectionSelect, teamSelect, refreshOrgSelects, resetOrgSelections };
+                return { sectionSelect, teamSelect, refreshOrgSelects, resetOrgSelections, rebuildDepartmentOptions };
             };
 
             const initialized = blocks.map(initBlock).filter(Boolean);
+            const extraList = document.getElementById('hr-detail-org-extra-list');
+            const extraTemplate = document.getElementById('hr-detail-org-extra-template');
+            const extraAddButton = document.getElementById('hr-detail-org-add');
+            const extraMarks = ['③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+            let nextExtraIndex = extraList ? extraList.querySelectorAll('[data-org-extra-row]').length : 0;
+
+            const bindExtraRemove = (row) => {
+                row.querySelector('[data-org-extra-remove]')?.addEventListener('click', () => {
+                    row.remove();
+                });
+            };
+
+            extraList?.querySelectorAll('[data-org-extra-row]').forEach((row) => {
+                bindExtraRemove(row);
+            });
+
+            extraAddButton?.addEventListener('click', () => {
+                if (!extraList || !extraTemplate) {
+                    return;
+                }
+
+                const index = nextExtraIndex;
+                nextExtraIndex += 1;
+                const mark = extraMarks[index] || String(index + 3);
+                const html = extraTemplate.innerHTML
+                    .replaceAll('__INDEX__', String(index))
+                    .replaceAll('__MARK__', mark);
+                const holder = document.createElement('div');
+                holder.innerHTML = html.trim();
+                const row = holder.firstElementChild;
+                if (!row) {
+                    return;
+                }
+
+                extraList.appendChild(row);
+                bindExtraRemove(row);
+
+                const block = initBlock({
+                    suffix: `extra_${index}`,
+                    departmentId: `org_extra_${index}_department`,
+                    sectionId: `org_extra_${index}_section`,
+                    teamId: `org_extra_${index}_team`,
+                    sectionHintId: `hr-detail-section-hint-extra-${index}`,
+                    teamHintId: `hr-detail-team-hint-extra-${index}`,
+                    teamFieldId: `hr-detail-team-field-extra-${index}`,
+                    initialSection: '',
+                    initialTeam: '',
+                });
+
+                if (block) {
+                    initialized.push(block);
+                }
+            });
 
             locationSelect.addEventListener('change', () => {
                 initialized.forEach((block) => {
+                    block.rebuildDepartmentOptions();
                     block.resetOrgSelections();
                     block.refreshOrgSelects();
                 });

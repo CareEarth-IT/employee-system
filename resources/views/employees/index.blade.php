@@ -314,8 +314,8 @@
                         <td class="{{ $tableBodyCell }} min-w-[4.5rem]">{{ $employee->displayEmploymentStatus() }}</td>
                         <td class="{{ $tableBodyCell }} min-w-[8rem]">{{ $employee->displayCompany() }}</td>
                         <td class="{{ $tableBodyCell }} min-w-[4.5rem]">{{ $employee->displayJurisdiction() }}</td>
-                        <td class="{{ $tableBodyCell }} min-w-[10rem]">{{ $employee->displayDepartmentPrimary() }}</td>
-                        <td class="{{ $tableBodyCell }} min-w-[18rem]">{{ $employee->displaySectionPrimary() }}</td>
+                        <td class="{{ $tableBodyCell }} min-w-[10rem] whitespace-pre-line">{{ $employee->displayDepartmentPrimary() }}</td>
+                        <td class="{{ $tableBodyCell }} min-w-[18rem] whitespace-pre-line">{{ $employee->displaySectionPrimary() }}</td>
                         <td class="{{ $tableBodyCell }} min-w-[6rem]">{{ $employee->displayPositionPrimary() }}</td>
                         <td class="{{ $tableBodyCell }} min-w-[6rem]">{{ $employee->displayEmploymentType() }}</td>
                     </tr>

@@ -109,6 +109,7 @@
                 >
             </div>
             <p id="current-hint" class="mt-1 text-sm text-slate-500 {{ $isCurrent ? '' : 'hidden' }}">在籍中のため終了日は不要です。開始日が不明な場合は空欄のままで構いません。兼任の場合は複数の「現在」の所属を残せます。</p>
+            <p id="end-date-hint" class="mt-1 text-sm text-slate-500 {{ $isCurrent ? 'hidden' : '' }}">終了日が不明な場合は空欄のままで構いません。</p>
             @include('partials.field-error', ['field' => 'start_date'])
             @include('partials.field-error', ['field' => 'end_date'])
         @endif
@@ -157,6 +158,7 @@
         const endDate = document.getElementById('end_date');
         const separator = document.getElementById('end-date-separator');
         const hint = document.getElementById('current-hint');
+        const endDateHint = document.getElementById('end-date-hint');
         const concurrent = document.getElementById('concurrent-options');
 
         if (!isCurrent || !endDate || !separator) return;
@@ -166,6 +168,7 @@
             endDate.classList.toggle('hidden', enrolled);
             separator.classList.toggle('hidden', enrolled);
             hint?.classList.toggle('hidden', !enrolled);
+            endDateHint?.classList.toggle('hidden', enrolled);
             if (concurrent) {
                 const showCloseOthers = enrolled && concurrent.dataset.hasOthers === '1';
                 concurrent.classList.toggle('hidden', !showCloseOthers);

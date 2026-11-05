@@ -20,7 +20,7 @@
             アドレス
             <span id="email-required-mark" class="text-red-600">*</span>
         </label>
-        <p class="mb-1 text-sm text-slate-500">アルバイトは未入力可</p>
+        <p class="mb-1 text-sm text-slate-500">未入力可（後から登録する場合）</p>
         <input id="email" name="email" type="email" value="{{ $values['email'] ?? '' }}" class="w-full rounded border border-slate-300 px-3 py-2 text-base">
         @include('partials.field-error', ['field' => 'email'])
     </div>
@@ -96,12 +96,11 @@
             @include('partials.field-error', ['field' => 'nationality'])
         </div>
         <div>
-            <label for="employee_id" class="block text-base mb-1">ID <span class="text-red-600">*</span></label>
+            <label for="employee_id" class="block text-base mb-1">ID</label>
             <input
                 id="employee_id"
                 name="employee_id"
                 value="{{ $values['employee_id'] ?? '' }}"
-                required
                 type="text"
                 inputmode="numeric"
                 autocomplete="off"
@@ -110,7 +109,7 @@
                 class="w-full rounded border border-slate-300 px-3 py-2 text-base"
                 oninput="this.value = this.value.replace(/\D/g, '').slice(0, 5)"
             >
-            <p class="mt-1 text-sm text-slate-500">1〜5桁の数字（名簿のIDをそのまま可）</p>
+            <p class="mt-1 text-sm text-slate-500">1〜5桁の数字（名簿のIDをそのまま可）。未入力可。</p>
             @include('partials.field-error', ['field' => 'employee_id'])
         </div>
         <div>
@@ -187,7 +186,7 @@
 (() => {
     const employmentType = document.getElementById('employment_type');
     const emailInput = document.getElementById('email');
-    const requiredMark = document.getElementById('email-required-mark');
+    const emailRequiredMark = document.getElementById('email-required-mark');
     const socialInsuranceField = document.getElementById('social-insurance-field');
     const socialInsuranceCheckbox = document.getElementById('has_social_insurance');
     const socialInsuranceLabel = document.getElementById('has_social_insurance_label');
@@ -207,9 +206,9 @@
     const syncPartTimeFields = () => {
         const isPartTime = employmentType.value === 'アルバイト';
 
-        if (emailInput && requiredMark) {
-            emailInput.required = !isPartTime;
-            requiredMark.classList.toggle('hidden', isPartTime);
+        if (emailInput && emailRequiredMark) {
+            emailInput.required = false;
+            emailRequiredMark.classList.add('hidden');
         }
 
         if (socialInsuranceField) {

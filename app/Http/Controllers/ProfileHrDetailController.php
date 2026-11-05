@@ -40,11 +40,14 @@ class ProfileHrDetailController extends Controller
 
         $target->load(['profile', 'hrDetail', 'affiliationHistories']);
         $hrDetail = EmployeeHrDetail::bootstrapForUser($target);
+        $access = EmployeeHrDetailAccess::permissions($viewer, $target);
+        $access['canEditIdentity'] = $viewer->canEditEmployeeIdentity($target);
+        $access['canSave'] = $access['canSave'] || $access['canEditIdentity'];
 
         return view('profile.hr-detail.edit', [
             'user' => $target,
             'hrDetail' => $hrDetail,
-            'access' => EmployeeHrDetailAccess::permissions($viewer, $target),
+            'access' => $access,
         ]);
     }
 
@@ -70,10 +73,24 @@ class ProfileHrDetailController extends Controller
             'team_primary' => $request->input('team_primary'),
             'team_secondary' => $request->input('team_secondary'),
         ]);
+
+        if ($viewer->canEditEmployeeIdentity($target)
+            && collect(['employee_id', 'email', 'last_name', 'first_name'])
+                ->contains(fn (string $field): bool => array_key_exists($field, $validated))) {
+            $this->syncIdentityFromHrDetail($target, $validated);
+            $target->refresh();
+        }
+
         $hrDetail->update(collect($validated)->only($hrDetailFields)->all());
 
         if (array_intersect(AffiliationHrDetailSync::HR_ORG_FIELDS, $hrDetailFields) !== []) {
             AffiliationHrDetailSync::syncAffiliationFromHrDetail($target->fresh(), $hrDetail->fresh());
+            AffiliationHrDetailSync::syncAdditionalOrgRows(
+                $target->fresh(),
+                $hrDetail->fresh(),
+                is_array($request->input('org_extra')) ? $request->input('org_extra') : [],
+                $request->boolean('org_extra_present'),
+            );
         }
 
         if (in_array('resigned_at', $hrDetailFields, true)) {
@@ -130,6 +147,30 @@ class ProfileHrDetailController extends Controller
         if (! EmployeeHrDetailAccess::canExportCsv($viewer)) {
             abort(403, '詳細情報のCSV出力権限がありません。');
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function syncIdentityFromHrDetail(User $user, array $validated): void
+    {
+        $lastName = trim((string) ($validated['last_name'] ?? $user->last_name ?? ''));
+        $firstName = trim((string) ($validated['first_name'] ?? $user->first_name ?? ''));
+        $employeeId = array_key_exists('employee_id', $validated)
+            ? (trim((string) ($validated['employee_id'] ?? '')) ?: null)
+            : $user->employee_id;
+        $email = array_key_exists('email', $validated)
+            ? (strtolower(trim((string) ($validated['email'] ?? ''))) ?: null)
+            : $user->email;
+
+        $user->update([
+            'employee_id' => $employeeId,
+            'email' => $email,
+            'last_name' => $lastName,
+            'first_name' => $firstName,
+            'name' => trim($lastName.' '.$firstName),
+            'import_locked' => true,
+        ]);
     }
 
     /**

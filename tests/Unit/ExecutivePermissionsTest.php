@@ -39,14 +39,20 @@ class ExecutivePermissionsTest extends TestCase
         $this->assertFalse($employee->canEditProfile($other));
     }
 
-    public function test_only_information_systems_can_edit_employee_identity(): void
+    public function test_registry_roles_can_edit_employee_identity(): void
     {
         $is = $this->userInAffiliation('情報システム部', 'システム課', '一般');
         $hr = $this->userInAffiliation('人事部', '人事課', '一般');
+        $hrWithoutSection = $this->userInAffiliation('人事部', '人材開発課', '一般');
+        $executive = $this->userInAffiliation('役員', '役員', '代表');
+        $administrativeAffairs = $this->userInAffiliation('経理部', '庶務課', '一般');
         $other = User::factory()->create();
 
         $this->assertTrue($is->canEditEmployeeIdentity($other));
-        $this->assertFalse($hr->canEditEmployeeIdentity($other));
+        $this->assertTrue($hr->canEditEmployeeIdentity($other));
+        $this->assertFalse($hrWithoutSection->canEditEmployeeIdentity($other));
+        $this->assertTrue($executive->canEditEmployeeIdentity($other));
+        $this->assertTrue($administrativeAffairs->canEditEmployeeIdentity($other));
         $this->assertFalse($other->canEditEmployeeIdentity($other));
     }
 

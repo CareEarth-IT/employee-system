@@ -285,6 +285,93 @@ class EmployeeHrDetailOrgFormTest extends TestCase
         $this->assertNull($target->fresh()->currentAffiliation());
     }
 
+    public function test_hr_detail_can_add_departments_from_the_form(): void
+    {
+        $hr = $this->userInAffiliation('人事部', '人事課');
+        $target = User::factory()->create();
+
+        \App\Models\AffiliationHistory::create([
+            'user_id' => $target->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => \App\Models\AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+            'location' => '大阪',
+            'department' => '営業部',
+            'section' => '営業課',
+        ]);
+
+        EmployeeHrDetail::create([
+            'user_id' => $target->id,
+            'employment_status' => '在籍',
+            'jurisdiction' => '大阪',
+            'department_primary' => '営業部',
+            'section_primary' => '営業課',
+        ]);
+
+        $this->actingAs($hr)
+            ->get(route('users.profile.hr-detail.edit', $target))
+            ->assertOk()
+            ->assertSee('部署を追加', false);
+
+        $this->actingAs($hr)
+            ->put(route('users.profile.hr-detail.update', $target), [
+                'jurisdiction' => '大阪',
+                'department_primary' => '営業部',
+                'section_primary' => '営業課',
+                'department_secondary' => '食品事業部',
+                'section_secondary' => '店舗運営課',
+                'position_secondary' => '課長',
+                'org_extra_present' => '1',
+                'org_extra' => [
+                    [
+                        'department' => '通信事業部',
+                        'section' => '通信課',
+                        'position' => '係長',
+                    ],
+                ],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $departments = $target->fresh()->concurrentAffiliations()
+            ?->pluck('department')
+            ->all();
+
+        $this->assertSame(['営業部', '食品事業部', '通信事業部'], $departments);
+    }
+
+    public function test_hr_detail_can_clear_resigned_at(): void
+    {
+        $hr = $this->userInAffiliation('人事部', '人事課');
+        $target = User::factory()->create();
+
+        $affiliation = \App\Models\AffiliationHistory::create([
+            'user_id' => $target->id,
+            'start_date' => '2024-01-01',
+            'end_date' => '2025-03-31',
+            'enrollment_status' => \App\Models\AffiliationHistory::STATUS_RESIGNED,
+            'company' => 'CareEarth',
+            'department' => '営業部',
+        ]);
+
+        EmployeeHrDetail::create([
+            'user_id' => $target->id,
+            'employment_status' => '退職',
+            'resigned_at' => '2025-03-31',
+        ]);
+
+        $this->actingAs($hr)
+            ->put(route('users.profile.hr-detail.update', $target), [
+                'employment_status' => '退職',
+                'resigned_at' => '',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($target->fresh()->hrDetail?->resigned_at);
+        $this->assertSame('2025-03-31', $affiliation->fresh()->end_date?->toDateString());
+    }
+
     public function test_hr_detail_can_save_without_joined_at(): void
     {
         $hr = $this->userInAffiliation('人事部', '人事課');
@@ -353,6 +440,48 @@ class EmployeeHrDetailOrgFormTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertTrue((bool) $target->fresh()->hrDetail?->has_social_insurance);
+    }
+
+    public function test_hr_section_can_update_identity_from_hr_detail(): void
+    {
+        $hr = $this->userInAffiliation('人事部', '人事課');
+        $target = User::factory()->create([
+            'employee_id' => '10001',
+            'email' => 'old-detail@careearth.info',
+            'last_name' => '旧姓',
+            'first_name' => '旧名',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $target->id,
+            'employment_status' => '在籍',
+            'employment_type' => '正社員',
+        ]);
+
+        $this->actingAs($hr)
+            ->get(route('users.profile.hr-detail.edit', $target))
+            ->assertOk()
+            ->assertSee('name="employee_id"', false)
+            ->assertSee('name="last_name"', false)
+            ->assertSee('name="first_name"', false)
+            ->assertSee('name="email"', false);
+
+        $this->actingAs($hr)
+            ->put(route('users.profile.hr-detail.update', $target), [
+                'employee_id' => '20004',
+                'email' => 'new-detail@careearth.info',
+                'last_name' => '新姓',
+                'first_name' => '新名',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $target->refresh();
+        $this->assertSame('20004', $target->employee_id);
+        $this->assertSame('new-detail@careearth.info', $target->email);
+        $this->assertSame('新姓', $target->last_name);
+        $this->assertSame('新名', $target->first_name);
+        $this->assertSame('新姓 新名', $target->name);
+        $this->assertSame('新姓 新名', $target->familyGivenName());
     }
 
     private function userInAffiliation(string $department, string $section): User

@@ -61,7 +61,10 @@ class RegistryOrgFormState
         return [
             'companyOptions' => User::companyOptions($values['company'] ?? null),
             'selectedCompany' => trim((string) ($values['company'] ?? '')),
-            'departmentOptions' => User::registryDepartmentOptions($selectedDepartment !== '' ? $selectedDepartment : null),
+            'departmentOptions' => User::registryDepartmentOptions(
+                $selectedDepartment !== '' ? $selectedDepartment : null,
+                $selectedLocation !== '' ? $selectedLocation : null,
+            ),
             'selectedDepartment' => $selectedDepartment,
             'selectedLocation' => $selectedLocation,
             'sectionOptions' => $sectionOptions,

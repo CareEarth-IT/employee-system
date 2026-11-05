@@ -907,6 +907,44 @@ class EmployeeIndexTest extends TestCase
             ->assertDontSee('is-admin@careearth.info', false);
     }
 
+    public function test_index_lists_full_time_and_part_time_employees_without_id_or_email(): void
+    {
+        $viewer = User::factory()->create();
+
+        $fullTime = User::factory()->create([
+            'last_name' => '未定',
+            'first_name' => '正社員',
+            'email' => null,
+            'employee_id' => null,
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $fullTime->id,
+            'employment_status' => '在籍',
+            'employment_type' => '正社員',
+        ]);
+
+        $partTime = User::factory()->create([
+            'last_name' => '未定',
+            'first_name' => 'バイト',
+            'email' => null,
+            'employee_id' => null,
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $partTime->id,
+            'employment_status' => '在籍',
+            'employment_type' => 'アルバイト',
+        ]);
+
+        $this->assertTrue($fullTime->fresh(['hrDetail'])->isListedEmployee());
+        $this->assertTrue($partTime->fresh(['hrDetail'])->isListedEmployee());
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['status' => '在籍']))
+            ->assertOk()
+            ->assertSee('未定 正社員', false)
+            ->assertSee('未定 バイト', false);
+    }
+
     public function test_index_all_tab_shows_registered_employees_across_statuses(): void
     {
         $viewer = User::factory()->create();
@@ -985,6 +1023,46 @@ class EmployeeIndexTest extends TestCase
             ->get(route('employees.index', ['status' => '在籍']))
             ->assertOk()
             ->assertDontSee('未設定 状況', false);
+    }
+
+    public function test_index_lists_each_concurrent_department_and_section(): void
+    {
+        $viewer = User::factory()->create();
+        $this->markEmploymentStatus($viewer, '在籍');
+
+        $employee = User::factory()->create([
+            'last_name' => '兼任',
+            'first_name' => '太郎',
+            'employee_id' => '12001',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $employee->id,
+            'employment_status' => '在籍',
+            'department_primary' => '通信事業部',
+            'section_primary' => '通信課',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $employee->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '通信事業部',
+            'section' => '通信課',
+            'location' => '大阪',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $employee->id,
+            'start_date' => '2025-04-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '食品事業部',
+            'section' => '店舗運営課',
+            'location' => '大阪',
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('employees.index', ['status' => '在籍']))
+            ->assertOk()
+            ->assertSee("通信事業部\n食品事業部", false)
+            ->assertSee("通信課\n店舗運営課", false);
     }
 
     public function test_index_paginates_employees(): void

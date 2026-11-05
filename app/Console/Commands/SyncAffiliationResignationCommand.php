@@ -41,18 +41,18 @@ class SyncAffiliationResignationCommand extends Command
                     }
 
                     $detail = $user->hrDetail;
-                    $endDate = $detail?->resigned_at?->toDateString() ?? now()->toDateString();
+                    $endDate = $detail?->resigned_at?->toDateString();
                     $status = EmploymentStatus::normalize(trim((string) ($detail?->employment_status ?? '')));
 
                     foreach ($enrolled as $affiliation) {
                         $start = $affiliation->start_date?->toDateString() ?? '—';
-                        $action = ($start !== '—' && $start > $endDate) ? '削除' : '退職へ閉じる';
+                        $action = ($endDate !== null && $start !== '—' && $start > $endDate) ? '削除' : '退職へ閉じる';
 
                         $targets[] = [
                             $user->email ?? '—',
                             $user->displayName(),
                             $status !== '' ? $status : '—',
-                            $endDate,
+                            $endDate ?? '—',
                             $start,
                             $affiliation->company ?? '—',
                             $affiliation->department ?? '—',

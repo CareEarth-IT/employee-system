@@ -27,6 +27,9 @@
             const splitSectionTeam = @json($splitSectionTeam);
             const sectionRequiredForGr = @json($sectionRequiredForGr);
             const grDepartment = @json(RegistryGrAssignment::DEPARTMENT);
+            const departmentBaseOptions = @json(\App\Support\RegistryDepartmentOptions::options());
+            const locationBranchDepartments = @json(\App\Support\RegistryDepartmentOptions::LOCATION_BRANCH_DEPARTMENTS);
+            const locationBranchNames = Object.values(locationBranchDepartments);
 
             if (!sectionMapElement || !standaloneSectionsElement || !teamMapElement || !departmentSelect || !locationSelect || !sectionSelect) {
                 return;
@@ -329,6 +332,44 @@
                 });
             }
 
+            const departmentOptionsFor = (location, current) => {
+                const options = [...departmentBaseOptions];
+                const branch = locationBranchDepartments[location] || '';
+
+                if (branch && !options.includes(branch)) {
+                    options.push(branch);
+                }
+
+                if (current && !options.includes(current) && !locationBranchNames.includes(current)) {
+                    options.push(current);
+                }
+
+                return options;
+            };
+
+            const fillDepartmentSelect = (options, selectedValue) => {
+                departmentSelect.innerHTML = '';
+                const blank = document.createElement('option');
+                blank.value = '';
+                blank.textContent = '選択してください';
+                departmentSelect.appendChild(blank);
+                options.forEach((label) => {
+                    const option = document.createElement('option');
+                    option.value = label;
+                    option.textContent = label;
+                    if (label === selectedValue) {
+                        option.selected = true;
+                    }
+                    departmentSelect.appendChild(option);
+                });
+            };
+
+            const rebuildDepartmentOptions = () => {
+                const current = departmentSelect.value;
+                const options = departmentOptionsFor(locationSelect.value, current);
+                fillDepartmentSelect(options, options.includes(current) ? current : '');
+            };
+
             departmentSelect.addEventListener('change', () => {
                 teamParentSelection = '';
                 syncStandaloneSectionExclusion();
@@ -336,6 +377,7 @@
             });
             locationSelect.addEventListener('change', () => {
                 teamParentSelection = '';
+                rebuildDepartmentOptions();
                 refreshOrgSelects();
             });
             sectionSelect.addEventListener('change', () => {
@@ -365,6 +407,7 @@
                 );
             }
 
+            rebuildDepartmentOptions();
             refreshOrgSelects();
             updateSectionRequiredUi();
             updateDepartmentRequiredUi();

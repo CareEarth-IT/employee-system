@@ -32,6 +32,7 @@ class RegistryDepartmentOptions
         '経理部',
         '情報システム部',
         '人事部',
+        '経営企画室',
         self::FOOD_DEPARTMENT,
         '管理部',
         self::MANAGEMENT_HEADQUARTERS,
@@ -58,6 +59,12 @@ class RegistryDepartmentOptions
         self::STAFFING_DEPARTMENT => ['dispatch'],
     ];
 
+    /** @var array<string, string> 管轄 → その管轄のときだけ部署に出す支店 */
+    public const LOCATION_BRANCH_DEPARTMENTS = [
+        '東京' => '東京支店',
+        '福岡' => '福岡支店',
+    ];
+
     /**
      * @var array<string, array{department: string, section: ?string}>
      */
@@ -70,6 +77,9 @@ class RegistryDepartmentOptions
         '経理部' => ['department' => '経理部', 'section' => null],
         '情報システム部' => ['department' => '情報システム部', 'section' => null],
         '人事部' => ['department' => '人事部', 'section' => null],
+        '経営企画室' => ['department' => '経営企画室', 'section' => null],
+        '東京支店' => ['department' => '東京支店', 'section' => null],
+        '福岡支店' => ['department' => '福岡支店', 'section' => null],
         self::FOOD_DEPARTMENT => ['department' => self::FOOD_DEPARTMENT, 'section' => null],
         'Food Sales部' => ['department' => 'Food Sales部', 'section' => null],
         'Food Retail部' => ['department' => 'Food Retail部', 'section' => null],
@@ -164,12 +174,40 @@ class RegistryDepartmentOptions
      */
     public static function forSelect(?string $current = null): array
     {
-        $current = self::normalizeDepartment($current);
+        return self::forLocation(null, $current);
+    }
 
-        if ($current === '' || in_array($current, self::OPTIONS, true)) {
-            return self::OPTIONS;
+    public static function branchDepartmentForLocation(?string $location): ?string
+    {
+        $location = trim((string) $location);
+
+        return self::LOCATION_BRANCH_DEPARTMENTS[$location] ?? null;
+    }
+
+    /**
+     * 管轄が東京・福岡のときだけ、対応する支店を部署の選択肢に含める。
+     *
+     * @return list<string>
+     */
+    public static function forLocation(?string $location, ?string $current = null): array
+    {
+        $options = self::options();
+        $branch = self::branchDepartmentForLocation($location);
+
+        if ($branch !== null && ! in_array($branch, $options, true)) {
+            $options[] = $branch;
         }
 
-        return [...self::OPTIONS, $current];
+        $current = self::normalizeDepartment($current);
+
+        if ($current === '' || in_array($current, $options, true)) {
+            return $options;
+        }
+
+        if (in_array($current, self::LOCATION_BRANCH_DEPARTMENTS, true)) {
+            return $options;
+        }
+
+        return [...$options, $current];
     }
 }

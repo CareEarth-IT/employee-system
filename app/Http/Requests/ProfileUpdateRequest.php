@@ -25,7 +25,10 @@ class ProfileUpdateRequest extends FormRequest
         }
 
         $allowedProfileFields = $viewer->editableProfileFieldNames($target);
-        $touchesIdentity = $this->exists('email') || $this->exists('employee_id');
+        $touchesIdentity = $this->exists('email')
+            || $this->exists('employee_id')
+            || $this->exists('last_name')
+            || $this->exists('first_name');
         $profileFields = [
             'english_name',
             'name_kana',
@@ -71,6 +74,22 @@ class ProfileUpdateRequest extends FormRequest
                 'joined_at' => DateInput::normalize($this->input('joined_at')),
             ]);
         }
+
+        if ($this->exists('email')) {
+            $email = strtolower(trim((string) $this->input('email', '')));
+            $this->merge(['email' => $email !== '' ? $email : null]);
+        }
+
+        if ($this->exists('employee_id')) {
+            $employeeId = preg_replace('/\D/', '', (string) $this->input('employee_id', '')) ?? '';
+            $this->merge(['employee_id' => $employeeId !== '' ? $employeeId : null]);
+        }
+
+        foreach (['last_name', 'first_name'] as $field) {
+            if ($this->exists($field)) {
+                $this->merge([$field => trim((string) $this->input($field, ''))]);
+            }
+        }
     }
 
     /**
@@ -96,17 +115,19 @@ class ProfileUpdateRequest extends FormRequest
 
         if ($canEditIdentity) {
             $rules['employee_id'] = EmployeeIdRules::rules(
-                required: true,
+                required: false,
                 uniqueIgnoreUserId: $targetId,
                 sometimes: true,
             );
             $rules['email'] = [
                 'sometimes',
-                'required',
+                'nullable',
                 'email',
                 'max:255',
                 Rule::unique('users', 'email')->ignore($targetId),
             ];
+            $rules['last_name'] = ['sometimes', 'required', 'string', 'max:255'];
+            $rules['first_name'] = ['sometimes', 'required', 'string', 'max:255'];
         }
 
         return $rules;
@@ -121,13 +142,13 @@ class ProfileUpdateRequest extends FormRequest
             'photo.image' => '写真は画像ファイルを選択してください。',
             'photo.max' => '写真のファイルサイズは2MB以下にしてください。',
             'abbreviated_name.max' => '略氏名は10文字以内で入力してください。',
-            'employee_id.required' => '社員IDを入力してください。',
             'employee_id.digits' => EmployeeIdRules::FORMAT_MESSAGE,
             'employee_id.regex' => EmployeeIdRules::FORMAT_MESSAGE,
             'employee_id.unique' => 'この社員IDは既に使用されています。',
-            'email.required' => 'メールアドレスを入力してください。',
             'email.email' => 'メールアドレスの形式が正しくありません。',
             'email.unique' => 'このメールアドレスは既に使用されています。',
+            'last_name.required' => '姓を入力してください。',
+            'first_name.required' => '名を入力してください。',
             'nationality.in' => '国籍を正しく選択してください。',
         ];
     }
@@ -140,6 +161,8 @@ class ProfileUpdateRequest extends FormRequest
         return [
             'employee_id' => '社員ID',
             'email' => 'メールアドレス',
+            'last_name' => '姓',
+            'first_name' => '名',
         ];
     }
 }

@@ -18,6 +18,7 @@ class RegistryDepartmentOptionsTest extends TestCase
             '経理部',
             '情報システム部',
             '人事部',
+            '経営企画室',
             '食品事業部',
             '管理部',
             '管理本部',
@@ -75,6 +76,23 @@ class RegistryDepartmentOptionsTest extends TestCase
         $this->assertContains('食品事業部', $options);
         $this->assertNotContains('Food Sales部', $options);
         $this->assertNotContains('SS課_名古屋', $options);
+    }
+
+    public function test_location_adds_only_the_matching_branch_department(): void
+    {
+        $tokyo = RegistryDepartmentOptions::forLocation('東京');
+        $fukuoka = RegistryDepartmentOptions::forLocation('福岡');
+        $osaka = RegistryDepartmentOptions::forLocation('大阪');
+
+        $this->assertContains('経営企画室', $osaka);
+        $this->assertContains('東京支店', $tokyo);
+        $this->assertNotContains('福岡支店', $tokyo);
+        $this->assertContains('福岡支店', $fukuoka);
+        $this->assertNotContains('東京支店', $fukuoka);
+        $this->assertNotContains('東京支店', $osaka);
+        $this->assertNotContains('福岡支店', $osaka);
+        $this->assertNotContains('東京支店', RegistryDepartmentOptions::forLocation('大阪', '東京支店'));
+        $this->assertContains('食品部', RegistryDepartmentOptions::forLocation('大阪', '食品部'));
     }
 
     public function test_administrative_affairs_section_maps_to_management_headquarters(): void

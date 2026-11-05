@@ -32,7 +32,7 @@
                 <span class="block mt-1">編集可能な項目はダブルクリックでも編集できます。</span>
             @endif
             @if ($canEditIdentity)
-                <span class="block mt-1">社員ID・メールアドレスは情報システム部のみ編集できます。</span>
+                <span class="block mt-1">社員ID・メールアドレス・姓・名は新規登録ができる所属のみ編集できます。</span>
             @endif
         </p>
     </div>

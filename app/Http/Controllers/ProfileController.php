@@ -94,10 +94,28 @@ class ProfileController extends Controller
         $identityData = [];
         if ($viewer->canEditEmployeeIdentity($target)) {
             if (array_key_exists('employee_id', $validated)) {
-                $identityData['employee_id'] = trim((string) $validated['employee_id']);
+                $employeeId = trim((string) ($validated['employee_id'] ?? ''));
+                $identityData['employee_id'] = $employeeId !== '' ? $employeeId : null;
             }
             if (array_key_exists('email', $validated)) {
-                $identityData['email'] = strtolower(trim((string) $validated['email']));
+                $email = strtolower(trim((string) ($validated['email'] ?? '')));
+                $identityData['email'] = $email !== '' ? $email : null;
+            }
+            if (array_key_exists('last_name', $validated)) {
+                $identityData['last_name'] = trim((string) $validated['last_name']);
+            }
+            if (array_key_exists('first_name', $validated)) {
+                $identityData['first_name'] = trim((string) $validated['first_name']);
+            }
+
+            if (array_key_exists('last_name', $identityData) || array_key_exists('first_name', $identityData)) {
+                $lastName = array_key_exists('last_name', $identityData)
+                    ? $identityData['last_name']
+                    : (string) ($target->last_name ?? '');
+                $firstName = array_key_exists('first_name', $identityData)
+                    ? $identityData['first_name']
+                    : (string) ($target->first_name ?? '');
+                $identityData['name'] = trim($lastName.' '.$firstName);
             }
         }
 
@@ -146,6 +164,12 @@ class ProfileController extends Controller
             }
             if (array_key_exists('email', $identityData)) {
                 $fields['email'] = $this->inlineTextField($target->email);
+            }
+            if (array_key_exists('last_name', $identityData)) {
+                $fields['last_name'] = $this->inlineTextField($target->last_name);
+            }
+            if (array_key_exists('first_name', $identityData)) {
+                $fields['first_name'] = $this->inlineTextField($target->first_name);
             }
 
             $payload = [

@@ -5,12 +5,15 @@
 
     $suffix = $suffix ?? 'primary';
     $readonly = $readonly ?? false;
-    $values = HrDetailOrgFormState::assignmentValues($hrDetail, $suffix);
+    $values = HrDetailOrgFormState::assignmentValues($hrDetail, $suffix, $user ?? null);
     $org = RegistryOrgFormState::fromValues($values, splitSectionTeam: true);
     $departmentField = HrDetailOrgFormState::departmentField($suffix);
     $sectionField = HrDetailOrgFormState::sectionField($suffix);
     $teamField = HrDetailOrgFormState::teamField($suffix);
-    $departmentOptions = User::registryDepartmentOptions($values['department'] !== '' ? $values['department'] : null);
+    $departmentOptions = User::registryDepartmentOptions(
+        $values['department'] !== '' ? $values['department'] : null,
+        ($values['location'] ?? '') !== '' ? $values['location'] : null,
+    );
 @endphp
 
 @include('partials.form-field', [

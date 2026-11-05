@@ -44,7 +44,6 @@ class AffiliationStoreRequest extends FormRequest
      */
     public function rules(): array
     {
-        $enrolled = AffiliationHistory::STATUS_ENROLLED;
         $target = $this->route('user');
         if (! $target instanceof User) {
             $affiliation = $this->route('affiliation');
@@ -67,10 +66,9 @@ class AffiliationStoreRequest extends FormRequest
             'start_date' => ['nullable', 'date'],
             'end_date' => [
                 'nullable',
-                "required_unless:enrollment_status,{$enrolled}",
                 'date',
                 Rule::when(
-                    fn (): bool => filled($this->input('start_date')),
+                    fn (): bool => filled($this->input('start_date')) && filled($this->input('end_date')),
                     'after_or_equal:start_date',
                 ),
             ],
@@ -88,7 +86,6 @@ class AffiliationStoreRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'end_date.required_unless' => '在籍中以外の場合は終了日を入力してください。',
             'enrollment_status.required' => '在籍状況を選択してください。',
             'start_date.date' => '開始日は正しい日付形式で入力してください。',
             'end_date.date' => '終了日は正しい日付形式で入力してください。',

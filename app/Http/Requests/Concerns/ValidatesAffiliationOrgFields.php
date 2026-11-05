@@ -42,7 +42,10 @@ trait ValidatesAffiliationOrgFields
         return [
             'company' => ['nullable', 'string', Rule::in(User::companyOptions($this->input('company')))],
             'location' => ['nullable', 'string', Rule::in(User::OFFICE_LOCATIONS)],
-            'department' => ['nullable', 'string', Rule::in(User::registryDepartmentOptions($departmentCurrent ?: null))],
+            'department' => ['nullable', 'string', Rule::in(User::registryDepartmentOptions(
+                $departmentCurrent !== '' ? $departmentCurrent : null,
+                (string) $this->input('location', ''),
+            ))],
             'section' => [
                 'nullable',
                 'string',

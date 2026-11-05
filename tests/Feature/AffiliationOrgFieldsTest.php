@@ -26,6 +26,58 @@ class AffiliationOrgFieldsTest extends TestCase
             ->assertDontSee('課/チーム', false);
     }
 
+    public function test_user_can_store_affiliation_without_end_date(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->from(route('affiliations.create'))
+            ->post(route('affiliations.store'), [
+                'is_current' => '0',
+                'start_date' => '2020-04-01',
+                'company' => 'CareEarth',
+                'location' => '大阪',
+                'department' => '営業部',
+                'action' => 'save',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $affiliation = $user->affiliationHistories()->first();
+
+        $this->assertNotNull($affiliation);
+        $this->assertNull($affiliation->end_date);
+        $this->assertSame(AffiliationHistory::STATUS_MOVED, $affiliation->enrollment_status);
+    }
+
+    public function test_user_can_clear_affiliation_end_date(): void
+    {
+        $user = User::factory()->create();
+        $affiliation = AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2020-04-01',
+            'end_date' => '2024-03-31',
+            'enrollment_status' => AffiliationHistory::STATUS_MOVED,
+            'company' => 'CareEarth',
+            'location' => '大阪',
+            'department' => '営業部',
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('affiliations.edit', $affiliation))
+            ->put(route('affiliations.update', $affiliation), [
+                'is_current' => '0',
+                'start_date' => '2020-04-01',
+                'end_date' => '',
+                'company' => 'CareEarth',
+                'location' => '大阪',
+                'department' => '営業部',
+                'action' => 'save',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($affiliation->fresh()->end_date);
+    }
+
     public function test_user_can_store_affiliation_with_legacy_food_sales_team(): void
     {
         $user = User::factory()->create();

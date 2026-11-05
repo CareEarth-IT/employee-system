@@ -7,9 +7,12 @@ use App\Models\User;
 use App\Support\EmployeeHrDetailAccess;
 use App\Support\CompanyPhone;
 use App\Support\DateInput;
+use App\Support\EmployeeIdRules;
 use App\Support\HrDetailOrgFormState;
 use App\Support\NationalityOptions;
+use App\Support\RegistryDepartmentOptions;
 use App\Support\RegistrySectionByAssignment;
+use App\Support\RegistryTeamByAssignment;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,9 +21,14 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
     public function authorize(): bool
     {
         $target = $this->route('user') ?? auth()->user();
+        $viewer = auth()->user();
 
         return $target instanceof User
-            && EmployeeHrDetailAccess::canUpdateAny(auth()->user(), $target);
+            && $viewer !== null
+            && (
+                EmployeeHrDetailAccess::canUpdateAny($viewer, $target)
+                || $viewer->canEditEmployeeIdentity($target)
+            );
     }
 
     protected function prepareForValidation(): void
@@ -57,6 +65,27 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
             }
         }
 
+        $extraRows = $this->input('org_extra');
+        if (is_array($extraRows)) {
+            $normalizedRows = [];
+            foreach ($extraRows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                foreach (['department', 'section', 'team', 'position'] as $key) {
+                    $text = trim((string) ($row[$key] ?? ''));
+                    $row[$key] = $text !== '' ? $text : null;
+                }
+                if ($row['department'] !== null) {
+                    $row['department'] = RegistryDepartmentOptions::normalizeDepartment($row['department']);
+                }
+                $affiliationId = trim((string) ($row['affiliation_id'] ?? ''));
+                $row['affiliation_id'] = $affiliationId !== '' ? $affiliationId : null;
+                $normalizedRows[] = $row;
+            }
+            $this->merge(['org_extra' => $normalizedRows]);
+        }
+
         foreach (['department_primary', 'department_secondary'] as $field) {
             if ($this->has($field)) {
                 $this->merge([
@@ -64,6 +93,24 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
                         (string) $this->input($field),
                     ),
                 ]);
+            }
+        }
+
+        if ($this->viewerCanEditIdentity()) {
+            if ($this->exists('email')) {
+                $email = strtolower(trim((string) $this->input('email', '')));
+                $this->merge(['email' => $email !== '' ? $email : null]);
+            }
+
+            if ($this->exists('employee_id')) {
+                $employeeId = preg_replace('/\D/', '', (string) $this->input('employee_id', '')) ?? '';
+                $this->merge(['employee_id' => $employeeId !== '' ? $employeeId : null]);
+            }
+
+            foreach (['last_name', 'first_name'] as $field) {
+                if ($this->exists($field)) {
+                    $this->merge([$field => trim((string) $this->input($field, ''))]);
+                }
             }
         }
     }
@@ -85,7 +132,102 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
             $rules['team_secondary'] = $allRules['team_secondary'];
         }
 
+        if (isset($editable['department_primary'])) {
+            $target = $this->route('user');
+            $hrDetail = $target instanceof User ? $target->hrDetail : null;
+            $rules['org_extra_present'] = ['nullable', 'boolean'];
+            $rules['org_extra'] = ['nullable', 'array'];
+            $rules['org_extra.*.affiliation_id'] = ['nullable', 'integer'];
+            $rules['org_extra.*.department'] = ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail) use ($hrDetail): void {
+                $department = trim((string) $value);
+                if ($department === '') {
+                    return;
+                }
+                if (! in_array($department, User::registryDepartmentOptions(
+                    $department,
+                    (string) $this->input('jurisdiction', $hrDetail?->jurisdiction ?? ''),
+                ), true)) {
+                    $fail('部署を正しく選択してください。');
+                }
+            }];
+            $rules['org_extra.*.section'] = ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail) use ($hrDetail): void {
+                $section = trim((string) $value);
+                if ($section === '') {
+                    return;
+                }
+                $index = explode('.', $attribute)[1] ?? null;
+                $department = trim((string) $this->input("org_extra.{$index}.department", ''));
+                if (RegistrySectionByAssignment::isStandaloneSection($section) && $department !== '') {
+                    $fail('庶務課は部署を選択しない場合のみ指定できます。');
+
+                    return;
+                }
+                $allowed = RegistrySectionByAssignment::forSelect(
+                    $department,
+                    (string) $this->input('jurisdiction', $hrDetail?->jurisdiction),
+                    $section,
+                );
+                if (! in_array($section, $allowed, true)) {
+                    $fail('課を正しく選択してください。');
+                }
+            }];
+            $rules['org_extra.*.team'] = ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail) use ($hrDetail): void {
+                $team = trim((string) $value);
+                if ($team === '') {
+                    return;
+                }
+                $index = explode('.', $attribute)[1] ?? null;
+                $allowed = RegistryTeamByAssignment::validValuesFor(
+                    (string) $this->input("org_extra.{$index}.department", ''),
+                    (string) $this->input('jurisdiction', $hrDetail?->jurisdiction),
+                    (string) $this->input("org_extra.{$index}.section", ''),
+                );
+                if ($allowed !== [] && ! in_array($team, $allowed, true)) {
+                    $fail('チームを正しく選択してください。');
+                }
+            }];
+            $rules['org_extra.*.position'] = ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
+                $position = trim((string) $value);
+                if ($position === '') {
+                    return;
+                }
+                if (! in_array($position, User::registryPositionOptions($position), true)) {
+                    $fail('役職を正しく選択してください。');
+                }
+            }];
+        }
+
+        if ($this->viewerCanEditIdentity()) {
+            $target = $this->route('user') ?? auth()->user();
+            $targetId = $target instanceof User ? $target->id : null;
+
+            $rules['employee_id'] = EmployeeIdRules::rules(
+                required: false,
+                uniqueIgnoreUserId: $targetId,
+                sometimes: true,
+            );
+            $rules['email'] = [
+                'sometimes',
+                'nullable',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($targetId),
+            ];
+            $rules['last_name'] = ['sometimes', 'required', 'string', 'max:255'];
+            $rules['first_name'] = ['sometimes', 'required', 'string', 'max:255'];
+        }
+
         return $rules;
+    }
+
+    private function viewerCanEditIdentity(): bool
+    {
+        $target = $this->route('user') ?? auth()->user();
+        $viewer = auth()->user();
+
+        return $target instanceof User
+            && $viewer !== null
+            && $viewer->canEditEmployeeIdentity($target);
     }
 
     /**
@@ -157,14 +299,17 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
             'department_primary' => [
                 'nullable',
                 'string',
-                function (string $attribute, mixed $value, \Closure $fail): void {
+                function (string $attribute, mixed $value, \Closure $fail) use ($hrDetail): void {
                     $department = trim((string) $value);
 
                     if ($department === '') {
                         return;
                     }
 
-                    if (! in_array($department, User::registryDepartmentOptions($this->input('department_primary') ?: $hrDetail?->department_primary), true)) {
+                    if (! in_array($department, User::registryDepartmentOptions(
+                        $this->input('department_primary') ?: $hrDetail?->department_primary,
+                        (string) $this->input('jurisdiction', $hrDetail?->jurisdiction ?? ''),
+                    ), true)) {
                         $fail('部署を正しく選択してください。');
                     }
                 },
@@ -216,7 +361,10 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
                         return;
                     }
 
-                    if (! in_array($department, User::registryDepartmentOptions($this->input('department_secondary') ?: $hrDetail?->department_secondary), true)) {
+                    if (! in_array($department, User::registryDepartmentOptions(
+                        $this->input('department_secondary') ?: $hrDetail?->department_secondary,
+                        (string) $this->input('jurisdiction', $hrDetail?->jurisdiction ?? ''),
+                    ), true)) {
                         $fail('部署を正しく選択してください。');
                     }
                 },

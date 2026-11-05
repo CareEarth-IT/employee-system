@@ -36,7 +36,9 @@ trait ValidatesEmployeeRegistryFields
             'company' => trim((string) $this->input('company', '')),
             'section' => $nullable($this->input('section', '')),
             'team' => $nullable($this->input('team', '')),
-            'employee_id' => preg_replace('/\D/', '', (string) $this->input('employee_id', '')) ?? '',
+            'employee_id' => (($employeeId = preg_replace('/\D/', '', (string) $this->input('employee_id', '')) ?? '') !== ''
+                ? $employeeId
+                : null),
             'name_kana' => $nullable($this->input('name_kana', '')),
             'english_name' => $nullable($this->input('english_name', '')),
             'birth_date' => DateInput::normalize($nullable($this->input('birth_date', ''))),
@@ -68,7 +70,7 @@ trait ValidatesEmployeeRegistryFields
         bool $requireSectionForGrDepartment = false,
     ): array {
         $employeeIdRules = EmployeeIdRules::rules(
-            required: true,
+            required: false,
             uniqueIgnoreUserId: $uniqueIgnoreUserId,
         );
 
@@ -77,7 +79,6 @@ trait ValidatesEmployeeRegistryFields
             'first_name' => ['required', 'string', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
             'email' => [
-                Rule::requiredIf(fn (): bool => ! $this->isPartTimeEmploymentType()),
                 'nullable',
                 'email',
                 'max:255',
@@ -104,7 +105,7 @@ trait ValidatesEmployeeRegistryFields
                         return;
                     }
 
-                    if (! in_array($department, User::registryDepartmentOptions($currentDepartment), true)) {
+                    if (! in_array($department, User::registryDepartmentOptions($currentDepartment, (string) $this->input('location', '')), true)) {
                         $fail('部署を正しく選択してください。');
                     }
                 },
@@ -271,10 +272,5 @@ trait ValidatesEmployeeRegistryFields
         array_unshift($rules, $required ? 'required' : 'nullable');
 
         return $rules;
-    }
-
-    protected function isPartTimeEmploymentType(): bool
-    {
-        return trim((string) $this->input('employment_type')) === 'アルバイト';
     }
 }

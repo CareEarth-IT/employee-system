@@ -346,13 +346,13 @@ class EmployeeRegistryService
             'import_locked' => true,
         ];
 
-        // ナマエは入力されたときだけ保存する（姓名の漢字をカタカナ欄へコピーしない）
-        if (array_key_exists('name_kana', $data)) {
+        if ($existing === null) {
+            [, , $displayName] = $this->resolveNameParts($data);
+            $attributes['name_kana'] = $displayName !== '' ? $displayName : null;
+        } else {
             $nameKana = trim((string) ($data['name_kana'] ?? ''));
             if ($nameKana !== '') {
                 $attributes['name_kana'] = $nameKana;
-            } elseif ($existing === null) {
-                $attributes['name_kana'] = null;
             }
         }
 

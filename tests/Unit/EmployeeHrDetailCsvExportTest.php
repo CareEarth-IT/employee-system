@@ -125,6 +125,60 @@ class EmployeeHrDetailCsvExportTest extends TestCase
         $this->assertStringNotContainsString('グローバル事業部', $csv);
     }
 
+    public function test_exporter_outputs_each_concurrent_department_and_section(): void
+    {
+        $viewer = $this->userInAffiliation('人事部', '人事課');
+
+        $user = User::factory()->create([
+            'employee_id' => '12001',
+            'email' => 'concurrent@example.com',
+        ]);
+        EmployeeHrDetail::create([
+            'user_id' => $user->id,
+            'employment_status' => '在籍',
+            'department_primary' => '通信事業部',
+            'section_primary' => '通信課',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '通信事業部',
+            'section' => '通信課',
+            'location' => '大阪',
+        ]);
+        AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2025-04-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'department' => '食品事業部',
+            'section' => '店舗運営課',
+            'location' => '大阪',
+        ]);
+
+        $user->load(['profile', 'hrDetail', 'affiliationHistories']);
+
+        ob_start();
+        app(EmployeeHrDetailCsvExporter::class)->stream(collect([$user]), $viewer);
+        $csv = (string) ob_get_clean();
+
+        $lines = preg_split('/\r\n|\n|\r/', trim($csv)) ?: [];
+        $this->assertGreaterThanOrEqual(2, count($lines));
+        $header = str_getcsv($lines[0]);
+        $data = str_getcsv($lines[1]);
+        $departmentPrimaryIndex = array_search('部署①', $header, true);
+        $departmentSecondaryIndex = array_search('部署②', $header, true);
+        $sectionPrimaryIndex = array_search('課①', $header, true);
+        $sectionSecondaryIndex = array_search('課②', $header, true);
+
+        $this->assertNotFalse($departmentPrimaryIndex);
+        $this->assertNotFalse($departmentSecondaryIndex);
+        $this->assertSame('通信事業部', $data[$departmentPrimaryIndex]);
+        $this->assertSame('食品事業部', $data[$departmentSecondaryIndex]);
+        $this->assertSame('通信課', $data[$sectionPrimaryIndex]);
+        $this->assertSame('店舗運営課', $data[$sectionSecondaryIndex]);
+    }
+
     public function test_exporter_outputs_viewable_values_for_hr_section(): void
     {
         $viewer = $this->userInAffiliation('人事部', '人事課');

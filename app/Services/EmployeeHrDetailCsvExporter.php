@@ -178,6 +178,18 @@ class EmployeeHrDetailCsvExporter
             return $this->exportDepartmentPrimary($user, $detail);
         }
 
+        if ($column === 'section_primary') {
+            return $this->exportSectionPrimary($user, $detail);
+        }
+
+        if ($column === 'department_secondary') {
+            return $this->exportDepartmentSecondary($user, $detail);
+        }
+
+        if ($column === 'section_secondary') {
+            return $this->exportSectionSecondary($user, $detail);
+        }
+
         if (! $detail) {
             return '';
         }
@@ -201,6 +213,11 @@ class EmployeeHrDetailCsvExporter
 
     private function exportDepartmentPrimary(User $user, ?EmployeeHrDetail $detail): string
     {
+        $rows = $user->concurrentOrgRows();
+        if ($rows !== null) {
+            return $this->rosterDepartmentLabelForConcurrentRow($rows[0]);
+        }
+
         $jurisdiction = trim((string) ($detail?->jurisdiction ?? ''));
         $department = trim((string) ($detail?->department_primary ?? ''));
 
@@ -219,6 +236,50 @@ class EmployeeHrDetailCsvExporter
         }
 
         return RegistryGrAssignment::rosterDepartmentLabel($jurisdiction, $department);
+    }
+
+    private function exportSectionPrimary(User $user, ?EmployeeHrDetail $detail): string
+    {
+        $rows = $user->concurrentOrgRows();
+        if ($rows !== null) {
+            return $rows[0]['section'];
+        }
+
+        return trim((string) ($detail?->section_primary ?? ''));
+    }
+
+    private function exportDepartmentSecondary(User $user, ?EmployeeHrDetail $detail): string
+    {
+        $rows = $user->concurrentOrgRows();
+        if ($rows !== null) {
+            return implode("\n", array_map(
+                fn (array $row): string => $this->rosterDepartmentLabelForConcurrentRow($row),
+                array_slice($rows, 1),
+            ));
+        }
+
+        return trim((string) ($detail?->department_secondary ?? ''));
+    }
+
+    private function exportSectionSecondary(User $user, ?EmployeeHrDetail $detail): string
+    {
+        $rows = $user->concurrentOrgRows();
+        if ($rows !== null) {
+            return implode("\n", array_map(
+                fn (array $row): string => $row['section'],
+                array_slice($rows, 1),
+            ));
+        }
+
+        return trim((string) ($detail?->section_secondary ?? ''));
+    }
+
+    /**
+     * @param  array{department: string, section: string, location: string}  $row
+     */
+    private function rosterDepartmentLabelForConcurrentRow(array $row): string
+    {
+        return RegistryGrAssignment::rosterDepartmentLabel($row['location'], $row['department']);
     }
 
     private function formatDate(?Carbon $value): string

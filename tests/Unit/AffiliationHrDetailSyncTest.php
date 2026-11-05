@@ -47,6 +47,55 @@ class AffiliationHrDetailSyncTest extends TestCase
         $this->assertSame('部長', $affiliation->position);
     }
 
+    public function test_syncs_each_concurrent_affiliation_from_primary_and_secondary(): void
+    {
+        $user = User::factory()->create();
+
+        $first = AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2024-01-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+            'location' => '大阪',
+            'department' => '通信事業部',
+            'section' => '通信課',
+            'position' => '一般',
+        ]);
+        $second = AffiliationHistory::create([
+            'user_id' => $user->id,
+            'start_date' => '2025-04-01',
+            'enrollment_status' => AffiliationHistory::STATUS_ENROLLED,
+            'company' => 'CareEarth',
+            'location' => '東京',
+            'department' => '食品事業部',
+            'section' => '店舗運営課',
+            'position' => '一般',
+        ]);
+
+        $detail = EmployeeHrDetail::create([
+            'user_id' => $user->id,
+            'affiliation_code' => 'CE',
+            'jurisdiction' => '大阪',
+            'department_primary' => '通信事業部',
+            'section_primary' => '事業推進課',
+            'position_primary' => '課長',
+            'department_secondary' => '不動産部',
+            'section_secondary' => '営業課',
+            'position_secondary' => '係長',
+        ]);
+
+        AffiliationHrDetailSync::syncAffiliationFromHrDetail($user->fresh(), $detail);
+
+        $first->refresh();
+        $second->refresh();
+        $this->assertSame('事業推進課', $first->section);
+        $this->assertSame('課長', $first->position);
+        $this->assertSame('不動産部', $second->department);
+        $this->assertSame('営業課', $second->section);
+        $this->assertSame('係長', $second->position);
+        $this->assertSame('東京', $second->location);
+    }
+
     public function test_import_sync_updates_hr_detail_without_touching_past_affiliations(): void
     {
         $user = User::factory()->create();

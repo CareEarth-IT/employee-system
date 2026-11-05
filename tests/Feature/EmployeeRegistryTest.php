@@ -110,7 +110,7 @@ class EmployeeRegistryTest extends TestCase
         $this->assertSame('山田', $created->last_name);
         $this->assertSame('太郎', $created->first_name);
         $this->assertSame('山田 太郎', $created->displayName());
-        $this->assertNull($created->profile?->name_kana);
+        $this->assertSame('山田 太郎', $created->profile?->name_kana);
         $this->assertTrue($created->must_change_password);
 
         $affiliation = $created->currentAffiliation();
@@ -637,6 +637,60 @@ class EmployeeRegistryTest extends TestCase
         $this->assertNull(User::query()->where('email', 'blank_dept@careearth.info')->first());
     }
 
+    public function test_store_allows_full_time_employee_without_email_and_employee_id(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'last_name' => '未定',
+                'first_name' => '太郎',
+                'email' => '',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '',
+                'employment_type' => '正社員',
+            ]))
+            ->assertRedirect(route('employees.create'))
+            ->assertSessionHasNoErrors();
+
+        $created = User::query()
+            ->where('last_name', '未定')
+            ->where('first_name', '太郎')
+            ->first();
+
+        $this->assertNotNull($created);
+        $this->assertNull($created->email);
+        $this->assertNull($created->employee_id);
+        $this->assertSame('正社員', $created->hrDetail?->employment_type);
+    }
+
+    public function test_store_allows_part_time_employee_without_employee_id(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'name' => 'アルバイト 次郎',
+                'email' => '',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '',
+                'employment_type' => 'アルバイト',
+            ]))
+            ->assertRedirect(route('employees.create'))
+            ->assertSessionHasNoErrors();
+
+        $created = User::query()
+            ->where('last_name', 'アルバイト')
+            ->where('first_name', '次郎')
+            ->first();
+
+        $this->assertNotNull($created);
+        $this->assertNull($created->employee_id);
+        $this->assertSame('アルバイト', $created->hrDetail?->employment_type);
+    }
+
     public function test_store_allows_part_time_employee_without_email(): void
     {
         $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
@@ -734,24 +788,6 @@ class EmployeeRegistryTest extends TestCase
         $this->assertSame('29', $created->employee_id);
         $this->assertTrue($created->isListedEmployee());
         $this->assertSame('退職', $created->hrDetail?->employment_status);
-    }
-
-    public function test_store_rejects_full_time_employee_without_email(): void
-    {
-        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
-
-        $this->actingAs($admin)
-            ->post(route('employees.store'), $this->registryPayload([
-                'name' => '正社員 太郎',
-                'email' => '',
-                'password' => 'password123',
-                'password_confirmation' => 'password123',
-                'employee_id' => '10961',
-                'employment_type' => '正社員',
-            ]))
-            ->assertSessionHasErrors(['email']);
-
-        $this->assertNull(User::query()->where('employee_id', '10961')->first());
     }
 
     public function test_store_rejects_invalid_department(): void
@@ -855,7 +891,84 @@ class EmployeeRegistryTest extends TestCase
             ->assertSee('不動産事業部', false)
             ->assertSee('通信事業部', false)
             ->assertSee('特定技能事業部', false)
-            ->assertSee('営業部', false);
+            ->assertSee('営業部', false)
+            ->assertSee('経営企画室', false)
+            ->assertSee('locationBranchDepartments', false)
+            ->assertSee('\u6771\u4eac\u652f\u5e97', false)
+            ->assertSee('\u798f\u5ca1\u652f\u5e97', false)
+            ->assertDontSee('<option value="東京支店"', false)
+            ->assertDontSee('<option value="福岡支店"', false);
+    }
+
+    public function test_registry_user_can_create_tokyo_branch_employee_only_for_tokyo(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'email' => 'tokyo_branch@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10881',
+                'department' => '東京支店',
+                'location' => '東京',
+            ]))
+            ->assertRedirect(route('employees.create'))
+            ->assertSessionHas('success', '社員を登録しました。');
+
+        $created = User::query()->where('email', 'tokyo_branch@careearth.info')->first();
+        $this->assertSame('東京支店', $created?->currentAffiliation()?->department);
+        $this->assertSame('東京', $created?->hrDetail?->jurisdiction);
+        $this->assertSame('東京支店', $created?->hrDetail?->department_primary);
+
+        $this->actingAs($admin)
+            ->from(route('employees.create'))
+            ->post(route('employees.store'), $this->registryPayload([
+                'email' => 'osaka_tokyo_branch@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10882',
+                'department' => '東京支店',
+                'location' => '大阪',
+            ]))
+            ->assertSessionHasErrors('department');
+    }
+
+    public function test_registry_user_can_create_fukuoka_branch_and_planning_office(): void
+    {
+        $admin = $this->userInAffiliation('情報システム部', '事業IT推進課');
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'email' => 'fukuoka_branch@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10883',
+                'department' => '福岡支店',
+                'location' => '福岡',
+            ]))
+            ->assertRedirect(route('employees.create'));
+
+        $this->assertSame(
+            '福岡支店',
+            User::query()->where('email', 'fukuoka_branch@careearth.info')->first()?->hrDetail?->department_primary,
+        );
+
+        $this->actingAs($admin)
+            ->post(route('employees.store'), $this->registryPayload([
+                'email' => 'planning_office@careearth.info',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'employee_id' => '10884',
+                'department' => '経営企画室',
+                'location' => '大阪',
+            ]))
+            ->assertRedirect(route('employees.create'));
+
+        $this->assertSame(
+            '経営企画室',
+            User::query()->where('email', 'planning_office@careearth.info')->first()?->hrDetail?->department_primary,
+        );
     }
 
     public function test_create_form_restricts_employee_id_input_to_digits(): void
@@ -1004,7 +1117,7 @@ class EmployeeRegistryTest extends TestCase
         $this->assertSame('田中', $created->last_name);
         $this->assertSame('一郎', $created->first_name);
         $this->assertSame('田中 一郎', $created->displayName());
-        $this->assertSame('タナカ イチロウ', $created->profile?->name_kana);
+        $this->assertSame('田中 一郎', $created->profile?->name_kana);
         $this->assertSame('Ichiro Tanaka', $created->profile?->english_name);
         $this->assertSame('1995-08-15', $created->hrDetail?->birth_date?->toDateString());
         $this->assertSame('日本', $created->profile?->nationality);

@@ -131,7 +131,7 @@ class AffiliationResignationSyncTest extends TestCase
         $affiliation->refresh();
 
         $this->assertSame(AffiliationHistory::STATUS_RESIGNED, $affiliation->enrollment_status);
-        $this->assertNotNull($affiliation->end_date);
+        $this->assertNull($affiliation->end_date);
         $this->assertNull($user->fresh()->currentAffiliation());
     }
 

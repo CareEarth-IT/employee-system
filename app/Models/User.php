@@ -658,6 +658,7 @@ class User extends Authenticatable
 
     /**
      * 社員一覧の状況タブ（在籍・休職・退職・全体）の対象となる登録済み社員か。
+     * 正社員・アルバイトは社員IDがなくても対象。IDの形式が不正なアカウントは対象外。
      */
     public function isListedEmployee(): bool
     {
@@ -665,18 +666,23 @@ class User extends Authenticatable
             return true;
         }
 
-        // 社員IDなしの退職者も退職一覧に載せる
         if ($this->employee_id !== null && $this->employee_id !== '') {
             return false;
         }
 
+        if ($this->hasRegistryEmploymentType()) {
+            return true;
+        }
+
+        // 社員IDなしの退職者も退職一覧に載せる
         $status = EmploymentStatus::normalize(trim((string) ($this->hrDetail?->employment_status ?? '')));
 
         return in_array($status, ['退職', '辞退'], true);
     }
 
     /**
-     * 社員一覧の状況タブ対象となる登録済み社員（1〜5桁の数字社員ID）に絞り込む。
+     * 社員一覧の状況タブ対象となる登録済み社員に絞り込む。
+     * 1〜5桁の数字社員ID、または社員IDなしの正社員・アルバイト。
      *
      * @param  Builder<User>  $query
      */
@@ -685,15 +691,34 @@ class User extends Authenticatable
         $min = EmployeeIdRules::MIN_LENGTH;
         $max = EmployeeIdRules::LENGTH;
 
-        $query->whereNotNull('employee_id')
-            ->where('employee_id', '!=', '')
-            ->whereRaw('LENGTH(employee_id) BETWEEN ? AND ?', [$min, $max]);
+        $query->where(function (Builder $listed) use ($min, $max): void {
+            $listed->where(function (Builder $withId) use ($min, $max): void {
+                $withId->whereNotNull('employee_id')
+                    ->where('employee_id', '!=', '')
+                    ->whereRaw('LENGTH(employee_id) BETWEEN ? AND ?', [$min, $max]);
 
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            $query->whereRaw(EmployeeIdRules::sqliteDigitGlobSql());
-        } else {
-            $query->whereRaw("employee_id REGEXP '^[0-9]{".$min.','.$max."}$'");
-        }
+                if (DB::connection()->getDriverName() === 'sqlite') {
+                    $withId->whereRaw(EmployeeIdRules::sqliteDigitGlobSql());
+                } else {
+                    $withId->whereRaw("employee_id REGEXP '^[0-9]{".$min.','.$max."}$'");
+                }
+            })->orWhere(function (Builder $withoutId): void {
+                $withoutId
+                    ->where(function (Builder $emptyId): void {
+                        $emptyId->whereNull('employee_id')->orWhere('employee_id', '');
+                    })
+                    ->whereHas('hrDetail', function (Builder $hrDetail): void {
+                        $hrDetail->whereIn('employment_type', self::EMPLOYMENT_TYPE_OPTIONS);
+                    });
+            });
+        });
+    }
+
+    private function hasRegistryEmploymentType(): bool
+    {
+        $type = trim((string) ($this->hrDetail?->employment_type ?? ''));
+
+        return in_array($type, self::EMPLOYMENT_TYPE_OPTIONS, true);
     }
 
     /** 社員一覧などで表示する雇用形態 */
@@ -728,17 +753,93 @@ class User extends Authenticatable
         return $value !== '' ? $value : '—';
     }
 
-    /** 社員一覧などで表示する部署 */
+    /**
+     * 在籍中の所属が2件以上あるときの所属（開始日が古い順、同じ部署・課は1件）。
+     *
+     * @return Collection<int, AffiliationHistory>|null
+     */
+    public function concurrentAffiliations(): ?Collection
+    {
+        $rows = [];
+
+        $affiliations = $this->activeAffiliations()->sortBy(
+            fn (AffiliationHistory $affiliation): string => sprintf(
+                '%s-%010d',
+                $affiliation->start_date?->toDateString() ?? '',
+                $affiliation->id,
+            ),
+        );
+
+        foreach ($affiliations as $affiliation) {
+            $department = trim((string) ($affiliation->department ?? ''));
+            $section = trim((string) ($affiliation->section ?? ''));
+
+            if ($department === '' && $section === '') {
+                continue;
+            }
+
+            $key = $department."\0".$section;
+            if (isset($rows[$key])) {
+                continue;
+            }
+
+            $rows[$key] = $affiliation;
+        }
+
+        if (count($rows) < 2) {
+            return null;
+        }
+
+        return collect(array_values($rows));
+    }
+
+    /**
+     * 在籍中の所属が2件以上あるときの部署・課（開始日が古い順）。
+     * 1件以下は null。そのときは詳細情報の部署①・課①を表示する。
+     *
+     * @return list<array{department: string, section: string, location: string}>|null
+     */
+    public function concurrentOrgRows(): ?array
+    {
+        $affiliations = $this->concurrentAffiliations();
+        if ($affiliations === null) {
+            return null;
+        }
+
+        return $affiliations->map(fn (AffiliationHistory $affiliation): array => [
+            'department' => trim((string) ($affiliation->department ?? '')),
+            'section' => trim((string) ($affiliation->section ?? '')),
+            'location' => trim((string) ($affiliation->location ?? '')),
+        ])->all();
+    }
+
+    /** 社員一覧などで表示する部署。兼任時は在籍中の部署を改行で並べる */
     public function displayDepartmentPrimary(): string
     {
+        $rows = $this->concurrentOrgRows();
+        if ($rows !== null) {
+            return implode("\n", array_map(
+                fn (array $row): string => $row['department'] !== '' ? $row['department'] : '—',
+                $rows,
+            ));
+        }
+
         $value = trim((string) ($this->hrDetail?->department_primary ?? ''));
 
         return $value !== '' ? $value : '—';
     }
 
-    /** 社員一覧などで表示する課 */
+    /** 社員一覧などで表示する課。兼任時は在籍中の課を部署と同じ順で改行して並べる */
     public function displaySectionPrimary(): string
     {
+        $rows = $this->concurrentOrgRows();
+        if ($rows !== null) {
+            return implode("\n", array_map(
+                fn (array $row): string => $row['section'] !== '' ? $row['section'] : '—',
+                $rows,
+            ));
+        }
+
         $value = trim((string) ($this->hrDetail?->section_primary ?? ''));
 
         return $value !== '' ? $value : '—';
@@ -1144,10 +1245,10 @@ class User extends Authenticatable
         return false;
     }
 
-    /** 社員ID・社用メールの編集: 情報システム部のみ（全社員対象） */
+    /** 社員ID・社用メール・姓・名の編集: 新規登録と同じ所属（情シス・人事部かつ人事課・役員・庶務課） */
     public function canEditEmployeeIdentity(?User $target = null): bool
     {
-        return $this->isInformationSystems();
+        return $this->canManageEmployeeRegistry();
     }
 
     /** 社員新規登録・編集画面: 情報システム部、人事部・人事課、役員、庶務課 */
@@ -1182,9 +1283,9 @@ class User extends Authenticatable
     /**
      * @return list<string>
      */
-    public static function registryDepartmentOptions(?string $current = null): array
+    public static function registryDepartmentOptions(?string $current = null, ?string $location = null): array
     {
-        return \App\Support\RegistryDepartmentOptions::forSelect($current);
+        return \App\Support\RegistryDepartmentOptions::forLocation($location, $current);
     }
 
     /**

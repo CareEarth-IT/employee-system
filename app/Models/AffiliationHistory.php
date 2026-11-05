@@ -88,7 +88,7 @@ class AffiliationHistory extends Model
         ]);
     }
 
-    public function closeAsResigned(string $endDate): void
+    public function closeAsResigned(?string $endDate = null): void
     {
         $this->update([
             'enrollment_status' => self::STATUS_RESIGNED,
