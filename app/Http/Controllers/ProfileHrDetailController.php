@@ -81,6 +81,15 @@ class ProfileHrDetailController extends Controller
             $target->refresh();
         }
 
+        if (array_key_exists('english_name', $validated)
+            && (
+                $viewer->canEditEmployeeIdentity($target)
+                || EmployeeHrDetailAccess::canEditCore($viewer, $target)
+            )) {
+            $this->syncEnglishNameFromHrDetail($target, $validated['english_name'] ?? null);
+            $target->refresh();
+        }
+
         $hrDetail->update(collect($validated)->only($hrDetailFields)->all());
 
         if (array_intersect(AffiliationHrDetailSync::HR_ORG_FIELDS, $hrDetailFields) !== []) {
@@ -169,6 +178,16 @@ class ProfileHrDetailController extends Controller
             'last_name' => $lastName,
             'first_name' => $firstName,
             'name' => trim($lastName.' '.$firstName),
+            'import_locked' => true,
+        ]);
+    }
+
+    private function syncEnglishNameFromHrDetail(User $user, mixed $englishName): void
+    {
+        $value = trim((string) ($englishName ?? ''));
+        $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
+        $profile->update([
+            'english_name' => $value !== '' ? $value : null,
             'import_locked' => true,
         ]);
     }

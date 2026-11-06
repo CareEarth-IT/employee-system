@@ -285,13 +285,22 @@
                         $profileUrl = auth()->id() === $employee->id
                             ? route('profile.show')
                             : route('users.profile.show', $employee);
-                        $englishName = $employee->profile?->english_name;
+                        $englishName = trim((string) ($employee->profile?->english_name ?? ''));
+                        // 既存: ENG 空なら日本語名。この日時以降の新規登録のみ空欄を「—」表示（DBは変更しない）
+                        $englishNameEmptyCutoff = \Illuminate\Support\Carbon::parse('2026-11-06 12:00:00', 'Asia/Tokyo');
+                        $englishNameDisplay = $englishName !== ''
+                            ? $englishName
+                            : (
+                                $employee->created_at !== null && $employee->created_at->greaterThanOrEqualTo($englishNameEmptyCutoff)
+                                    ? '—'
+                                    : ($employee->familyGivenName() ?: '—')
+                            );
                     @endphp
                     <tr class="border-b border-slate-200 hover:bg-slate-50">
                         <td class="{{ $tableBodyCell }} min-w-[5.5rem]">{{ $employee->employee_id ?? '—' }}</td>
                         <td class="{{ $tableBodyCell }} min-w-[8rem]">
                             <a href="{{ $profileUrl }}" class="text-blue-600 hover:underline">
-                                {{ $englishName ?: ($employee->familyGivenName() ?: '—') }}
+                                {{ $englishNameDisplay }}
                             </a>
                         </td>
                         <td class="{{ $tableBodyCell }} min-w-[8rem]">

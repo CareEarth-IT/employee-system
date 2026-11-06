@@ -113,6 +113,11 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
                 }
             }
         }
+
+        if ($this->viewerCanEditEnglishName() && $this->exists('english_name')) {
+            $englishName = trim((string) $this->input('english_name', ''));
+            $this->merge(['english_name' => $englishName !== '' ? $englishName : null]);
+        }
     }
 
     /**
@@ -217,6 +222,10 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
             $rules['first_name'] = ['sometimes', 'required', 'string', 'max:255'];
         }
 
+        if ($this->viewerCanEditEnglishName()) {
+            $rules['english_name'] = ['sometimes', 'nullable', 'string', 'max:255'];
+        }
+
         return $rules;
     }
 
@@ -228,6 +237,19 @@ class EmployeeHrDetailUpdateRequest extends FormRequest
         return $target instanceof User
             && $viewer !== null
             && $viewer->canEditEmployeeIdentity($target);
+    }
+
+    private function viewerCanEditEnglishName(): bool
+    {
+        $target = $this->route('user') ?? auth()->user();
+        $viewer = auth()->user();
+
+        return $target instanceof User
+            && $viewer !== null
+            && (
+                $viewer->canEditEmployeeIdentity($target)
+                || EmployeeHrDetailAccess::canEditCore($viewer, $target)
+            );
     }
 
     /**

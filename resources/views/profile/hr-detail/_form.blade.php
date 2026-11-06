@@ -77,10 +77,13 @@
                         <p class="break-all rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->email ?: '—' }}</p>
                     </div>
                 @endif
-                <div>
-                    <label class="mb-1 block text-base">Name</label>
-                    <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-base">{{ $user->profile?->english_name ?? '—' }}</p>
-                </div>
+                @include('partials.form-field', [
+                    'name' => 'english_name',
+                    'label' => 'Name',
+                    'hint' => '（パスポート表記）',
+                    'value' => $user->profile?->english_name,
+                    'readonly' => $roCore && ! $canEditIdentity,
+                ])
                 @include('partials.form-field', [
                     'name' => 'gmail_address',
                     'label' => 'Gmailアドレス',

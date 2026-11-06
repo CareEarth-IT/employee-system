@@ -451,6 +451,10 @@ class EmployeeHrDetailOrgFormTest extends TestCase
             'last_name' => '旧姓',
             'first_name' => '旧名',
         ]);
+        \App\Models\EmployeeProfile::create([
+            'user_id' => $target->id,
+            'english_name' => 'OLD NAME',
+        ]);
         EmployeeHrDetail::create([
             'user_id' => $target->id,
             'employment_status' => '在籍',
@@ -463,7 +467,8 @@ class EmployeeHrDetailOrgFormTest extends TestCase
             ->assertSee('name="employee_id"', false)
             ->assertSee('name="last_name"', false)
             ->assertSee('name="first_name"', false)
-            ->assertSee('name="email"', false);
+            ->assertSee('name="email"', false)
+            ->assertSee('name="english_name"', false);
 
         $this->actingAs($hr)
             ->put(route('users.profile.hr-detail.update', $target), [
@@ -471,6 +476,7 @@ class EmployeeHrDetailOrgFormTest extends TestCase
                 'email' => 'new-detail@careearth.info',
                 'last_name' => '新姓',
                 'first_name' => '新名',
+                'english_name' => 'NEW NAME',
             ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
@@ -482,6 +488,7 @@ class EmployeeHrDetailOrgFormTest extends TestCase
         $this->assertSame('新名', $target->first_name);
         $this->assertSame('新姓 新名', $target->name);
         $this->assertSame('新姓 新名', $target->familyGivenName());
+        $this->assertSame('NEW NAME', $target->profile?->english_name);
     }
 
     private function userInAffiliation(string $department, string $section): User
